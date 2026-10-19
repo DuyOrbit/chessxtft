@@ -184,6 +184,11 @@ class ChessTFTApp {
                 const badge = document.getElementById("lobby-online-status");
                 if (badge) badge.textContent = "🟢 Đã kết nối Server Online";
             });
+            this.socket.on("connect_error", (err) => {
+                const badge = document.getElementById("lobby-online-status");
+                if (badge) badge.textContent = "🟡 Mất kết nối Socket - Đang thử lại...";
+                console.warn("Socket.io connect error:", err.message);
+            });
 
             this.socket.on("config:updated", ({ rules, entities }) => {
                 if (window.applyDatabaseConfigToRuntime) {
@@ -391,6 +396,8 @@ class ChessTFTApp {
                         this.currentRoom = res.room;
                         this.renderWaitingRoom();
                         this.showToast(`Đã tạo phòng ${res.room.code}! Hãy gửi mã này cho bạn bè!`, "success");
+                    } else {
+                        this.showToast(res?.msg || "Không thể tạo phòng!", "warn");
                     }
                 });
                 return;
@@ -405,10 +412,12 @@ class ChessTFTApp {
                 if (d.ok && d.room) {
                     this.currentRoom = d.room;
                     this.renderWaitingRoom();
-                    this.showToast(`Đã tạo phòng #${d.room.code} trên MySQL WampServer!`, "success");
+                    this.showToast(`Đã tạo phòng #${d.room.code}!`, "success");
+                } else {
+                    this.showToast(d.msg || "Không thể tạo phòng!", "warn");
                 }
             } catch (e) {
-                this.showToast("Không thể tạo phòng!", "warn");
+                this.showToast("Không thể tạo phòng! Vui lòng kiểm tra kết nối mạng.", "warn");
             }
         });
 

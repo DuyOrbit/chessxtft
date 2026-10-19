@@ -45,6 +45,17 @@ app.all("/api.php", (req, res, next) => {
     } else if (action === "match_finish") {
         req.url = "/api/matches/finish";
         req.method = "POST";
+        return next();
+    } else if (action === "room_list") {
+        req.url = "/api/rooms/list";
+        req.method = "GET";
+        return next();
+    } else if (action === "room_create") {
+        req.url = "/api/rooms/create";
+        req.method = "POST";
+        return next();
+    } else {
+        return res.status(400).json({ ok: false, msg: `Hành động '${action || ""}' không được hỗ trợ trên Node.js!` });
     }
     next();
 });
@@ -327,6 +338,46 @@ function getPublicRoomsList() {
 function broadcastRoomsList() {
     io.emit("rooms:list", getPublicRoomsList());
 }
+
+app.get("/api/rooms/list", (req, res) => {
+    res.json({ ok: true, rooms: getPublicRoomsList() });
+});
+
+app.post("/api/rooms/create", (req, res) => {
+    const { user, timeMode = "standard", fillBots = true } = req.body || {};
+    let code = generateRoomCode();
+    while (rooms.has(code)) code = generateRoomCode();
+
+    const dbUsers = readJSON(FILES.users, []);
+    const freshUser = dbUsers.find(u => u.id === user?.id) || user || { id: `anon_${Date.now()}`, username: "Guest" };
+
+    const room = {
+        code,
+        hostId: freshUser.id,
+        hostSocketId: null,
+        hostName: freshUser.displayName || freshUser.username,
+        timeMode,
+        fillBots: !!fillBots,
+        status: "waiting",
+        players: [
+            {
+                id: freshUser.id,
+                socketId: null,
+                name: freshUser.displayName || freshUser.username,
+                avatar: freshUser.avatar || "👑",
+                elo: freshUser.stats?.elo || 1000,
+                customModifiers: freshUser.customModifiers || {},
+                isHost: true,
+                isBot: false
+            }
+        ],
+        liveBoards: {}
+    };
+
+    rooms.set(code, room);
+    broadcastRoomsList();
+    res.json({ ok: true, room });
+});
 
 io.on("connection", (socket) => {
     socket.emit("rooms:list", getPublicRoomsList());
