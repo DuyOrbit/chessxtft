@@ -2094,6 +2094,26 @@ class ChessTFTApp {
         const hudCap = document.getElementById("hud-unit-cap");
         if (hudCap) hudCap.textContent = `Quân: ${deployed}/${maxAllowed}`;
 
+        // CẬP NHẬT SỐ TƯỚNG TRÊN SÀN ĐẤU (WATERMARK CHUẨN TFT: 5/5)
+        const watermark = document.getElementById("board-unit-watermark");
+        if (watermark) {
+            if (this.tft.phase === "prep") {
+                watermark.classList.remove("hidden");
+                watermark.textContent = `${deployed}/${maxAllowed}`;
+                watermark.classList.toggle("over-cap", deployed > maxAllowed);
+                watermark.title = `Số tướng trên sàn: ${deployed}/${maxAllowed} (+1 Vua)`;
+            } else {
+                watermark.classList.add("hidden");
+            }
+        }
+
+        // CẬP NHẬT TỶ LỆ RA TƯỚNG THEO CẤP ĐỘ (SHOP ODDS)
+        const odds = (window.CHESS_TFT_DATA.SHOP_ODDS && window.CHESS_TFT_DATA.SHOP_ODDS[p.level]) || [100, 0, 0, 0, 0];
+        for (let i = 1; i <= 5; i++) {
+            const oEl = document.getElementById(`odds-tier-${i}`);
+            if (oEl) oEl.textContent = `${odds[i - 1]}%`;
+        }
+
         const modeBadge = document.getElementById("game-mode-badge");
         if (modeBadge) {
             if (this.isRankedMode) {

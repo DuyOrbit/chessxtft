@@ -3556,5 +3556,125 @@ button {
     border: 1px solid #818cf8;
 }
 
+/* ============================================================================
+   TFT AUTHENTIC PRO LAYOUT (CHUẨN 100% GIAO DIỆN GAME TFT)
+   ============================================================================ */
+.tft-layout-grid {
+    display: grid !important;
+    grid-template-columns: 230px 1fr 255px !important;
+    gap: 10px !important;
+    height: calc(100vh - 82px) !important;
+    overflow: hidden !important;
+    padding: 0 10px 6px !important;
+}
+
+.side-panel-left {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+}
+
+.side-panel-right {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+}
+
+.panel-box-wrap {
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(51, 65, 85, 0.6);
+    border-radius: 8px;
+    padding: 8px;
+}
+
+/* WATERMARK SỐ TƯỚNG TRÊN SÀN ĐẤU (CHÍNH GIỮA BÀN CỜ NHƯ HÌNH: 5/5) */
+.board-wrapper {
+    position: relative !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+
+.board-unit-watermark {
+    position: absolute;
+    top: 36%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 5.5rem;
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.32);
+    text-shadow: 0 0 20px rgba(0, 0, 0, 0.9);
+    pointer-events: none;
+    z-index: 2;
+    letter-spacing: 2px;
+    user-select: none;
+    transition: all 0.25s ease;
+}
+
+.board-unit-watermark.over-cap {
+    color: rgba(239, 68, 68, 0.65) !important;
+    text-shadow: 0 0 25px rgba(239, 68, 68, 0.9) !important;
+    animation: watermarkAlert 0.8s ease-in-out infinite alternate !important;
+}
+
+@keyframes watermarkAlert {
+    from { transform: translate(-50%, -50%) scale(1); }
+    to { transform: translate(-50%, -50%) scale(1.08); }
+}
+
+/* TỶ LỆ RA TƯỚNG THEO TIER (SHOP ODDS BAR CHUẨN TFT) */
+.shop-odds-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 3px 12px;
+    background: rgba(10, 15, 28, 0.9);
+    border-radius: 6px 6px 0 0;
+    border: 1px solid #1e293b;
+    border-bottom: none;
+    font-size: 0.72rem;
+    font-weight: 800;
+    width: fit-content;
+}
+
+.odds-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.odds-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.tier-1 { color: #cbd5e1; }
+.tier-2 { color: #4ade80; }
+.tier-3 { color: #60a5fa; }
+.tier-4 { color: #c084fc; }
+.tier-5 { color: #facc15; }
+
+/* HUD EXP & BTN STACK TRÁI SHOP */
+.hud-btn-stack {
+    display: flex;
+    gap: 6px;
+}
+
+/* HUD GOLD SIDE PHẢI SHOP */
+.hud-gold-side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    min-width: 130px;
+}
+
 
 
