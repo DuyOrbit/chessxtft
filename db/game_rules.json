@@ -1,0 +1,57 @@
+{
+  "STAGE_CONFIG": {
+    "1": {
+      "cols": 5,
+      "rows": 6,
+      "deployRows": 2,
+      "blitzTime": 45,
+      "increment": 3,
+      "maxTurns": 40,
+      "label": "Mini 5x6 (Đầu Game - 45s)"
+    },
+    "2": {
+      "cols": 6,
+      "rows": 7,
+      "deployRows": 2,
+      "blitzTime": 60,
+      "increment": 3,
+      "maxTurns": 50,
+      "label": "Vừa 6x7 (Giữa Game - 60s)"
+    },
+    "3": {
+      "cols": 8,
+      "rows": 8,
+      "deployRows": 3,
+      "blitzTime": 75,
+      "increment": 4,
+      "maxTurns": 64,
+      "label": "Chuẩn 8x8 (Cuối Game - 75s)"
+    }
+  },
+  "combatRules": {
+    "turnOneGrace": true,
+    "rangedReloadTurns": 1,
+    "stunImmunityTurns": 1,
+    "burnExplosionAoeDamage": 1,
+    "cavalryBonusVsRangerKing": 1
+  },
+  "economy": {
+    "defaultStartingHp": 100,
+    "defaultStartingGold": 6,
+    "defaultStartingLevel": 3,
+    "baseRoundGold": 5,
+    "maxInterest": 5,
+    "rerollCost": 2,
+    "xpCost": 4,
+    "xpGainPerBuy": 4,
+    "passiveRoundXp": 2
+  },
+  "damageFormula": {
+    "checkmateBase": 8,
+    "checkmateStageMult": 2,
+    "checkmatePerUnit": 2,
+    "kingCaptureBase": 3,
+    "kingCaptureStageMult": 1,
+    "drawBase": 4
+  }
+}
