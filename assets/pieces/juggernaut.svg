@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <!-- Background Gradient -->
+    <radialGradient id="bgGrad" cx="50%" cy="40%" r="65%">
+      <stop offset="0%" stop-color="#1c1917" />
+      <stop offset="100%" stop-color="#0c0a09" />
+    </radialGradient>
+    
+    <!-- Shaders & Metallic Gradients -->
+    <linearGradient id="gradGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="50%" stop-color="#eab308" />
+      <stop offset="100%" stop-color="#854d0e" />
+    </linearGradient>
+
+    <linearGradient id="gradFire" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="40%" stop-color="#f97316" />
+      <stop offset="100%" stop-color="#b91c1c" />
+    </linearGradient>
+
+    <linearGradient id="gradFrost" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f0f9ff" />
+      <stop offset="50%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#0369a1" />
+    </linearGradient>
+
+    <linearGradient id="gradSteel" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc" />
+      <stop offset="50%" stop-color="#94a3b8" />
+      <stop offset="100%" stop-color="#334155" />
+    </linearGradient>
+
+    <linearGradient id="gradKnight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#93c5fd" />
+      <stop offset="60%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#1e1b4b" />
+    </linearGradient>
+
+    <!-- Outer Glow Filter -->
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <!-- Holographic Shine Filter -->
+    <linearGradient id="foilShine" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.4)" />
+      <stop offset="50%" stop-color="rgba(255,255,255,0.0)" />
+      <stop offset="100%" stop-color="rgba(255,255,255,0.2)" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="256" height="256" rx="28" fill="url(#bgGrad)" />
+
+  <!-- Outer Arena Frame -->
+  <rect x="8" y="8" width="240" height="240" rx="22" fill="none" stroke="#d6d3d1" stroke-width="4" opacity="0.85" />
+  <rect x="14" y="14" width="228" height="228" rx="18" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" />
+
+  <!-- Themed Halo Behind Character -->
+  <circle cx="128" cy="120" r="76" fill="#a8a29e" opacity="0.18" filter="url(#glow)" />
+  <circle cx="128" cy="120" r="54" fill="none" stroke="#a8a29e" stroke-width="1.5" stroke-dasharray="4,6" opacity="0.45" />
+
+  <!-- Hero Art Illustration -->
+  <g transform="translate(0, -6)">
+    <rect x="75" y="65" width="106" height="120" rx="16" fill="url(#gradSteel)" stroke="#e7e5e4" stroke-width="7" filter="url(#glow)"/>
+                  <rect x="95" y="85" width="66" height="20" rx="6" fill="#0369a1" filter="url(#glow)"/>
+                  <path d="M75 125 L181 125 M128 65 L128 185" stroke="#44403c" stroke-width="5"/>
+                  <circle cx="128" cy="155" r="14" fill="#0284c7" filter="url(#glow)"/>
+  </g>
+
+  <!-- Title & Symbol Badges -->
+  <g transform="translate(0, 198)">
+    <!-- Plate -->
+    <rect x="24" y="0" width="208" height="38" rx="8" fill="rgba(15, 23, 42, 0.85)" stroke="#d6d3d1" stroke-width="1.5" />
+    <!-- Text -->
+    <text x="128" y="24" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="900" font-size="14" fill="#ffffff" letter-spacing="1.5" text-anchor="middle">THIẾT GIÁP KHỔNG LỒ</text>
+  </g>
+
+  <!-- Top Corner Class Crest -->
+  <circle cx="40" cy="40" r="18" fill="rgba(15, 23, 42, 0.88)" stroke="#d6d3d1" stroke-width="2" />
+  <text x="40" y="47" font-size="18" text-anchor="middle">🛡️</text>
+
+  <!-- Subtle Foil Reflection Layer -->
+  <rect width="256" height="256" rx="28" fill="url(#foilShine)" pointer-events="none" />
+</svg>

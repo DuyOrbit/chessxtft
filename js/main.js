@@ -5,7 +5,38 @@
 class SoundFX {
     constructor() {
         this.ctx = null;
-        this.muted = false;
+        this.sfxMuted = false;
+        this.bgmMuted = localStorage.getItem("chess_tft_bgm_muted") === "true";
+        this.bgmVolume = parseFloat(localStorage.getItem("chess_tft_bgm_vol") || "0.45");
+
+        this.currentTrack = null;
+        this.bgmAudio = new Audio();
+        this.bgmAudio.loop = true;
+        this.bgmAudio.volume = this.bgmMuted ? 0 : this.bgmVolume;
+
+        this.tracks = {
+            lobby: "assets/audio/lobby_theme.mp3",
+            combat: "assets/audio/combat_theme.ogg"
+        };
+
+        this.userUnlocked = false;
+        this.setupUserUnlock();
+    }
+
+    setupUserUnlock() {
+        const unlock = () => {
+            this.userUnlocked = true;
+            this.init();
+            if (!this.bgmMuted && this.currentTrack) {
+                this.bgmAudio.play().catch(() => {});
+            }
+            window.removeEventListener("click", unlock);
+            window.removeEventListener("keydown", unlock);
+            window.removeEventListener("touchstart", unlock);
+        };
+        window.addEventListener("click", unlock, { once: true });
+        window.addEventListener("keydown", unlock, { once: true });
+        window.addEventListener("touchstart", unlock, { once: true });
     }
 
     init() {
@@ -13,10 +44,57 @@ class SoundFX {
             const AudioCtx = window.AudioContext || window.webkitAudioContext;
             if (AudioCtx) this.ctx = new AudioCtx();
         }
+        if (this.ctx && this.ctx.state === "suspended") {
+            this.ctx.resume().catch(() => {});
+        }
+    }
+
+    playBgm(trackName) {
+        if (!this.tracks[trackName]) return;
+        if (this.currentTrack === trackName && !this.bgmAudio.paused) return;
+
+        this.currentTrack = trackName;
+        const targetSrc = this.tracks[trackName];
+
+        try {
+            if (this.bgmAudio.src.indexOf(targetSrc) === -1) {
+                this.bgmAudio.src = targetSrc;
+            }
+            this.bgmAudio.volume = this.bgmMuted ? 0 : this.bgmVolume;
+            if (this.userUnlocked && !this.bgmMuted) {
+                this.bgmAudio.play().catch(e => {
+                    console.log("BGM play deferred until user gesture:", e);
+                });
+            }
+        } catch (e) {
+            console.warn("Audio error:", e);
+        }
+    }
+
+    toggleBgm() {
+        this.bgmMuted = !this.bgmMuted;
+        localStorage.setItem("chess_tft_bgm_muted", this.bgmMuted ? "true" : "false");
+        if (this.bgmMuted) {
+            this.bgmAudio.pause();
+        } else {
+            this.bgmAudio.volume = this.bgmVolume;
+            if (this.currentTrack) {
+                this.bgmAudio.play().catch(() => {});
+            }
+        }
+        return !this.bgmMuted;
+    }
+
+    setBgmVolume(val) {
+        this.bgmVolume = Math.max(0, Math.min(1, val));
+        localStorage.setItem("chess_tft_bgm_vol", this.bgmVolume.toString());
+        if (!this.bgmMuted) {
+            this.bgmAudio.volume = this.bgmVolume;
+        }
     }
 
     playTone(freq, type = "sine", duration = 0.12, vol = 0.12) {
-        if (this.muted) return;
+        if (this.sfxMuted) return;
         try {
             this.init();
             if (!this.ctx) return;
@@ -169,6 +247,16 @@ class ChessTFTApp {
         const specEl = document.getElementById("screen-spectator");
         if (specEl) specEl.classList.toggle("hidden", screenName !== "spectator");
         this.hideSynergyTooltip();
+
+        if (screenName === "lobby" || screenName === "auth") {
+            this.sfx.playBgm("lobby");
+        } else if (screenName === "game") {
+            if (this.tft && this.tft.phase === "combat") {
+                this.sfx.playBgm("combat");
+            } else {
+                this.sfx.playBgm("lobby");
+            }
+        }
     }
 
     initSocket() {
@@ -834,7 +922,8 @@ class ChessTFTApp {
                     </div>
                     <div class="hero-card-portrait">
                         <div class="hero-avatar-halo"></div>
-                        <div class="hero-avatar-icon">${p.icon}</div>
+                        <img src="assets/pieces/${p.id}.svg" class="hero-avatar-svg" alt="${p.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+                        <div class="hero-avatar-icon" style="display:none;">${p.icon}</div>
                     </div>
                     <div class="hero-card-title-wrap">
                         <h4 class="hero-card-name">${p.name}</h4>
@@ -1068,7 +1157,8 @@ class ChessTFTApp {
                 item.className = `guide-piece-item cost-tier-${p.cost} ${p.id === selectedId ? "active" : ""}`;
                 item.innerHTML = `
                     <div class="guide-item-left">
-                        <span class="guide-item-icon">${p.icon}</span>
+                        <img src="assets/pieces/${p.id}.svg" style="width:24px; height:24px; border-radius:4px;" alt="${p.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
+                        <span class="guide-item-icon" style="display:none;">${p.icon}</span>
                         <span class="guide-item-name">${p.name}</span>
                     </div>
                     <span class="guide-item-cost">${p.isKing ? "👑 Vua" : p.cost + "🪙"}</span>
@@ -1142,7 +1232,10 @@ class ChessTFTApp {
         detailEl.innerHTML = `
             <div class="guide-detail-header">
                 <div class="guide-detail-title-row">
-                    <div class="guide-detail-avatar">${def.icon}</div>
+                    <div class="guide-detail-avatar">
+                        <img src="assets/pieces/${def.id}.svg" class="guide-avatar-img" alt="${def.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
+                        <span style="display:none;">${def.icon}</span>
+                    </div>
                     <div class="guide-detail-meta">
                         <div style="display:flex; align-items:center; gap:8px;">
                             <h3 class="guide-detail-name">${def.name}</h3>
@@ -2255,6 +2348,37 @@ class ChessTFTApp {
         const footerCloseGuideBtn = document.getElementById("btn-footer-close-guide");
         if (footerCloseGuideBtn) footerCloseGuideBtn.addEventListener("click", () => this.closePieceGuide());
 
+        // BGM Toggle Buttons (Lobby & Game Header)
+        const updateBgmButtons = () => {
+            const isPlaying = !this.sfx.bgmMuted;
+            const text = isPlaying ? "🎵 Nhạc: BẬT" : "🔇 Nhạc: TẮT";
+            const btn1 = document.getElementById("btn-toggle-bgm");
+            const btn2 = document.getElementById("btn-toggle-bgm-game");
+            if (btn1) {
+                btn1.textContent = text;
+                btn1.classList.toggle("audio-off", !isPlaying);
+            }
+            if (btn2) {
+                btn2.textContent = text;
+                btn2.classList.toggle("audio-off", !isPlaying);
+            }
+        };
+
+        const onToggleBgm = () => {
+            this.sfx.toggleBgm();
+            updateBgmButtons();
+            const state = !this.sfx.bgmMuted ? "Đã bật nhạc nền 🎵" : "Đã tắt nhạc nền 🔇";
+            this.showToast(state, "info");
+        };
+
+        const btnBgm1 = document.getElementById("btn-toggle-bgm");
+        if (btnBgm1) btnBgm1.addEventListener("click", onToggleBgm);
+
+        const btnBgm2 = document.getElementById("btn-toggle-bgm-game");
+        if (btnBgm2) btnBgm2.addEventListener("click", onToggleBgm);
+
+        updateBgmButtons();
+
         window.addEventListener("keydown", (e) => {
             if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
             if (e.key === "h" || e.key === "H") {
@@ -3064,7 +3188,8 @@ class ChessTFTApp {
                 <div class="piece-statuses">${statusHtml}</div>
             </div>
             <div class="piece-main-icon">
-                ${piece.icon}
+                <img src="assets/pieces/${piece.id}.svg" class="piece-svg-art" alt="${piece.name || ''}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
+                <span class="piece-fallback-icon" style="display:none;">${piece.icon}</span>
                 ${piece.badge ? `<span class="piece-sub-badge">${piece.badge}</span>` : ""}
             </div>
             <div class="piece-hp-bar" title="Lớp Máu: ${piece.hp}/${piece.maxHp} (Phải bị ăn ${piece.hp} lần mới chết)">
@@ -3203,7 +3328,11 @@ class ChessTFTApp {
                     </div>
                 </div>
                 <div class="shop-card-body">
-                    <div class="shop-unit-icon">${def.icon}<span class="shop-badge">${def.badge || ""}</span></div>
+                    <div class="shop-unit-icon">
+                        <img src="assets/pieces/${def.id}.svg" class="shop-svg-art" alt="${def.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
+                        <span class="shop-fallback-icon" style="display:none;">${def.icon}</span>
+                        <span class="shop-badge">${def.badge || ""}</span>
+                    </div>
                     <div class="shop-traits">${traitsHtml}</div>
                 </div>
                 <div class="shop-unit-stats">
@@ -3372,6 +3501,7 @@ class ChessTFTApp {
     // ========================================================================
     startBlitzCombat() {
         this.clearPrepCountdown();
+        this.sfx.playBgm("combat");
         this.selectedPrepUnitUid = null;
         this.selectedItemIndex = null;
         this.selectedCombatSquare = null;
@@ -3536,6 +3666,7 @@ class ChessTFTApp {
 
     finishBlitzCombat() {
         this.stopCombatTimers();
+        this.sfx.playBgm("lobby");
         if (!this.chess || !this.chess.result) return;
 
         const res = this.chess.result;
@@ -3766,6 +3897,7 @@ class ChessTFTApp {
     // ========================================================================
     startPrepCountdown() {
         this.clearPrepCountdown();
+        this.sfx.playBgm("lobby");
         this.prepSecondsLeft = 18; // 18s chuẩn bị nhanh gọn chuẩn TFT
         const badge = document.getElementById("prep-timer-badge");
         if (badge) {

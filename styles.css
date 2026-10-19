@@ -627,6 +627,87 @@ body {
     font-size: 1.45rem;
     line-height: 1;
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.piece-svg-art {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    object-fit: cover;
+    display: block;
+    filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.7));
+    transition: transform 0.15s ease;
+}
+
+.chess-piece:hover .piece-svg-art {
+    transform: scale(1.1);
+}
+
+.shop-svg-art {
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+    object-fit: cover;
+    display: block;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    transition: transform 0.15s ease;
+}
+
+.shop-card:hover .shop-svg-art {
+    transform: scale(1.08);
+}
+
+.guide-avatar-img {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    object-fit: cover;
+}
+
+.hero-avatar-svg {
+    width: 80px;
+    height: 80px;
+    border-radius: 14px;
+    object-fit: cover;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    transition: transform 0.25s ease;
+}
+
+.game-hero-card:hover .hero-avatar-svg {
+    transform: scale(1.1);
+}
+
+.btn-audio-pill {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid #334155;
+    border-radius: 99px;
+    color: #38bdf8;
+    font-size: 0.74rem;
+    font-weight: 800;
+    padding: 4px 12px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s ease;
+}
+
+.btn-audio-pill:hover {
+    background: rgba(56, 189, 248, 0.2);
+    border-color: #38bdf8;
+    color: #fff;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.45);
+}
+
+.btn-audio-pill.audio-off {
+    color: #94a3b8;
+    border-color: #475569;
+    opacity: 0.75;
 }
 
 .piece-sub-badge {
