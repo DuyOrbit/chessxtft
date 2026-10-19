@@ -94,12 +94,10 @@ Dự án được thiết kế theo kiến trúc **Dual-Backend** linh hoạt ca
 
 ---
 
-## 🔑 Tài Khoản Mặc Định
+## 🔑 Tài Khoản Trong Game
 
-| Loại Tài Khoản | Tên Đăng Nhập | Mật Khẩu | Quyền Hạn |
-| :--- | :---: | :---: | :--- |
-| **Quản Trị Viên (Admin / GM)** | `admin` | `123` | Toàn quyền Quản Trị DB, Chỉnh sửa Tướng, Luật chơi, Xem chế độ GM 4 Bàn Đấu |
-| **Kỳ Thủ Thường** | *Đăng ký mới tự do* | *Tùy chọn* | Đấu Đơn, Tạo/Vào phòng chơi cùng bạn bè, Lưu lịch sử đấu |
+- **Đăng Ký Mới**: Người chơi tự do đăng ký tài khoản mới ngay trên màn hình game (chọn tên hiển thị, mật khẩu và avatar đại diện).
+- **Tài Khoản Quản Trị (Admin / GM)**: Tài khoản quản trị dành riêng cho chủ sở hữu server để quản lý cấu hình và luật chơi.
 
 ---
 

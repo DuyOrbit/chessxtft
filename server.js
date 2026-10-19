@@ -508,6 +508,5 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`========================================================`);
     console.log(`♟️ CHESS TFT SERVER RUNNING AT: http://localhost:${PORT}`);
-    console.log(`🛠️ Default Admin Account: username "admin" | password "123"`);
     console.log(`========================================================`);
 });
