@@ -2177,14 +2177,19 @@ class ChessTFTApp {
             if (isScoutingOther) {
                 scoutBanner.classList.remove("hidden");
                 document.getElementById("scouting-target-name").textContent = `🕵️ Đang Soi Bài: ${viewed.name} (Cấp ${viewed.level} • ${viewed.hp} HP)`;
+                // When scouting another player, their terrain is hidden for fair play!
+                mapInfoBar.innerHTML = `
+                    <span class="map-hidden-pill">🕶️ Bản Đồ Đối Thủ: <strong>ĐANG ẨN</strong> (Chỉ soi được quân cờ & đội hình, địa hình sân khách được bảo mật!)</span>
+                `;
             } else {
                 scoutBanner.classList.add("hidden");
+                // On player's HOME board: REVEAL the upcoming map & terrain so player can strategically position pawns and avoid rocks/walls!
+                const mapDef = this.tft.currentMap || window.CHESS_TFT_DATA.MAPS[0];
+                mapInfoBar.innerHTML = `
+                    <span class="map-active-pill" style="background:${mapDef.themeColor}">🗺️ Bản Đồ Vòng Tới: ${mapDef.name}</span>
+                    <span class="map-desc-text">${mapDef.desc}</span>
+                `;
             }
-
-            // IMPORTANT REQUIREMENT: During Prep & Scouting, Map Terrain is HIDDEN so nobody knows which map/opponent they will face!
-            mapInfoBar.innerHTML = `
-                <span class="map-hidden-pill">🕶️ Bản đồ Địa Hình: <strong>ĐANG ẨN</strong> (Chỉ mở khóa khi vào Giao Tranh để không lộ cặp đấu!)</span>
-            `;
 
             this.renderPrepBoardCells(boardEl, cfg, viewed, isScoutingOther);
         } else if (this.tft.phase === "combat" && this.chess) {
@@ -2199,14 +2204,27 @@ class ChessTFTApp {
 
     renderPrepBoardCells(boardEl, cfg, viewedParticipant, isScoutingOther) {
         const minDeployRow = cfg.rows - cfg.deployRows;
+        const homeTerrain = (!isScoutingOther && this.tft.currentTerrain) ? this.tft.currentTerrain : null;
 
         for (let r = 0; r < cfg.rows; r++) {
             for (let c = 0; c < cfg.cols; c++) {
                 const cell = document.createElement("div");
                 const isLight = (r + c) % 2 === 0;
                 const isDeployZone = r >= minDeployRow;
+                const terr = homeTerrain ? homeTerrain[`${r},${c}`] : null;
 
                 cell.className = `board-cell ${isLight ? "cell-light" : "cell-dark"} ${isDeployZone ? "cell-deploy-zone" : "cell-enemy-zone"}`;
+
+                if (terr) {
+                    cell.classList.add(`terrain-${terr}`);
+                    const terrBadge = document.createElement("span");
+                    terrBadge.className = "terrain-badge";
+                    if (terr === "river") terrBadge.textContent = "🌊 Sông";
+                    else if (terr === "wall") terrBadge.textContent = "🧱 Đá Cản";
+                    else if (terr === "lava") terrBadge.textContent = "🌋 Dung Nham";
+                    else if (terr === "rune") terrBadge.textContent = "✨ +Tầm";
+                    cell.appendChild(terrBadge);
+                }
 
                 // Coordinate label on edges
                 if (c === 0) {

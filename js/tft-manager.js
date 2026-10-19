@@ -20,13 +20,13 @@ class TFTGameManager {
         this.shopLocked = false;
         this.shop = [];
         this.scoutingPlayerId = "player";
-        this.currentMap = window.CHESS_TFT_DATA.MAPS[0];
         this.currentPairings = [];
         this.currentOpponent = null;
         this.predictedOpponents = [];
         this.roundMatchLogs = [];
         this.roomCode = roomData ? roomData.code : null;
         this.timeMode = roomData ? (roomData.timeMode || "standard") : "standard";
+        this.pickRoundMap();
 
         const econ = window.CHESS_TFT_DATA.ECONOMY_RULES || {};
         const mods = (userProfile && userProfile.customModifiers) ? userProfile.customModifiers : {};
@@ -736,7 +736,16 @@ class TFTGameManager {
         return this.predictedOpponents;
     }
 
-    // Create 1v1 Pairings for the current round and pick the hidden Combat Map!
+    pickRoundMap() {
+        const maps = window.CHESS_TFT_DATA.MAPS;
+        const mapIdx = (this.stage * 3 + this.roundInStage) % maps.length;
+        this.currentMap = maps[mapIdx];
+        const cfg = this.getStageConfig();
+        this.currentTerrain = this.currentMap.generateTerrain(cfg.cols, cfg.rows);
+        return this.currentMap;
+    }
+
+    // Create 1v1 Pairings for the current round and set combat phase
     prepareCombatRound() {
         const alive = this.getAllParticipants().filter(p => !p.eliminated);
         const others = alive.filter(p => p.id !== "player");
@@ -773,10 +782,9 @@ class TFTGameManager {
             }
         }
 
-        // Pick a map for this round (revealed ONLY when combat starts!)
-        const maps = window.CHESS_TFT_DATA.MAPS;
-        const mapIdx = (this.stage * 3 + this.roundInStage) % maps.length;
-        this.currentMap = maps[mapIdx];
+        if (!this.currentMap || !this.currentTerrain) {
+            this.pickRoundMap();
+        }
         this.phase = "combat";
         this.scoutingPlayerId = "player";
     }
@@ -1056,6 +1064,9 @@ class TFTGameManager {
         if (newCfg.cols !== oldCfg.cols || newCfg.rows !== oldCfg.rows) {
             this.rescaleBoardsForNewStage(oldCfg, newCfg);
         }
+
+        // Generate upcoming round's map and terrain so player can preview and position pawns
+        this.pickRoundMap();
 
         // Calculate Economy Income for Player
         const baseIncome = 5;
