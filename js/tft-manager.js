@@ -1054,8 +1054,12 @@ class TFTGameManager {
 
         const oldCfg = this.getStageConfig();
 
+        // TFT Stage Format: Stage 1 has 3 rounds, Stage 2+ has 5 rounds
+        const currentStageFmt = (window.CHESS_TFT_DATA.STAGE_ROUNDS_FORMAT && window.CHESS_TFT_DATA.STAGE_ROUNDS_FORMAT[this.stage]) || [];
+        const maxRoundsForStage = currentStageFmt.length || 5;
+
         this.roundInStage += 1;
-        if (this.roundInStage > 4) {
+        if (this.roundInStage > maxRoundsForStage) {
             this.stage += 1;
             this.roundInStage = 1;
         }
@@ -1098,12 +1102,13 @@ class TFTGameManager {
             this.shopLocked = false;
         }
 
-        // Check special TFT events:
-        // Round X-2: Augment Selection (Chọn Lõi Công Nghệ)
-        // Round X-4: Carousel (Vòng Đi Chợ)
-        if (this.roundInStage === 2 && this.player.augments.length < 3) {
+        // Determine phase based on TFT Stage-Round Format
+        const newStageFmt = (window.CHESS_TFT_DATA.STAGE_ROUNDS_FORMAT && window.CHESS_TFT_DATA.STAGE_ROUNDS_FORMAT[this.stage]) || [];
+        const roundDef = newStageFmt.find(r => r.round === this.roundInStage) || { type: "combat" };
+
+        if (roundDef.type === "augment" && this.player.augments.length < 3) {
             this.phase = "augment";
-        } else if (this.roundInStage === 4) {
+        } else if (roundDef.type === "carousel") {
             this.phase = "carousel";
         } else {
             this.phase = "prep";
@@ -1413,6 +1418,23 @@ class TFTGameManager {
         return {
             aliveCount,
             boardScaled: newCfg.cols !== oldCfg.cols
+        };
+    }
+
+    // Surrender match (Đầu hàng & Out game)
+    surrenderPlayer() {
+        this.player.hp = 0;
+        this.player.eliminated = true;
+        this.phase = "gameover";
+        const alive = this.getAllParticipants().filter(p => !p.eliminated);
+        const rank = alive.length + 1;
+        this.roundMatchLogs.push({
+            isPlayerMatch: true,
+            summary: `🏳️ Bạn đã chủ động đầu hàng và rời trận đấu (Xếp hạng #${rank})!`
+        });
+        return {
+            rank,
+            phase: "gameover"
         };
     }
 }

@@ -5,9 +5,39 @@
 window.CHESS_TFT_DATA = {
     // 1. STAGE BOARD SIZES (Fast Early -> Medium Mid -> Standard 8x8 Late)
     STAGE_CONFIG: {
-        1: { cols: 5, rows: 6, deployRows: 2, blitzTime: 45, increment: 3, maxTurns: 40, label: "Mini 5x6 (Đầu Game - 45s)" },
-        2: { cols: 6, rows: 7, deployRows: 2, blitzTime: 60, increment: 3, maxTurns: 50, label: "Vừa 6x7 (Giữa Game - 60s)" },
-        3: { cols: 8, rows: 8, deployRows: 3, blitzTime: 75, increment: 4, maxTurns: 64, label: "Chuẩn 8x8 (Cuối Game - 75s)" }
+        1: { cols: 5, rows: 6, deployRows: 2, blitzTime: 32, increment: 2, maxTurns: 35, label: "Mini 5x6 (Đầu Game - 32s)" },
+        2: { cols: 6, rows: 7, deployRows: 2, blitzTime: 45, increment: 3, maxTurns: 45, label: "Vừa 6x7 (Giữa Game - 45s)" },
+        3: { cols: 8, rows: 8, deployRows: 3, blitzTime: 60, increment: 3, maxTurns: 55, label: "Chuẩn 8x8 (Cuối Game - 60s)" }
+    },
+
+    // 1b. TFT STAGE ROUND PROGRESSION FORMAT (TFT Style Stage-Round)
+    STAGE_ROUNDS_FORMAT: {
+        1: [
+            { round: 1, type: "combat", icon: "⚔️", label: "Vòng 1-1" },
+            { round: 2, type: "augment", icon: "🔮", label: "Lõi 1-2" },
+            { round: 3, type: "combat", icon: "⚔️", label: "Vòng 1-3" }
+        ],
+        2: [
+            { round: 1, type: "combat", icon: "⚔️", label: "Vòng 2-1" },
+            { round: 2, type: "combat", icon: "⚔️", label: "Vòng 2-2" },
+            { round: 3, type: "augment", icon: "🔮", label: "Lõi 2-3" },
+            { round: 4, type: "carousel", icon: "🎁", label: "Đi Chợ 2-4" },
+            { round: 5, type: "combat", icon: "⚔️", label: "Vòng 2-5" }
+        ],
+        3: [
+            { round: 1, type: "combat", icon: "⚔️", label: "Vòng 3-1" },
+            { round: 2, type: "augment", icon: "🔮", label: "Lõi 3-2" },
+            { round: 3, type: "combat", icon: "⚔️", label: "Vòng 3-3" },
+            { round: 4, type: "carousel", icon: "🎁", label: "Đi Chợ 3-4" },
+            { round: 5, type: "combat", icon: "⚔️", label: "Vòng 3-5" }
+        ],
+        4: [
+            { round: 1, type: "combat", icon: "⚔️", label: "Vòng 4-1" },
+            { round: 2, type: "combat", icon: "⚔️", label: "Vòng 4-2" },
+            { round: 3, type: "combat", icon: "⚔️", label: "Vòng 4-3" },
+            { round: 4, type: "carousel", icon: "👑", label: "Đi Chợ 4-4" },
+            { round: 5, type: "combat", icon: "💀", label: "Quyết Đấu 4-5" }
+        ]
     },
 
     COMBAT_RULES: {

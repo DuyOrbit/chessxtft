@@ -215,6 +215,7 @@ class ChessTFTApp {
                     window.applyDatabaseConfigToRuntime(rules, entities);
                 }
                 this.currentRoom = room;
+                this.isRankedMode = !!room.isRanked;
                 if (this.currentUser) {
                     const meInRoom = room.players.find(p => p.id === this.currentUser.id);
                     if (meInRoom && meInRoom.customModifiers) {
@@ -222,6 +223,43 @@ class ChessTFTApp {
                     }
                 }
                 this.startNewGameSession(room);
+            });
+
+            this.socket.on("matchmaking:matched", ({ room, rules, entities }) => {
+                if (this.matchmakingTimer) {
+                    clearInterval(this.matchmakingTimer);
+                    this.matchmakingTimer = null;
+                }
+                document.getElementById("modal-matchmaking")?.classList.add("hidden");
+                if (window.applyDatabaseConfigToRuntime) {
+                    window.applyDatabaseConfigToRuntime(rules, entities);
+                }
+                this.currentRoom = room;
+                this.isRankedMode = true;
+                if (this.currentUser) {
+                    const meInRoom = room.players.find(p => p.id === this.currentUser.id);
+                    if (meInRoom && meInRoom.customModifiers) {
+                        this.currentUser.customModifiers = meInRoom.customModifiers;
+                    }
+                }
+                this.showToast("⚔️ ĐÃ TÌM THẤY TRẬN ĐẤU XẾP HẠNG! VÀO ĐẤU TRƯỜNG!", "success");
+                this.startNewGameSession(room);
+            });
+
+            this.socket.on("room:roundCombatProgress", ({ finishedCount, totalHumans }) => {
+                const text = document.getElementById("sync-sub-text");
+                if (text) {
+                    text.textContent = `Đang chờ các kỳ thủ khác kết thúc ván đấu (${finishedCount}/${totalHumans} bàn xong)...`;
+                }
+            });
+
+            this.socket.on("room:allBoardsFinished", () => {
+                const banner = document.getElementById("banner-waiting-sync");
+                if (banner) banner.classList.add("hidden");
+                const modal = document.getElementById("modal-round-result");
+                if (modal && !modal.classList.contains("hidden")) {
+                    this.proceedAfterRoundModal();
+                }
             });
 
             this.socket.on("match:remotePlayerState", ({ playerId, state }) => {
@@ -380,12 +418,51 @@ class ChessTFTApp {
             this.showScreen("auth");
         });
 
-        // Quick Solo Play vs 7 Bots
+        // Ranked Auto-Matchmaking (Người auto matching nhau)
+        const btnRankedMatch = document.getElementById("btn-start-matchmaking");
+        if (btnRankedMatch) {
+            btnRankedMatch.addEventListener("click", () => {
+                this.startMatchmaking();
+            });
+        }
+
+        const btnCancelMatch = document.getElementById("btn-cancel-matchmaking");
+        if (btnCancelMatch) {
+            btnCancelMatch.addEventListener("click", () => {
+                this.cancelMatchmaking();
+            });
+        }
+
+        // Quick Solo Play vs 7 Bots (Luyện tập rõ ràng)
         document.getElementById("btn-quick-solo").addEventListener("click", async () => {
+            this.isRankedMode = false;
             await this.refreshMyUserProfile();
             this.currentRoom = null;
             this.startNewGameSession(null);
         });
+
+        // Surrender match listeners
+        const btnSurrender = document.getElementById("btn-surrender-game");
+        if (btnSurrender) {
+            btnSurrender.addEventListener("click", () => {
+                document.getElementById("modal-surrender")?.classList.remove("hidden");
+            });
+        }
+
+        const btnCancelSur = document.getElementById("btn-cancel-surrender");
+        if (btnCancelSur) {
+            btnCancelSur.addEventListener("click", () => {
+                document.getElementById("modal-surrender")?.classList.add("hidden");
+            });
+        }
+
+        const btnConfirmSur = document.getElementById("btn-confirm-surrender");
+        if (btnConfirmSur) {
+            btnConfirmSur.addEventListener("click", () => {
+                document.getElementById("modal-surrender")?.classList.add("hidden");
+                this.handlePlayerSurrender();
+            });
+        }
 
         // Create Room (Supports both Socket.IO and WampServer PHP+MySQL)
         document.getElementById("btn-create-room").addEventListener("click", async () => {
@@ -1861,10 +1938,93 @@ class ChessTFTApp {
     }
 
     // ========================================================================
+    // MATCHMAKING & SURRENDER HANDLERS
+    // ========================================================================
+    startMatchmaking() {
+        if (!this.currentUser) {
+            this.showToast("Vui lòng đăng nhập trước khi tìm trận!", "warn");
+            return;
+        }
+        if (!this.socket || !this.socket.connected) {
+            this.showToast("Đang kết nối lại máy chủ Online... Vui lòng thử lại sau giây lát!", "warn");
+            return;
+        }
+
+        const modal = document.getElementById("modal-matchmaking");
+        modal?.classList.remove("hidden");
+        this.matchmakingSeconds = 0;
+        const timerEl = document.getElementById("matchmaking-timer");
+        if (timerEl) timerEl.textContent = "⏳ 00:00";
+
+        if (this.matchmakingTimer) clearInterval(this.matchmakingTimer);
+        this.matchmakingTimer = setInterval(() => {
+            this.matchmakingSeconds++;
+            const mins = String(Math.floor(this.matchmakingSeconds / 60)).padStart(2, "0");
+            const secs = String(this.matchmakingSeconds % 60).padStart(2, "0");
+            if (timerEl) timerEl.textContent = `⏳ ${mins}:${secs}`;
+        }, 1000);
+
+        this.socket.emit("matchmaking:find", {
+            user: this.currentUser,
+            timeMode: "standard"
+        });
+    }
+
+    cancelMatchmaking() {
+        if (this.matchmakingTimer) {
+            clearInterval(this.matchmakingTimer);
+            this.matchmakingTimer = null;
+        }
+        document.getElementById("modal-matchmaking")?.classList.add("hidden");
+        if (this.socket && this.socket.connected) {
+            this.socket.emit("matchmaking:cancel");
+        }
+        this.showToast("Đã hủy tìm trận xếp hạng.", "info");
+    }
+
+    async handlePlayerSurrender() {
+        this.stopCombatTimers();
+        this.clearAllCountdowns();
+        const res = this.tft.surrenderPlayer();
+        this.sfx.defeat();
+
+        if (this.currentUser && this.currentUser.id) {
+            try {
+                await fetch("api.php?action=match_finish", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        userId: this.currentUser.id,
+                        rank: res.rank,
+                        totalPlayers: 8,
+                        roomCode: this.currentRoom ? this.currentRoom.code : "SOLO",
+                        winnerName: "Đối thủ",
+                        stageReached: `Stage ${this.tft.stage}-${this.tft.roundInStage}`
+                    })
+                });
+            } catch (e) {}
+        }
+
+        const modal = document.getElementById("modal-gameover");
+        const titleEl = document.getElementById("gameover-title");
+        const descEl = document.getElementById("gameover-desc");
+        if (titleEl) {
+            titleEl.textContent = `🏳️ BẠN ĐÃ ĐẦU HÀNG (TOP #${res.rank})`;
+            titleEl.className = "modal-title text-loss";
+        }
+        if (descEl) {
+            descEl.innerHTML = `Bạn đã dừng cuộc chơi ở <strong>Vòng ${this.tft.stage}-${this.tft.roundInStage}</strong>.<br/>Chúc bạn may mắn hơn ở trận đấu tiếp theo!`;
+        }
+        modal?.classList.remove("hidden");
+    }
+
+    // ========================================================================
     // RENDERING PIPELINE
     // ========================================================================
     renderAll() {
         this.renderTopHeader();
+        this.renderStageRoundTracker();
+        this.renderTftEconomyHud();
         this.renderLeaderboard();
         this.renderSynergies();
         this.renderBoardArea();
@@ -1872,6 +2032,78 @@ class ChessTFTApp {
         this.renderShop();
         this.renderRightPanel();
         this.renderSelectedUnitInspector();
+    }
+
+    renderStageRoundTracker() {
+        const trackerEl = document.getElementById("stage-round-tracker");
+        if (!trackerEl || !this.tft) return;
+
+        const currentStage = this.tft.stage;
+        const currentRound = this.tft.roundInStage;
+        const stageFmt = (window.CHESS_TFT_DATA.STAGE_ROUNDS_FORMAT && window.CHESS_TFT_DATA.STAGE_ROUNDS_FORMAT[currentStage]) || [];
+
+        let html = `<div class="stage-pill-track"><span style="font-size:0.78rem; font-weight:800; color:#38bdf8; margin-right:4px;">STAGE ${currentStage}</span>`;
+        for (const item of stageFmt) {
+            let statusClass = "future";
+            if (item.round < currentRound) statusClass = "past";
+            else if (item.round === currentRound) statusClass = "current";
+
+            html += `
+                <div class="tracker-node ${statusClass}" title="${item.label}">
+                    <span>${item.icon}</span>
+                    <span>${currentStage}-${item.round}</span>
+                </div>
+            `;
+        }
+        html += `</div>`;
+        trackerEl.innerHTML = html;
+    }
+
+    renderTftEconomyHud() {
+        if (!this.tft) return;
+        const p = this.tft.player;
+        const neededXp = window.CHESS_TFT_DATA.LEVEL_XP[p.level] || 999;
+        const xpPercent = neededXp === 999 ? 100 : Math.min(100, Math.floor((p.xp / neededXp) * 100));
+
+        const hudLvlName = document.getElementById("hud-level-name");
+        if (hudLvlName) hudLvlName.textContent = `CẤP ${p.level}`;
+
+        const hudXpRatio = document.getElementById("hud-xp-ratio");
+        if (hudXpRatio) hudXpRatio.textContent = neededXp === 999 ? "MAX" : `${p.xp} / ${neededXp} XP`;
+
+        const hudXpProg = document.getElementById("hud-xp-progress");
+        if (hudXpProg) hudXpProg.style.width = `${xpPercent}%`;
+
+        const hudGoldAmt = document.getElementById("hud-gold-amount");
+        if (hudGoldAmt) hudGoldAmt.textContent = p.gold;
+
+        const maxInterest = p.augments.includes("aug_rich_get_richer") ? 7 : 5;
+        const interest = Math.min(maxInterest, Math.floor(p.gold / 10));
+        const hudInterest = document.getElementById("hud-interest-badge");
+        if (hudInterest) hudInterest.textContent = `+${interest}🪙 Lãi`;
+
+        const hudStreak = document.getElementById("hud-streak-badge");
+        if (hudStreak) {
+            if (p.streak > 0) hudStreak.textContent = `🔥 Thắng ${p.streak}`;
+            else if (p.streak < 0) hudStreak.textContent = `💧 Thua ${Math.abs(p.streak)}`;
+            else hudStreak.textContent = `⚖️ Chuỗi: 0`;
+        }
+
+        const deployed = this.tft.getNonKingCount(p);
+        const maxAllowed = this.tft.getMaxUnitsAllowed(p);
+        const hudCap = document.getElementById("hud-unit-cap");
+        if (hudCap) hudCap.textContent = `Quân: ${deployed}/${maxAllowed}`;
+
+        const modeBadge = document.getElementById("game-mode-badge");
+        if (modeBadge) {
+            if (this.isRankedMode) {
+                modeBadge.textContent = "🏆 LEO RANK ONLINE";
+                modeBadge.className = "badge-pill badge-mode";
+            } else {
+                modeBadge.textContent = "🤖 ĐẤU VỚI BOT AI";
+                modeBadge.className = "badge-pill";
+            }
+        }
     }
 
     renderTopHeader() {
@@ -2438,13 +2670,13 @@ class ChessTFTApp {
             statusHtml += `<span class="status-pill status-burn" title="Đang bị Thiêu Đốt (Nổ lan 8 ô sau ${piece.burnTurns} lượt)">🔥${piece.burnTurns}</span>`;
         }
 
-        // Equipped items icons
+        // Equipped items icons (TFT Mini Icons)
         let itemsHtml = "";
         if (piece.items && piece.items.length > 0) {
             itemsHtml = `<div class="piece-items">` +
                 piece.items.map(id => {
                     const it = window.CHESS_TFT_DATA.ITEMS[id];
-                    return it ? `<span title="${it.name}: ${it.desc}">${it.icon}</span>` : "";
+                    return it ? `<span class="piece-mini-item" title="${it.name}: ${it.desc}">${it.icon}</span>` : "";
                 }).join("") +
                 `</div>`;
         }
@@ -2644,32 +2876,32 @@ class ChessTFTApp {
             eClockBox.classList.remove("clock-active");
         }
 
-        // 2. Item Inventory
+        // 2. Compact TFT Item Inventory (Nhỏ gọn chuẩn TFT)
         const itemContainer = document.getElementById("item-inventory");
         itemContainer.innerHTML = "";
         if (this.tft.player.items.length === 0) {
-            itemContainer.innerHTML = `<div class="empty-hint">Kho đồ trống (Nhận thêm ở Đi Chợ hoặc Chọn Lõi).</div>`;
+            itemContainer.innerHTML = `<div class="empty-hint" style="font-size:0.75rem;">Kho đồ trống (Nhận ở Đi Chợ & Chọn Lõi).</div>`;
         } else {
+            const grid = document.createElement("div");
+            grid.className = "item-inventory-tft-grid";
             this.tft.player.items.forEach((itemId, idx) => {
                 const it = window.CHESS_TFT_DATA.ITEMS[itemId];
-                const el = document.createElement("div");
-                el.className = `inv-item ${this.selectedItemIndex === idx ? "inv-item-selected" : ""}`;
-                el.innerHTML = `
-                    <span class="inv-item-icon">${it.icon}</span>
-                    <div class="inv-item-info">
-                        <div class="inv-item-name">${it.name}</div>
-                        <div class="inv-item-desc">${it.desc}</div>
-                    </div>
-                `;
-                el.addEventListener("click", () => {
+                if (!it) return;
+                const slot = document.createElement("div");
+                slot.className = `inv-slot-compact ${this.selectedItemIndex === idx ? "selected" : ""}`;
+                slot.innerHTML = `<span>${it.icon}</span>`;
+                slot.title = `${it.name}: ${it.desc}`;
+
+                slot.addEventListener("click", () => {
                     this.selectedItemIndex = this.selectedItemIndex === idx ? null : idx;
                     if (this.selectedItemIndex !== null) {
-                        this.showToast(`Đã chọn ${it.name} — Hãy bấm vào 1 quân cờ để trang bị!`, "info");
+                        this.showToast(`Đã chọn ${it.name} — Bấm vào 1 quân cờ trên bàn hoặc hàng chờ để trang bị!`, "info");
                     }
                     this.renderRightPanel();
                 });
-                itemContainer.appendChild(el);
+                grid.appendChild(slot);
             });
+            itemContainer.appendChild(grid);
         }
 
         // 3. Augments Owned
@@ -2878,8 +3110,8 @@ class ChessTFTApp {
     scheduleBotTurn() {
         if (!this.chess || this.chess.gameOver || this.chess.turn !== "enemy") return;
 
-        // Bot thinks for 450ms - 850ms for fast-paced Blitz feel
-        const thinkMs = 450 + Math.floor(Math.random() * 400);
+        // Bot suy nghĩ nhanh gọn 180ms - 380ms để nhịp độ cờ chớp dồn dập
+        const thinkMs = 180 + Math.floor(Math.random() * 200);
         this.botMoveTimeout = setTimeout(() => {
             if (!this.chess || this.chess.gameOver || this.chess.turn !== "enemy") return;
 
@@ -2924,10 +3156,20 @@ class ChessTFTApp {
         this.tft.resolveRoundResults(res, this.chess.goldEarnedPlayer);
         this.renderAll();
 
-        // Show Round Result Modal after 600ms so player can see final board hit
+        // Gửi thông báo hoàn tất ván cờ tới Server để đồng bộ vòng đấu
+        if (this.socket && this.currentRoom) {
+            this.socket.emit("room:playerFinishedCombat", {
+                code: this.currentRoom.code,
+                playerId: this.currentUser ? this.currentUser.id : "player",
+                stage: this.tft.stage,
+                round: this.tft.roundInStage
+            });
+        }
+
+        // Show Round Result Modal after 450ms
         setTimeout(() => {
             this.showRoundResultModal(res);
-        }, 650);
+        }, 450);
     }
 
     showRoundResultModal(res) {
@@ -3135,7 +3377,7 @@ class ChessTFTApp {
     // ========================================================================
     startPrepCountdown() {
         this.clearPrepCountdown();
-        this.prepSecondsLeft = 30;
+        this.prepSecondsLeft = 18; // 18s chuẩn bị nhanh gọn chuẩn TFT
         const badge = document.getElementById("prep-timer-badge");
         if (badge) {
             badge.classList.remove("hidden");
@@ -3177,7 +3419,7 @@ class ChessTFTApp {
 
     startAugmentCountdown() {
         this.clearAugmentCountdown();
-        this.augmentSecondsLeft = 15;
+        this.augmentSecondsLeft = 12; // 12s chọn Lõi nhanh
         const timerEl = document.getElementById("augment-timer");
         if (timerEl) timerEl.textContent = `⏳ Tự động chọn sau: ${this.augmentSecondsLeft}s`;
 
@@ -3210,7 +3452,7 @@ class ChessTFTApp {
 
     startCarouselCountdown() {
         this.clearCarouselCountdown();
-        this.carouselSecondsLeft = 12;
+        this.carouselSecondsLeft = 10; // 10s Đi Chợ nhanh
         const timerEl = document.getElementById("carousel-timer");
         if (timerEl) timerEl.textContent = `⏳ Tự động nhặt sau: ${this.carouselSecondsLeft}s`;
 
@@ -3243,7 +3485,7 @@ class ChessTFTApp {
 
     startRoundResultCountdown() {
         this.clearRoundResultCountdown();
-        this.roundResultSecondsLeft = 4;
+        this.roundResultSecondsLeft = 3; // 3s hiển thị kết quả
         const timerEl = document.getElementById("round-result-timer");
         if (timerEl) timerEl.textContent = `⏳ Tự động tiếp tục sau: ${this.roundResultSecondsLeft}s`;
 

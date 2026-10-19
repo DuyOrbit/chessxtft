@@ -133,22 +133,43 @@
                     <span>⚔️ CHẾ ĐỘ CHƠI & PHÒNG GHÉP TRẬN</span>
                 </div>
 
-                <!-- GAME MODE 1: SOLO COMBAT -->
-                <div class="game-mode-banner mode-solo">
+                <!-- GAME MODE 1: RANKED AUTO-MATCHMAKING (NGƯỜI AUTO MATCH NHAU) -->
+                <div class="game-mode-banner mode-ranked-match">
                     <div class="mode-banner-art">
-                        <div class="mode-art-icon">⚡</div>
+                        <div class="mode-art-icon">🏆</div>
                     </div>
                     <div class="mode-banner-content">
                         <div class="mode-tag-row">
-                            <span class="mode-badge-ranked">🔥 ĐẤU XẾP HẠNG</span>
-                            <span class="mode-badge-ai">1 NGƯỜI + 7 BOT AI</span>
+                            <span class="mode-badge-ranked">🔥 ĐẤU XẾP HẠNG RANK</span>
+                            <span class="mode-badge-multi">🌐 AUTO MATCHING ONLINE</span>
                         </div>
-                        <h3 class="mode-title">Đấu Đơn Luyện Cấp & Leo Rank</h3>
-                        <p class="mode-desc">Vào trận tức thì cùng 7 Kỳ Thủ AI, thử nghiệm đội hình, tích chuỗi thắng/thua và nổ hũ lật kèo đỉnh cao!</p>
+                        <h3 class="mode-title">Ghép Trận Xếp Hạng (Rank Matchmaking)</h3>
+                        <p class="mode-desc">Hệ thống tự động tìm và ghép cặp với người chơi thật online. Ghế trống tự động thêm Bot AI sau 4s để vào trận nhanh nhất!</p>
+                        <div class="mode-cta-wrap">
+                            <button id="btn-start-matchmaking" class="btn-play-hero btn-play-gold">
+                                <span class="play-btn-shine"></span>
+                                <span class="play-btn-text">🏆 TÌM TRẬN XẾP HẠNG</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GAME MODE 2: SOLO VS 7 BOTS (LUYỆN TẬP / TEST BÀI) -->
+                <div class="game-mode-banner mode-solo">
+                    <div class="mode-banner-art">
+                        <div class="mode-art-icon">🤖</div>
+                    </div>
+                    <div class="mode-banner-content">
+                        <div class="mode-tag-row">
+                            <span class="mode-badge-ai">🤖 LUYỆN TẬP OFFLINE</span>
+                            <span class="mode-badge-split">1 BẠN + 7 BOT AI</span>
+                        </div>
+                        <h3 class="mode-title">Đấu Luyện Tập Với 7 Bot AI</h3>
+                        <p class="mode-desc">Thử nghiệm bài, test tộc hệ mới và rèn luyện cờ chớp cùng 7 Kỳ Thủ AI thông minh (Magnus, Kasparov...). Không sợ mất điểm ELO!</p>
                         <div class="mode-cta-wrap">
                             <button id="btn-quick-solo" class="btn-play-hero">
                                 <span class="play-btn-shine"></span>
-                                <span class="play-btn-text">⚔️ VÀO TRẬN NGAY</span>
+                                <span class="play-btn-text">🤖 ĐẤU VỚI BOT NGAY</span>
                             </button>
                         </div>
                     </div>
@@ -266,6 +287,7 @@
         <header class="top-bar">
             <div class="brand-wrap">
                 <span class="brand-title">♟️ CHESS TFT</span>
+                <span id="game-mode-badge" class="badge-pill badge-mode">🤖 ĐẤU BOT AI</span>
                 <span id="stage-round-badge" class="badge-pill">Vòng 1-1</span>
                 <span id="board-size-badge" class="badge-pill">📐 Bàn cờ: Mini 5x6</span>
                 <span id="game-room-badge" class="badge-pill">Phòng: SOLO</span>
@@ -275,7 +297,7 @@
                 <div id="phase-banner" class="phase-banner phase-prep">
                     🛠️ GIAI ĐOẠN CHUẨN BỊ
                 </div>
-                <span id="prep-timer-badge" class="badge-pill prep-timer-badge" title="Thời gian chuẩn bị còn lại - Hết giờ sẽ tự động bắt đầu giao tranh!">⏳ 30s</span>
+                <span id="prep-timer-badge" class="badge-pill prep-timer-badge" title="Thời gian chuẩn bị còn lại - Hết giờ sẽ tự động bắt đầu giao tranh!">⏳ 18s</span>
             </div>
 
             <div class="player-stats-bar">
@@ -285,10 +307,23 @@
                 <span id="player-unit-cap" class="stat-chip stat-cap">Quân: 2/3 (+1 Vua)</span>
                 <span id="player-streak" class="stat-chip">⚖️ Chuỗi: 0</span>
                 <span id="fortune-chest-badge" class="stat-chip stat-fortune hidden" title="Rương Nổ Hũ Đạo Tặc - Thua chuỗi tích điểm, thắng nổ hũ khủng!">🎰 Rương: 0đ (Chuỗi 0)</span>
-                <button id="btn-rules-modal" class="btn-secondary">📖 Luật & Công Thức</button>
-                <button id="btn-back-lobby" class="btn-secondary">🏠 Về Sảnh Chờ</button>
+                <button id="btn-rules-modal" class="btn-secondary">📖 Luật & Điểm</button>
+                <button id="btn-surrender-game" class="btn-danger" style="margin:0; padding:5px 10px; font-size:0.75rem;">🏳️ Đầu Hàng</button>
+                <button id="btn-back-lobby" class="btn-secondary">🚪 Rời Trận</button>
             </div>
         </header>
+
+        <!-- TFT STAGE ROUND PROGRESSION TRACKER BAR -->
+        <div id="stage-round-tracker" class="stage-round-tracker"></div>
+
+        <!-- WAITING FOR OTHER BOARDS TO FINISH (ĐỒNG BỘ VÒNG ĐẤU) -->
+        <div id="banner-waiting-sync" class="waiting-sync-banner hidden">
+            <div class="sync-spinner"></div>
+            <div class="sync-content">
+                <div class="sync-title">⚔️ VÁN CỜ CỦA BẠN ĐÃ KẾT THÚC!</div>
+                <div id="sync-sub-text" class="sync-sub">Đang chờ các kỳ thủ khác kết thúc ván đấu (1/4 bàn xong)...</div>
+            </div>
+        </div>
 
         <!-- MAIN 3-COLUMN WORKSPACE -->
         <main class="main-workspace">
@@ -333,14 +368,48 @@
 
                 <!-- TFT SHOP -->
                 <div class="shop-container">
-                    <div class="shop-controls">
-                        <div class="shop-buttons-left">
-                            <button id="btn-buy-xp" class="btn-primary">⬆️ Mua XP (4 🪙)</button>
-                            <button id="btn-reroll" class="btn-secondary">🎲 Đổi Shop (2 🪙)</button>
-                            <button id="btn-lock-shop" class="btn-secondary">🔓 Khóa Shop</button>
+                    <!-- TFT PRO ECONOMY & LEVEL BAR (VỊ TRÍ DỄ THẤY CHUẨN TFT) -->
+                    <div class="tft-economy-hud">
+                        <!-- CẤP ĐỘ & EXP BAR (BÊN TRÁI) -->
+                        <div class="hud-exp-block">
+                            <button id="btn-buy-xp" class="btn-tft-xp" title="Mua 4 điểm kinh nghiệm với 4 vàng">
+                                <span class="xp-btn-title">⬆️ MUA XP</span>
+                                <span class="xp-btn-cost">4 🪙</span>
+                            </button>
+                            <div class="hud-level-info">
+                                <div class="level-text-row">
+                                    <span id="hud-level-name" class="hud-level-tag">CẤP 3</span>
+                                    <span id="hud-xp-ratio" class="hud-xp-ratio">0 / 2 XP</span>
+                                </div>
+                                <div class="tft-progress-bar">
+                                    <div id="hud-xp-progress" class="tft-progress-fill" style="width: 0%;"></div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="shop-buttons-right">
-                            <button id="btn-start-combat" class="btn-combat-go">⚔️ BẮT ĐẦU GIAO TRANH CỜ CHỚP</button>
+
+                        <!-- VÀNG & LÃI SUẤT & CHUỖI (TRUNG TÂM) -->
+                        <div class="hud-gold-center">
+                            <div class="gold-big-display">
+                                <span class="gold-coin-icon">🪙</span>
+                                <span id="hud-gold-amount" class="gold-number">6</span>
+                            </div>
+                            <div class="gold-meta-row">
+                                <span id="hud-interest-badge" class="hud-pill interest-pill" title="Lợi tức nhận thêm vào đầu mỗi vòng">+0 Lãi</span>
+                                <span id="hud-streak-badge" class="hud-pill streak-pill" title="Thưởng chuỗi thắng / thua">Chuỗi: 0</span>
+                                <span id="hud-unit-cap" class="hud-pill cap-pill" title="Giới hạn quân trên bàn cờ">Quân: 2/3</span>
+                            </div>
+                        </div>
+
+                        <!-- ĐỔI SHOP, KHÓA & BẮT ĐẦU (BÊN PHẢI) -->
+                        <div class="hud-shop-actions">
+                            <button id="btn-reroll" class="btn-tft-reroll" title="Làm mới 5 quân cờ trong cửa hàng">
+                                <span class="reroll-btn-title">🎲 ĐỔI SHOP</span>
+                                <span id="reroll-cost-label" class="reroll-btn-cost">2 🪙</span>
+                            </button>
+                            <button id="btn-lock-shop" class="btn-tft-lock" title="Khóa cửa hàng lại cho vòng sau">
+                                <span id="btn-lock-icon">🔓</span>
+                            </button>
+                            <button id="btn-start-combat" class="btn-combat-go" style="padding: 6px 12px; font-size:0.82rem;">⚔️ GIAO TRANH</button>
                         </div>
                     </div>
                     <div id="shop-cards" class="shop-cards"></div>
@@ -575,6 +644,35 @@
             <div style="display:flex; gap:10px; justify-content:center;">
                 <button id="btn-restart-game" class="btn-combat-go">🔄 Chơi Lại Ngay</button>
                 <button id="btn-gameover-lobby" class="btn-secondary">🏠 Về Sảnh Chờ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 6: MATCHMAKING RADAR (GHÉP TRẬN RANK ONLINE) -->
+    <div id="modal-matchmaking" class="modal-overlay hidden">
+        <div class="modal-card modal-card-matchmaking" style="text-align:center; max-width:450px;">
+            <div class="radar-circle">
+                <div class="radar-scanner"></div>
+                <span class="radar-icon">🏆</span>
+            </div>
+            <h2 class="modal-title" style="margin-top:16px; color:#fbbf24;">ĐANG TÌM TRẬN XẾP HẠNG...</h2>
+            <p id="matchmaking-status-text" class="modal-sub">Hệ thống đang quét tìm các kỳ thủ online để ghép phòng...</p>
+            <div id="matchmaking-timer" class="matchmaking-clock">⏳ 00:00</div>
+            <div style="text-align:center; margin-top:16px;">
+                <button id="btn-cancel-matchmaking" class="btn-danger" style="padding:10px 24px; font-weight:700;">❌ Hủy Tìm Trận</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 7: SURRENDER CONFIRMATION (XÁC NHẬN ĐẦU HÀNG) -->
+    <div id="modal-surrender" class="modal-overlay hidden">
+        <div class="modal-card" style="text-align:center; max-width:440px;">
+            <div style="font-size:3rem; margin-bottom:8px;">🏳️</div>
+            <h2 class="modal-title text-loss">XÁC NHẬN ĐẦU HÀNG?</h2>
+            <p class="modal-sub" style="margin:10px 0 20px;">Bạn có chắc chắn muốn đầu hàng không? Bạn sẽ bị tính là bị loại và trừ điểm ELO tương ứng.</p>
+            <div style="display:flex; gap:12px; justify-content:center;">
+                <button id="btn-confirm-surrender" class="btn-danger" style="flex:1; padding:10px;">🏳️ Đầu Hàng</button>
+                <button id="btn-cancel-surrender" class="btn-secondary" style="flex:1; padding:10px;">Tiếp Tục Đấu</button>
             </div>
         </div>
     </div>

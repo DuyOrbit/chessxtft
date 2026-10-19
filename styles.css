@@ -3131,5 +3131,430 @@ button {
     box-shadow: 0 0 10px rgba(245, 158, 11, 0.35);
 }
 
+/* ============================================================================
+   TFT STAGE ROUND PROGRESSION TRACKER (CHUẨN TFT)
+   ============================================================================ */
+.stage-round-tracker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 15, 30, 0.95) 100%);
+    border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+.stage-pill-track {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(30, 41, 59, 0.6);
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.tracker-node {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #94a3b8;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.tracker-node.past {
+    color: #64748b;
+    opacity: 0.7;
+}
+
+.tracker-node.current {
+    color: #ffffff;
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.35) 0%, rgba(245, 158, 11, 0.2) 100%);
+    border-color: #fbbf24;
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.55);
+    transform: scale(1.08);
+}
+
+.tracker-node.future {
+    color: #475569;
+}
+
+/* WAITING FOR OTHER BOARDS BANNER */
+.waiting-sync-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: linear-gradient(90deg, rgba(30, 58, 138, 0.85) 0%, rgba(2, 132, 199, 0.85) 100%);
+    border: 1px solid #38bdf8;
+    color: #ffffff;
+    padding: 8px 16px;
+    margin: 4px 16px;
+    border-radius: 8px;
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
+    animation: pulseBorder 1.5s infinite alternate;
+}
+
+.sync-spinner {
+    width: 22px;
+    height: 22px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.sync-title {
+    font-size: 0.84rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.sync-sub {
+    font-size: 0.74rem;
+    color: #bae6fd;
+}
+
+/* ============================================================================
+   TFT PRO ECONOMY & LEVEL HUD (VỊ TRÍ DỄ THẤY TẠI SHOP)
+   ============================================================================ */
+.tft-economy-hud {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 14px;
+    background: linear-gradient(180deg, #182238 0%, #0e1627 100%);
+    border: 1px solid #2e3d5e;
+    border-radius: 10px 10px 0 0;
+    border-bottom: 2px solid #3b82f6;
+    margin-bottom: 6px;
+}
+
+.hud-exp-block {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-tft-xp {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: #ffffff;
+    border: 1px solid #60a5fa;
+    border-radius: 8px;
+    padding: 5px 12px;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(37, 99, 235, 0.35);
+    transition: all 0.15s ease;
+}
+
+.btn-tft-xp:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 14px rgba(96, 165, 250, 0.6);
+}
+
+.xp-btn-title {
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.xp-btn-cost {
+    font-size: 0.7rem;
+    color: #fef08a;
+    font-weight: 700;
+}
+
+.hud-level-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 105px;
+}
+
+.level-text-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.hud-level-tag {
+    color: #60a5fa;
+    font-weight: 800;
+}
+
+.hud-xp-ratio {
+    color: #94a3b8;
+}
+
+.tft-progress-bar {
+    width: 100%;
+    height: 7px;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid #334155;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.tft-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
+    border-radius: 999px;
+    transition: width 0.3s ease;
+}
+
+/* GOLD BIG DISPLAY CENTER */
+.hud-gold-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.gold-big-display {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.gold-coin-icon {
+    font-size: 1.5rem;
+    filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.8));
+    animation: goldBounce 2s infinite ease-in-out;
+}
+
+@keyframes goldBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-2px); }
+}
+
+.gold-number {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: #fbbf24;
+    text-shadow: 0 0 10px rgba(251, 191, 36, 0.4);
+    line-height: 1;
+}
+
+.gold-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.hud-pill {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.interest-pill {
+    color: #34d399;
+    border-color: rgba(52, 211, 153, 0.3);
+}
+
+.streak-pill {
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.cap-pill {
+    color: #a78bfa;
+    border-color: rgba(167, 139, 250, 0.3);
+}
+
+/* SHOP ACTIONS */
+.hud-shop-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-tft-reroll {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    color: #ffffff;
+    border: 1px solid #475569;
+    border-radius: 8px;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-tft-reroll:hover {
+    border-color: #fbbf24;
+    transform: translateY(-1px);
+}
+
+.reroll-btn-title {
+    font-size: 0.74rem;
+    font-weight: 800;
+}
+
+.reroll-btn-cost {
+    font-size: 0.7rem;
+    color: #fbbf24;
+    font-weight: 700;
+}
+
+.btn-tft-lock {
+    background: #1e293b;
+    border: 1px solid #475569;
+    border-radius: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    font-size: 1rem;
+    color: #ffffff;
+    transition: all 0.15s ease;
+}
+
+.btn-tft-lock:hover {
+    border-color: #38bdf8;
+    background: #334155;
+}
+
+/* ============================================================================
+   COMPACT TFT ITEM INVENTORY (BÉ NHỎ GỌN NHƯ GAME TFT)
+   ============================================================================ */
+.item-inventory-tft-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px;
+    background: rgba(15, 23, 42, 0.6);
+    border-radius: 8px;
+    border: 1px solid #334155;
+}
+
+.inv-slot-compact {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border: 1.5px solid #475569;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.15s ease;
+    box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.6);
+}
+
+.inv-slot-compact:hover {
+    border-color: #fbbf24;
+    transform: scale(1.08);
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+}
+
+.inv-slot-compact.selected {
+    border-color: #fbbf24;
+    background: rgba(251, 191, 36, 0.25);
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.85);
+    transform: scale(1.1);
+}
+
+/* PIECE EQUIPPED ITEMS (MINI BADGES ON CHESS PIECE) */
+.piece-items {
+    position: absolute;
+    bottom: 2px;
+    left: 2px;
+    display: flex;
+    gap: 2px;
+    z-index: 4;
+}
+
+.piece-mini-item {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid #fbbf24;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.62rem;
+    line-height: 1;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+}
+
+/* ============================================================================
+   MATCHMAKING RADAR MODAL
+   ============================================================================ */
+.radar-circle {
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    margin: 0 auto;
+    position: relative;
+    border: 2px solid rgba(251, 191, 36, 0.4);
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle, rgba(251, 191, 36, 0.08) 0%, rgba(15, 23, 42, 0.8) 70%);
+    overflow: hidden;
+}
+
+.radar-scanner {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, rgba(251, 191, 36, 0.4) 0deg, transparent 60deg, transparent 360deg);
+    animation: radarScan 2s linear infinite;
+}
+
+@keyframes radarScan {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.radar-icon {
+    font-size: 2.2rem;
+    position: relative;
+    z-index: 2;
+    filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.7));
+}
+
+.matchmaking-clock {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #38bdf8;
+    margin: 10px 0;
+}
+
+.badge-mode {
+    background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+    color: #ffffff;
+    font-weight: 800;
+    border: 1px solid #818cf8;
+}
+
 
 

@@ -379,11 +379,97 @@ app.post("/api/rooms/create", (req, res) => {
     res.json({ ok: true, room });
 });
 
+// Matchmaking Queue for Auto-Matching Ranked Players
+const matchmakingQueue = []; // { socket, user, timeMode, timer }
+
+function tryFormMatchmakingRoom() {
+    if (matchmakingQueue.length === 0) return;
+
+    // Take up to 8 waiting players, minimum 1 if timer elapsed
+    const candidates = matchmakingQueue.splice(0, 8);
+    if (candidates.length === 0) return;
+
+    const hostCandidate = candidates[0];
+    let code = "RANK_" + generateRoomCode().slice(0, 4);
+    while (rooms.has(code)) code = "RANK_" + generateRoomCode().slice(0, 4);
+
+    const dbUsers = readJSON(FILES.users, []);
+    const roomPlayers = candidates.map((c, idx) => {
+        const fresh = dbUsers.find(u => u.id === c.user?.id) || c.user;
+        return {
+            id: fresh.id,
+            socketId: c.socket.id,
+            name: fresh.displayName || fresh.username,
+            avatar: fresh.avatar || "👑",
+            elo: fresh.stats?.elo || 1000,
+            customModifiers: fresh.customModifiers || {},
+            isHost: idx === 0,
+            isBot: false
+        };
+    });
+
+    const room = {
+        code,
+        hostId: roomPlayers[0].id,
+        hostSocketId: hostCandidate.socket.id,
+        hostName: roomPlayers[0].name,
+        timeMode: hostCandidate.timeMode || "standard",
+        fillBots: true,
+        isRanked: true,
+        status: "playing",
+        players: roomPlayers,
+        liveBoards: {},
+        roundFinished: {}
+    };
+
+    rooms.set(code, room);
+
+    const rules = readJSON(FILES.rules, {});
+    const entities = readJSON(FILES.entities, {});
+
+    candidates.forEach(c => {
+        c.socket.join(code);
+        c.socket.data.roomCode = code;
+        c.socket.data.userId = c.user?.id;
+        c.socket.emit("matchmaking:matched", { room, rules, entities });
+    });
+
+    broadcastRoomsList();
+}
+
 io.on("connection", (socket) => {
     socket.emit("rooms:list", getPublicRoomsList());
 
     socket.on("rooms:refresh", () => {
         socket.emit("rooms:list", getPublicRoomsList());
+    });
+
+    // 1. Ranked Auto-Matchmaking
+    socket.on("matchmaking:find", ({ user, timeMode = "standard" }) => {
+        // Remove if already in queue
+        const existingIdx = matchmakingQueue.findIndex(q => q.socket.id === socket.id);
+        if (existingIdx !== -1) matchmakingQueue.splice(existingIdx, 1);
+
+        const entry = { socket, user, timeMode };
+        matchmakingQueue.push(entry);
+
+        // Auto-match after 3.5 seconds if nobody else joins (auto-fill 7 AI Bots)
+        // or immediately if there are 2+ human players
+        if (matchmakingQueue.length >= 2) {
+            tryFormMatchmakingRoom();
+        } else {
+            setTimeout(() => {
+                const idx = matchmakingQueue.findIndex(q => q.socket.id === socket.id);
+                if (idx !== -1) {
+                    tryFormMatchmakingRoom();
+                }
+            }, 3500);
+        }
+    });
+
+    socket.on("matchmaking:cancel", () => {
+        const idx = matchmakingQueue.findIndex(q => q.socket.id === socket.id);
+        if (idx !== -1) matchmakingQueue.splice(idx, 1);
     });
 
     // Create a new Room
@@ -525,8 +611,35 @@ io.on("connection", (socket) => {
         });
     });
 
+    // Synchronized Round Combat Completion (Tất cả người chơi cùng xong ván mới chuyển vòng)
+    socket.on("room:playerFinishedCombat", ({ code, playerId, stage, round }) => {
+        const room = rooms.get(code);
+        if (!room) return;
+        const key = `${stage}-${round}`;
+        if (!room.roundFinished) room.roundFinished = {};
+        if (!room.roundFinished[key]) room.roundFinished[key] = new Set();
+        room.roundFinished[key].add(playerId);
+
+        const finishedCount = room.roundFinished[key].size;
+        const totalHumans = room.players.filter(p => !p.isBot).length;
+        const allDone = finishedCount >= totalHumans;
+
+        io.to(code).emit("room:roundCombatProgress", {
+            key,
+            finishedCount,
+            totalHumans,
+            allDone
+        });
+
+        if (allDone) {
+            io.to(code).emit("room:allBoardsFinished", { key });
+        }
+    });
+
     // Disconnect cleanup
     socket.on("disconnect", () => {
+        const qIdx = matchmakingQueue.findIndex(q => q.socket.id === socket.id);
+        if (qIdx !== -1) matchmakingQueue.splice(qIdx, 1);
         handleSocketLeaveRoom(socket);
     });
 });
