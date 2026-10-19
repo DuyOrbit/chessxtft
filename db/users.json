@@ -1,0 +1,56 @@
+[
+  {
+    "id": "user_admin",
+    "username": "admin",
+    "password": "123",
+    "displayName": "Admin Tối Thượng",
+    "avatar": "👑",
+    "role": "admin",
+    "createdAt": "2026-10-19T19:00:00.000Z",
+    "stats": {
+      "elo": 1500,
+      "gamesPlayed": 5,
+      "top1Count": 3,
+      "wins": 18,
+      "losses": 4
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 10,
+      "startingLevel": 3,
+      "extraClockSeconds": 10,
+      "bonusItems": [
+        "stun_hammer",
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "user_friend1",
+    "username": "kithu1",
+    "password": "123",
+    "displayName": "Kỳ Thủ Bạn Bè 1",
+    "avatar": "🦊",
+    "role": "player",
+    "createdAt": "2026-10-19T19:00:00.000Z",
+    "stats": {
+      "elo": 1050,
+      "gamesPlayed": 2,
+      "top1Count": 1,
+      "wins": 7,
+      "losses": 3
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer",
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  }
+]

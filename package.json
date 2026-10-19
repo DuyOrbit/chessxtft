@@ -1,0 +1,13 @@
+{
+  "name": "chess-tft-online",
+  "version": "1.2.0",
+  "description": "Chess TFT — Cờ Vua Đấu Trường Chân Lý Online (Auth, Lobby, Codex, Custom DB & Admin Panel)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}
