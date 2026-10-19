@@ -762,18 +762,19 @@ body {
     background: var(--bg-panel-alt);
     border: 2px solid #475569;
     border-radius: 8px;
-    padding: 7px;
+    padding: 6px 8px;
     cursor: pointer;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    min-height: 118px;
+    min-height: 82px;
     position: relative;
-    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
 }
 
 .shop-card:hover {
-    transform: translateY(-3px);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
 }
 
 .cost-tier-1 { border-color: #94a3b8; }
@@ -802,8 +803,33 @@ body {
 .shop-card-top {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     font-size: 0.78rem;
     font-weight: 800;
+}
+
+.shop-top-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.shop-guide-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 4px;
+    color: #cbd5e1;
+    font-size: 0.62rem;
+    padding: 1px 4px;
+    cursor: pointer;
+    line-height: 1;
+    transition: all 0.15s ease;
+}
+
+.shop-guide-btn:hover {
+    background: var(--accent-gold);
+    color: #000;
+    border-color: var(--accent-gold);
 }
 
 .shop-unit-cost {
@@ -814,16 +840,17 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin: 4px 0;
+    margin: 3px 0;
 }
 
 .shop-unit-icon {
-    font-size: 1.65rem;
+    font-size: 1.85rem;
     position: relative;
+    line-height: 1;
 }
 
 .shop-badge {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
 }
 
 .shop-traits {
@@ -835,6 +862,10 @@ body {
 .shop-trait-pill {
     font-size: 0.66rem;
     color: #cbd5e1;
+    background: rgba(15, 23, 42, 0.55);
+    border-radius: 4px;
+    padding: 1px 4px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .shop-unit-stats {
@@ -846,10 +877,7 @@ body {
 }
 
 .shop-unit-desc {
-    font-size: 0.65rem;
-    color: var(--text-muted);
-    line-height: 1.25;
-    margin-top: 3px;
+    display: none; /* Hide long paragraphs to keep shop clean and minimalist like TFT */
 }
 
 .shop-merge-tag {
@@ -3674,6 +3702,417 @@ button {
     align-items: flex-end;
     gap: 2px;
     min-width: 130px;
+}
+
+/* ============================================================================
+   MODAL 8: INTERACTIVE PIECE GUIDE & 5x5 MOVEMENT CODEX
+   ============================================================================ */
+.modal-piece-guide-card {
+    max-width: 920px;
+    width: 95vw;
+    max-height: 88vh;
+    padding: 18px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: #0b1120;
+    border: 2px solid #2e3d5e;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85);
+}
+
+.guide-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #1e293b;
+    padding-bottom: 10px;
+}
+
+.guide-modal-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.guide-header-icon {
+    font-size: 2.2rem;
+    line-height: 1;
+}
+
+.guide-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #fbbf24;
+    letter-spacing: 0.5px;
+    margin: 0;
+}
+
+.guide-sub {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    margin: 2px 0 0 0;
+}
+
+.guide-close-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid #334155;
+    border-radius: 6px;
+    color: #94a3b8;
+    font-size: 1.15rem;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.guide-close-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    border-color: #ef4444;
+}
+
+.guide-filter-bar {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    background: rgba(15, 23, 42, 0.6);
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid #1e293b;
+}
+
+.guide-filter-pill {
+    background: transparent;
+    border: 1px solid #334155;
+    border-radius: 99px;
+    color: #94a3b8;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.guide-filter-pill:hover {
+    color: #fff;
+    border-color: #60a5fa;
+}
+
+.guide-filter-pill.active {
+    background: rgba(56, 189, 248, 0.2);
+    border-color: #38bdf8;
+    color: #38bdf8;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.25);
+}
+
+.guide-workspace {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 14px;
+    min-height: 400px;
+    max-height: 58vh;
+    overflow: hidden;
+}
+
+.guide-piece-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.guide-piece-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 10px;
+    border-radius: 8px;
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.guide-piece-item:hover {
+    background: #1e293b;
+    border-color: #475569;
+    transform: translateX(2px);
+}
+
+.guide-piece-item.active {
+    background: rgba(251, 191, 36, 0.14);
+    border-color: #fbbf24;
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.2);
+}
+
+.guide-item-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.guide-item-icon {
+    font-size: 1.45rem;
+    line-height: 1;
+}
+
+.guide-item-name {
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: #f1f5f9;
+}
+
+.guide-item-cost {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.12);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    border-radius: 99px;
+    padding: 1px 6px;
+}
+
+.guide-piece-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid #1e293b;
+    border-radius: 10px;
+    padding: 14px 16px;
+    overflow-y: auto;
+}
+
+.guide-detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #334155;
+    padding-bottom: 10px;
+}
+
+.guide-detail-title-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.guide-detail-avatar {
+    font-size: 2.2rem;
+    width: 48px;
+    height: 48px;
+    background: #1e293b;
+    border: 2px solid #475569;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.guide-detail-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.guide-detail-name {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #fff;
+    margin: 0;
+}
+
+.guide-detail-traits {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.guide-detail-stats-row {
+    display: flex;
+    gap: 10px;
+    font-size: 0.75rem;
+}
+
+.guide-stat-badge {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 3px 8px;
+    color: #93c5fd;
+    font-weight: 700;
+}
+
+/* 5x5 BOARD VISUALIZER */
+.guide-board-wrap {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    background: #070c17;
+    border: 1px solid #1e293b;
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+
+.guide-5x5-board {
+    display: grid;
+    grid-template-columns: repeat(5, 38px);
+    grid-template-rows: repeat(5, 38px);
+    gap: 3px;
+    background: #030712;
+    padding: 4px;
+    border-radius: 8px;
+    border: 2px solid #334155;
+    user-select: none;
+}
+
+.guide-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    border-radius: 4px;
+    background: #0f172a;
+    position: relative;
+    transition: all 0.15s ease;
+}
+
+.guide-cell.cell-light {
+    background: #1e293b;
+}
+
+.guide-cell.cell-center {
+    background: rgba(56, 189, 248, 0.4) !important;
+    border: 2px solid #38bdf8;
+    font-size: 1.45rem;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
+}
+
+.guide-cell.cell-move {
+    background: rgba(34, 197, 94, 0.28) !important;
+    border: 1px solid #22c55e;
+    color: #4ade80;
+}
+
+.guide-cell.cell-attack {
+    background: rgba(192, 132, 252, 0.3) !important;
+    border: 1px solid #c084fc;
+    color: #e879f9;
+}
+
+.guide-cell.cell-jump {
+    background: rgba(251, 191, 36, 0.28) !important;
+    border: 1px solid #fbbf24;
+    color: #fde047;
+}
+
+.guide-cell.cell-pawn-atk {
+    background: rgba(239, 68, 68, 0.32) !important;
+    border: 1px solid #ef4444;
+    color: #f87171;
+}
+
+.guide-cell.cell-cannon {
+    background: rgba(249, 115, 22, 0.32) !important;
+    border: 1px solid #f97316;
+    color: #fdba74;
+}
+
+.guide-board-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    font-size: 0.74rem;
+    color: #cbd5e1;
+    flex: 1;
+}
+
+.guide-legend-title {
+    font-weight: 800;
+    color: #fbbf24;
+    font-size: 0.8rem;
+    margin-bottom: 2px;
+}
+
+.guide-legend-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.guide-legend-chip {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.68rem;
+    font-weight: 900;
+}
+
+.chip-center { background: rgba(56, 189, 248, 0.4); border: 1px solid #38bdf8; }
+.chip-move { background: rgba(34, 197, 94, 0.3); border: 1px solid #22c55e; color: #4ade80; }
+.chip-attack { background: rgba(192, 132, 252, 0.3); border: 1px solid #c084fc; color: #e879f9; }
+.chip-jump { background: rgba(251, 191, 36, 0.3); border: 1px solid #fbbf24; color: #fde047; }
+.chip-pawn { background: rgba(239, 68, 68, 0.3); border: 1px solid #ef4444; color: #f87171; }
+.chip-cannon { background: rgba(249, 115, 22, 0.3); border: 1px solid #f97316; color: #fdba74; }
+
+/* GUIDE CARDS SECTION */
+.guide-cards-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.guide-info-card {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 9px 12px;
+}
+
+.guide-info-card.full-width {
+    grid-column: 1 / -1;
+}
+
+.guide-card-head {
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: #60a5fa;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.guide-card-text {
+    font-size: 0.75rem;
+    color: #cbd5e1;
+    line-height: 1.45;
+}
+
+.guide-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    border-top: 1px solid #1e293b;
+    padding-top: 10px;
+}
+
+@media (max-width: 768px) {
+    .guide-workspace {
+        grid-template-columns: 1fr;
+    }
+    .guide-piece-list {
+        max-height: 140px;
+    }
+    .guide-cards-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 

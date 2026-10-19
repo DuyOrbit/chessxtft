@@ -854,7 +854,16 @@ class ChessTFTApp {
                         <span class="hero-desc-icon">⚡</span>
                         <span>${p.desc}</span>
                     </div>
+                    <button class="btn-game btn-game-cyan codex-view-guide-btn" data-piece-id="${p.id}" style="font-size:0.75rem; padding:6px 10px; margin-top:6px; font-weight:700; width:100%; border-radius:6px; cursor:pointer;">♟️ Xem Bàn Cờ Nước Đi & Mẹo Chơi</button>
                 `;
+
+                const guideBtn = card.querySelector(".codex-view-guide-btn");
+                if (guideBtn) {
+                    guideBtn.addEventListener("click", () => {
+                        this.openPieceGuide(p.id);
+                    });
+                }
+
                 container.appendChild(card);
             }
         } else if (this.codexActiveTab === "synergies") {
@@ -992,6 +1001,328 @@ class ChessTFTApp {
             return;
         }
         container.style.gridTemplateColumns = "repeat(auto-fill, minmax(280px, 1fr))";
+    }
+
+    // ========================================================================
+    // INTERACTIVE PIECE GUIDE & 5x5 MOVEMENT CODEX
+    // ========================================================================
+    openPieceGuide(pieceId = null) {
+        const modal = document.getElementById("modal-piece-guide");
+        if (!modal) return;
+        modal.classList.remove("hidden");
+        this.guideFilter = this.guideFilter || "all";
+
+        // Bind filter tabs if not already bound
+        if (!this._guideFiltersBound) {
+            this._guideFiltersBound = true;
+            modal.querySelectorAll(".guide-filter-pill").forEach(pill => {
+                pill.addEventListener("click", () => {
+                    modal.querySelectorAll(".guide-filter-pill").forEach(p => p.classList.remove("active"));
+                    pill.classList.add("active");
+                    const f = pill.getAttribute("data-filter");
+                    this.guideFilter = f;
+                    this.renderPieceGuide(this.guideSelectedPieceId, f);
+                });
+            });
+        }
+
+        const pieces = Object.values(window.CHESS_TFT_DATA.PIECES);
+        const targetId = pieceId || (pieces.length ? pieces[0].id : "shield_pawn");
+        this.renderPieceGuide(targetId, this.guideFilter);
+    }
+
+    closePieceGuide() {
+        const modal = document.getElementById("modal-piece-guide");
+        if (modal) modal.classList.add("hidden");
+    }
+
+    renderPieceGuide(selectedId, filter = "all") {
+        this.guideSelectedPieceId = selectedId;
+        const allPieces = Object.values(window.CHESS_TFT_DATA.PIECES);
+        // Sort order: 1, 2, 3, 4, 5, then King (0)
+        allPieces.sort((a, b) => {
+            if (a.isKing) return 1;
+            if (b.isKing) return -1;
+            return a.cost - b.cost;
+        });
+
+        let filtered = allPieces;
+        if (filter === "king") {
+            filtered = allPieces.filter(p => p.isKing);
+        } else if (filter !== "all") {
+            const costNum = parseInt(filter, 10);
+            filtered = allPieces.filter(p => !p.isKing && p.cost === costNum);
+        }
+
+        if (!filtered.some(p => p.id === selectedId)) {
+            selectedId = filtered.length ? filtered[0].id : allPieces[0].id;
+            this.guideSelectedPieceId = selectedId;
+        }
+
+        // Render Left Piece List
+        const listEl = document.getElementById("guide-piece-list");
+        if (listEl) {
+            listEl.innerHTML = "";
+            for (const p of filtered) {
+                const item = document.createElement("div");
+                item.className = `guide-piece-item cost-tier-${p.cost} ${p.id === selectedId ? "active" : ""}`;
+                item.innerHTML = `
+                    <div class="guide-item-left">
+                        <span class="guide-item-icon">${p.icon}</span>
+                        <span class="guide-item-name">${p.name}</span>
+                    </div>
+                    <span class="guide-item-cost">${p.isKing ? "👑 Vua" : p.cost + "🪙"}</span>
+                `;
+                item.addEventListener("click", () => {
+                    this.renderPieceGuide(p.id, this.guideFilter);
+                });
+                listEl.appendChild(item);
+            }
+        }
+
+        // Render Right Piece Detail
+        const detailEl = document.getElementById("guide-piece-detail");
+        const def = window.CHESS_TFT_DATA.PIECES[selectedId];
+        if (!detailEl || !def) return;
+
+        const traitsHtml = (def.traits || []).map(tId => {
+            const s = window.CHESS_TFT_DATA.SYNERGIES[tId];
+            return s ? `<span class="codex-trait-badge" style="border-color:${s.color}; background:rgba(${parseInt(s.color.slice(1,3),16)||20},${parseInt(s.color.slice(3,5),16)||30},${parseInt(s.color.slice(5,7),16)||50},0.28)">${s.icon} ${s.name}</span>` : `<span class="codex-trait-badge">${tId}</span>`;
+        }).join(" ");
+
+        const grid = this.getPieceMovementGrid(def.id);
+        let hasMove = false, hasAttack = false, hasJump = false, hasPawnAtk = false, hasCannon = false;
+
+        let cellsHtml = "";
+        for (let r = 0; r < 5; r++) {
+            for (let c = 0; c < 5; c++) {
+                const cellType = grid[r][c];
+                const isLight = (r + c) % 2 === 0;
+                let cellClass = `guide-cell ${isLight ? "cell-light" : ""}`;
+                let cellContent = "";
+                let cellTitle = "";
+
+                if (cellType === "center") {
+                    cellClass += " cell-center";
+                    cellContent = def.icon;
+                    cellTitle = `${def.name} (Tọa độ hiện tại)`;
+                } else if (cellType === "move") {
+                    cellClass += " cell-move";
+                    cellContent = "🟢";
+                    cellTitle = "Nước di chuyển hợp lệ";
+                    hasMove = true;
+                } else if (cellType === "attack") {
+                    cellClass += " cell-attack";
+                    cellContent = "🎯";
+                    cellTitle = "Tầm bắn từ xa (không cần bước vào)";
+                    hasAttack = true;
+                } else if (cellType === "jump") {
+                    cellClass += " cell-jump";
+                    cellContent = "⚡";
+                    cellTitle = "Nhảy chữ L (vượt qua mọi địa hình và quân cản)";
+                    hasJump = true;
+                } else if (cellType === "pawn-atk") {
+                    cellClass += " cell-pawn-atk";
+                    cellContent = "⚔️";
+                    cellTitle = "Ăn chéo cận chiến (Tiêu diệt kẻ địch phía trước)";
+                    hasPawnAtk = true;
+                } else if (cellType === "cannon") {
+                    cellClass += " cell-cannon";
+                    cellContent = "💣";
+                    cellTitle = "Bắn đại bác xuyên ngòi nổ (nhảy cóc qua 1 quân cản)";
+                    hasCannon = true;
+                }
+
+                cellsHtml += `<div class="${cellClass}" title="${cellTitle}">${cellContent}</div>`;
+            }
+        }
+
+        const guide = def.guide || {};
+
+        detailEl.innerHTML = `
+            <div class="guide-detail-header">
+                <div class="guide-detail-title-row">
+                    <div class="guide-detail-avatar">${def.icon}</div>
+                    <div class="guide-detail-meta">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <h3 class="guide-detail-name">${def.name}</h3>
+                            <span class="guide-item-cost">${def.isKing ? "👑 Tối Thượng" : def.cost + " 🪙"}</span>
+                        </div>
+                        <div class="guide-detail-traits">${traitsHtml}</div>
+                    </div>
+                </div>
+                <div class="guide-detail-stats-row">
+                    <div class="guide-stat-badge">🛡️ Lớp Máu: ${def.baseHp.join(" / ")} (★/★★/★★★)</div>
+                    <div class="guide-stat-badge">🎯 Tầm Đánh: ${def.range.join(" / ")} ô</div>
+                </div>
+            </div>
+
+            <div class="guide-board-wrap">
+                <div class="guide-5x5-board">${cellsHtml}</div>
+                <div class="guide-board-legend">
+                    <div class="guide-legend-title">📖 KÝ HIỆU MINH HỌA NƯỚC ĐI</div>
+                    <div class="guide-legend-row">
+                        <span class="guide-legend-chip chip-center">♟️</span>
+                        <span><strong>Vị trí hiện tại:</strong> Trung tâm bàn cờ</span>
+                    </div>
+                    ${hasMove ? `<div class="guide-legend-row"><span class="guide-legend-chip chip-move">🟢</span><span><strong>Nước di chuyển:</strong> Bước vào ô trống</span></div>` : ""}
+                    ${hasAttack ? `<div class="guide-legend-row"><span class="guide-legend-chip chip-attack">🎯</span><span><strong>Tầm bắn từ xa:</strong> Bắn hạ địch mà không cần di chuyển</span></div>` : ""}
+                    ${hasJump ? `<div class="guide-legend-row"><span class="guide-legend-chip chip-jump">⚡</span><span><strong>Nhảy chữ L:</strong> Nhảy qua đầu quân cờ & địa hình</span></div>` : ""}
+                    ${hasPawnAtk ? `<div class="guide-legend-row"><span class="guide-legend-chip chip-pawn">⚔️</span><span><strong>Ăn chéo cận chiến:</strong> Ăn quân địch ở ô chéo phía trước</span></div>` : ""}
+                    ${hasCannon ? `<div class="guide-legend-row"><span class="guide-legend-chip chip-cannon">💣</span><span><strong>Đại bác xuyên thấu:</strong> Nhảy qua đúng 1 quân cản để nổ tung mục tiêu</span></div>` : ""}
+                </div>
+            </div>
+
+            <div class="guide-cards-grid">
+                <div class="guide-info-card">
+                    <div class="guide-card-head">🧭 1. QUY LUẬT DI CHUYỂN</div>
+                    <div class="guide-card-text">${guide.moveRule || def.desc}</div>
+                </div>
+                <div class="guide-info-card">
+                    <div class="guide-card-head">⚔️ 2. TẤN CÔNG & KỸ NĂNG</div>
+                    <div class="guide-card-text">${guide.attackRule || "Cận chiến 1 ô."} ${guide.skillRule || ""}</div>
+                </div>
+                <div class="guide-info-card full-width">
+                    <div class="guide-card-head">💡 3. VỊ TRÍ ĐẶT & MẸO TÂN THỦ</div>
+                    <div class="guide-card-text">
+                        • <strong>Vị trí khuyến nghị:</strong> <span style="color:#fde047; font-weight:700;">${guide.recommendedPos || "Tiền tuyến"}</span><br/>
+                        • <strong>Vai trò chiến thuật:</strong> <span style="color:#60a5fa; font-weight:700;">${guide.role || "Đa dụng"}</span><br/>
+                        • <strong>Mẹo hay:</strong> ${guide.tips || def.desc}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    getPieceMovementGrid(pieceId) {
+        const grid = Array.from({ length: 5 }, () => Array(5).fill(null));
+        grid[2][2] = "center";
+        const def = window.CHESS_TFT_DATA.PIECES[pieceId];
+        if (!def) return grid;
+
+        const orthoDirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+        const diagDirs = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+        const allDirs = [...orthoDirs, ...diagDirs];
+        const knightJumps = [
+            [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+            [1, -2], [1, 2], [2, -1], [2, 1]
+        ];
+
+        const in5 = (r, c) => r >= 0 && r < 5 && c >= 0 && c < 5;
+
+        switch (def.id) {
+            case "king": {
+                for (const [dr, dc] of allDirs) {
+                    const nr = 2 + dr, nc = 2 + dc;
+                    if (in5(nr, nc)) grid[nr][nc] = "move";
+                }
+                break;
+            }
+            case "shield_pawn": {
+                grid[1][2] = "move";
+                grid[1][1] = "pawn-atk";
+                grid[1][3] = "pawn-atk";
+                break;
+            }
+            case "mercenary": {
+                for (const [dr, dc] of allDirs) {
+                    const nr = 2 + dr, nc = 2 + dc;
+                    if (in5(nr, nc)) grid[nr][nc] = "move";
+                }
+                break;
+            }
+            case "fire_mage": {
+                for (const [dr, dc] of orthoDirs) {
+                    grid[2 + dr][2 + dc] = "move";
+                    grid[2 + dr * 2][2 + dc * 2] = "attack";
+                }
+                break;
+            }
+            case "archer": {
+                for (const [dr, dc] of allDirs) {
+                    grid[2 + dr][2 + dc] = "move";
+                    if (in5(2 + dr * 2, 2 + dc * 2)) grid[2 + dr * 2][2 + dc * 2] = "attack";
+                }
+                break;
+            }
+            case "knight":
+            case "frost_knight": {
+                for (const [dr, dc] of knightJumps) {
+                    const nr = 2 + dr, nc = 2 + dc;
+                    if (in5(nr, nc)) grid[nr][nc] = "jump";
+                }
+                break;
+            }
+            case "pyro_bishop": {
+                for (const [dr, dc] of diagDirs) {
+                    grid[2 + dr][2 + dc] = "move";
+                    grid[2 + dr * 2][2 + dc * 2] = "attack";
+                }
+                break;
+            }
+            case "juggernaut": {
+                for (const [dr, dc] of orthoDirs) {
+                    grid[2 + dr][2 + dc] = "move";
+                    grid[2 + dr * 2][2 + dc * 2] = "move";
+                }
+                break;
+            }
+            case "cannon": {
+                for (const [dr, dc] of orthoDirs) {
+                    grid[2 + dr][2 + dc] = "move";
+                    grid[2 + dr * 2][2 + dc * 2] = "cannon";
+                }
+                break;
+            }
+            case "frost_rook": {
+                for (const [dr, dc] of orthoDirs) {
+                    grid[2 + dr][2 + dc] = "move";
+                    grid[2 + dr * 2][2 + dc * 2] = "move";
+                }
+                break;
+            }
+            case "grand_queen": {
+                for (const [dr, dc] of allDirs) {
+                    grid[2 + dr][2 + dc] = "move";
+                    if (in5(2 + dr * 2, 2 + dc * 2)) grid[2 + dr * 2][2 + dc * 2] = "attack";
+                }
+                break;
+            }
+            case "chancellor": {
+                for (const [dr, dc] of orthoDirs) {
+                    grid[2 + dr][2 + dc] = "move";
+                    grid[2 + dr * 2][2 + dc * 2] = "move";
+                }
+                for (const [dr, dc] of knightJumps) {
+                    const nr = 2 + dr, nc = 2 + dc;
+                    if (in5(nr, nc)) grid[nr][nc] = "jump";
+                }
+                break;
+            }
+            case "gambler": {
+                for (const [dr, dc] of orthoDirs) {
+                    grid[2 + dr][2 + dc] = "move";
+                    grid[2 + dr * 2][2 + dc * 2] = "attack";
+                }
+                break;
+            }
+            case "corsair": {
+                for (const [dr, dc] of allDirs) {
+                    grid[2 + dr][2 + dc] = "move";
+                    if (in5(2 + dr * 2, 2 + dc * 2)) grid[2 + dr * 2][2 + dc * 2] = "attack";
+                }
+                break;
+            }
+            default: {
+                for (const [dr, dc] of allDirs) {
+                    const nr = 2 + dr, nc = 2 + dc;
+                    if (in5(nr, nc)) grid[nr][nc] = "move";
+                }
+                break;
+            }
+        }
+
+        return grid;
     }
 
     startNewGameSession(roomData = null) {
@@ -1910,6 +2241,32 @@ class ChessTFTApp {
 
         document.getElementById("btn-close-rules").addEventListener("click", () => {
             document.getElementById("modal-rules").classList.add("hidden");
+        });
+
+        const guideModalBtn = document.getElementById("btn-piece-guide-modal");
+        if (guideModalBtn) guideModalBtn.addEventListener("click", () => this.openPieceGuide());
+
+        const lobbyGuideBtn = document.getElementById("btn-open-guide-lobby");
+        if (lobbyGuideBtn) lobbyGuideBtn.addEventListener("click", () => this.openPieceGuide());
+
+        const closeGuideBtn = document.getElementById("btn-close-piece-guide");
+        if (closeGuideBtn) closeGuideBtn.addEventListener("click", () => this.closePieceGuide());
+
+        const footerCloseGuideBtn = document.getElementById("btn-footer-close-guide");
+        if (footerCloseGuideBtn) footerCloseGuideBtn.addEventListener("click", () => this.closePieceGuide());
+
+        window.addEventListener("keydown", (e) => {
+            if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+            if (e.key === "h" || e.key === "H") {
+                const modal = document.getElementById("modal-piece-guide");
+                if (modal && !modal.classList.contains("hidden")) {
+                    this.closePieceGuide();
+                } else {
+                    this.openPieceGuide();
+                }
+            } else if (e.key === "Escape") {
+                this.closePieceGuide();
+            }
         });
 
         document.getElementById("btn-next-round").addEventListener("click", () => {
@@ -2836,22 +3193,34 @@ class ChessTFTApp {
 
             card.className = `shop-card cost-tier-${def.cost} ${copiesOwned >= 2 ? "shop-merge-glow" : ""}`;
             card.setAttribute("data-piece-id", def.id);
+            card.title = `${def.name} (${def.cost}🪙) — Bấm ℹ️ hoặc phím [H] để xem hướng dẫn nước đi`;
             card.innerHTML = `
                 <div class="shop-card-top">
                     <span class="shop-unit-name">${def.name}</span>
-                    <span class="shop-unit-cost">${def.cost} 🪙</span>
+                    <div class="shop-top-right">
+                        <span class="shop-unit-cost">${def.cost} 🪙</span>
+                        <button class="shop-guide-btn" title="Xem hướng dẫn cách đi & mẹo chơi của ${def.name}" data-piece-id="${def.id}">ℹ️</button>
+                    </div>
                 </div>
                 <div class="shop-card-body">
                     <div class="shop-unit-icon">${def.icon}<span class="shop-badge">${def.badge || ""}</span></div>
                     <div class="shop-traits">${traitsHtml}</div>
                 </div>
                 <div class="shop-unit-stats">
-                    <span>🛡️ ${def.baseHp[0]} Lớp Máu</span>
+                    <span>🛡️ ${def.baseHp[0]} HP</span>
                     <span>🎯 Tầm: ${def.range[0]}</span>
                 </div>
-                <div class="shop-unit-desc">${def.desc}</div>
                 ${canUpgradeHint ? `<div class="shop-merge-tag">${canUpgradeHint}</div>` : ""}
             `;
+
+            // Guide button inside shop card
+            const guideBtn = card.querySelector(".shop-guide-btn");
+            if (guideBtn) {
+                guideBtn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    this.openPieceGuide(def.id);
+                });
+            }
 
             // Attach Synergy Tooltip when hovering trait pills inside Shop cards
             card.querySelectorAll(".shop-trait-pill").forEach(pill => {
