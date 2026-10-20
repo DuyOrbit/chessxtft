@@ -10,9 +10,23 @@ class SoundFX {
         this.bgmVolume = parseFloat(localStorage.getItem("chess_tft_bgm_vol") || "0.45");
 
         this.currentTrack = null;
-        this.bgmAudio = new Audio();
-        this.bgmAudio.loop = true;
-        this.bgmAudio.volume = this.bgmMuted ? 0 : this.bgmVolume;
+        this.activeTrackSrc = null;
+
+        // DUAL-DECK EQUAL-POWER CROSSFADE AUDIO SYSTEM
+        this.deckA = new Audio();
+        this.deckA.loop = true;
+        this.deckB = new Audio();
+        this.deckB.loop = true;
+
+        this.activeDeck = this.deckA;
+        this.idleDeck = this.deckB;
+        this.activeDeck.volume = this.bgmMuted ? 0 : this.bgmVolume;
+        this.idleDeck.volume = 0;
+
+        this.fadeTimer = null;
+        this.fadeDurationMs = 1200; // 1.2s smooth cinematic Equal-Power Crossfade
+        this.duckTimer = null;
+        this.isDucked = false;
 
         this.currentPack = localStorage.getItem("chess_tft_sound_pack") || "expedition33";
         this.packs = {
@@ -64,6 +78,10 @@ class SoundFX {
         this.setupUserUnlock();
     }
 
+    get bgmAudio() {
+        return this.activeDeck;
+    }
+
     get activePack() {
         return this.packs[this.currentPack] || this.packs.expedition33;
     }
@@ -80,7 +98,8 @@ class SoundFX {
         if (this.currentTrack) {
             const track = this.currentTrack;
             this.currentTrack = null;
-            this.playBgm(track);
+            this.activeTrackSrc = null;
+            this.playBgm(track, { duration: 800 });
         }
         return this.activePack;
     }
@@ -89,8 +108,8 @@ class SoundFX {
         const unlock = () => {
             this.userUnlocked = true;
             this.init();
-            if (!this.bgmMuted && this.currentTrack) {
-                this.bgmAudio.play().catch(() => {});
+            if (!this.bgmMuted && this.currentTrack && this.activeDeck.paused) {
+                this.activeDeck.play().catch(() => {});
             }
             window.removeEventListener("click", unlock);
             window.removeEventListener("keydown", unlock);
@@ -111,7 +130,7 @@ class SoundFX {
         }
     }
 
-    playBgm(trackName) {
+    resolveTrackSrc(trackName) {
         const pack = this.activePack;
         let targetSrc = pack.tracks[trackName];
         if (!targetSrc) {
@@ -119,37 +138,156 @@ class SoundFX {
             else if (trackName === "prep_bot" || trackName === "prep_augment") targetSrc = pack.tracks.prep_bot || pack.tracks.prep;
             else if (trackName === "prep") targetSrc = pack.tracks.prep || pack.tracks.lobby;
             else if (trackName === "combat_early" || trackName === "combat_mid" || trackName === "combat_climax") targetSrc = pack.tracks.combat;
-            else return;
+            else return null;
+        }
+        return targetSrc;
+    }
+
+    preloadTrack(trackName) {
+        const targetSrc = this.resolveTrackSrc(trackName);
+        if (!targetSrc) return;
+        if (!this.idleDeck.src || this.idleDeck.src.indexOf(targetSrc) === -1) {
+            this.idleDeck.src = targetSrc;
+            this.idleDeck.preload = "auto";
+        }
+    }
+
+    playBgm(trackName, options = {}) {
+        const targetSrc = this.resolveTrackSrc(trackName);
+        if (!targetSrc) return;
+
+        // Nếu trùng file đang phát thì giữ nguyên luồng âm thanh
+        const currentSrc = this.activeDeck.src || "";
+        const isSameFile = this.activeTrackSrc === targetSrc || (currentSrc && currentSrc.indexOf(targetSrc) !== -1);
+
+        if (isSameFile) {
+            this.currentTrack = trackName;
+            if (this.userUnlocked && !this.bgmMuted && this.activeDeck.paused) {
+                this.activeDeck.play().catch(() => {});
+            }
+            return;
         }
 
-        if (this.currentTrack === trackName && !this.bgmAudio.paused) return;
-
+        // Khởi động chuyển đổi Equal-Power Crossfade mượt mà
         this.currentTrack = trackName;
+        this.activeTrackSrc = targetSrc;
 
-        try {
-            if (this.bgmAudio.src.indexOf(targetSrc) === -1) {
-                this.bgmAudio.src = targetSrc;
-            }
-            this.bgmAudio.volume = this.bgmMuted ? 0 : this.bgmVolume;
-            if (this.userUnlocked && !this.bgmMuted) {
-                this.bgmAudio.play().catch(e => {
-                    console.log("BGM play deferred until user gesture:", e);
-                });
-            }
-        } catch (e) {
-            console.warn("Audio error:", e);
+        const outDeck = this.activeDeck;
+        const inDeck = this.idleDeck;
+        const duration = options.duration || this.fadeDurationMs;
+        const targetVol = this.bgmMuted ? 0 : this.bgmVolume;
+
+        if (this.fadeTimer) {
+            clearInterval(this.fadeTimer);
+            this.fadeTimer = null;
         }
+
+        if (!inDeck.src || inDeck.src.indexOf(targetSrc) === -1) {
+            inDeck.src = targetSrc;
+        }
+        inDeck.currentTime = 0;
+        inDeck.volume = 0;
+
+        // Hoán đổi con trỏ Deck ngay lập tức
+        this.activeDeck = inDeck;
+        this.idleDeck = outDeck;
+
+        if (this.userUnlocked && !this.bgmMuted) {
+            inDeck.play().catch(e => {
+                console.log("BGM play deferred until user gesture:", e);
+            });
+        }
+
+        if (outDeck.paused || outDeck.volume <= 0.01) {
+            outDeck.pause();
+            outDeck.volume = 0;
+            this.fadeIn(inDeck, targetVol, duration);
+            return;
+        }
+
+        const startTime = performance.now();
+        const startOutVol = outDeck.volume;
+
+        this.fadeTimer = setInterval(() => {
+            const elapsed = performance.now() - startTime;
+            const t = Math.min(1, Math.max(0, elapsed / duration));
+
+            // Equal-Power Crossfade curve (cos & sin)
+            const outFactor = Math.cos(t * Math.PI * 0.5);
+            const inFactor = Math.sin(t * Math.PI * 0.5);
+
+            const curMasterVol = this.bgmMuted ? 0 : this.bgmVolume;
+            outDeck.volume = Math.max(0, Math.min(1, startOutVol * outFactor));
+            inDeck.volume = Math.max(0, Math.min(1, curMasterVol * inFactor));
+
+            if (t >= 1) {
+                clearInterval(this.fadeTimer);
+                this.fadeTimer = null;
+                outDeck.pause();
+                outDeck.currentTime = 0;
+                outDeck.volume = 0;
+                inDeck.volume = curMasterVol;
+            }
+        }, 30);
+    }
+
+    fadeIn(deck, targetVol, duration) {
+        const startTime = performance.now();
+        this.fadeTimer = setInterval(() => {
+            const elapsed = performance.now() - startTime;
+            const t = Math.min(1, Math.max(0, elapsed / duration));
+            const curMasterVol = this.bgmMuted ? 0 : this.bgmVolume;
+            deck.volume = Math.sin(t * Math.PI * 0.5) * curMasterVol;
+            if (t >= 1) {
+                clearInterval(this.fadeTimer);
+                this.fadeTimer = null;
+                deck.volume = curMasterVol;
+            }
+        }, 30);
+    }
+
+    duckBgm(duckFactor = 0.35, durationMs = 1200) {
+        if (this.bgmMuted || !this.activeDeck || this.activeDeck.paused) return;
+        if (this.isDucked) return;
+
+        this.isDucked = true;
+        const normalVol = this.bgmVolume;
+        const duckedVol = normalVol * duckFactor;
+
+        this.activeDeck.volume = duckedVol;
+
+        clearTimeout(this.duckTimer);
+        this.duckTimer = setTimeout(() => {
+            const startTime = performance.now();
+            const rampInterval = setInterval(() => {
+                const elapsed = performance.now() - startTime;
+                const t = Math.min(1, elapsed / 400);
+                if (this.activeDeck && !this.bgmMuted) {
+                    this.activeDeck.volume = duckedVol + (normalVol - duckedVol) * t;
+                }
+                if (t >= 1) {
+                    clearInterval(rampInterval);
+                    this.isDucked = false;
+                    if (this.activeDeck && !this.bgmMuted) {
+                        this.activeDeck.volume = normalVol;
+                    }
+                }
+            }, 30);
+        }, durationMs);
     }
 
     toggleBgm() {
         this.bgmMuted = !this.bgmMuted;
         localStorage.setItem("chess_tft_bgm_muted", this.bgmMuted ? "true" : "false");
         if (this.bgmMuted) {
-            this.bgmAudio.pause();
+            this.activeDeck.pause();
+            this.idleDeck.pause();
+            this.activeDeck.volume = 0;
+            this.idleDeck.volume = 0;
         } else {
-            this.bgmAudio.volume = this.bgmVolume;
+            this.activeDeck.volume = this.bgmVolume;
             if (this.currentTrack) {
-                this.bgmAudio.play().catch(() => {});
+                this.activeDeck.play().catch(() => {});
             }
         }
         return !this.bgmMuted;
@@ -158,8 +296,8 @@ class SoundFX {
     setBgmVolume(val) {
         this.bgmVolume = Math.max(0, Math.min(1, val));
         localStorage.setItem("chess_tft_bgm_vol", this.bgmVolume.toString());
-        if (!this.bgmMuted) {
-            this.bgmAudio.volume = this.bgmVolume;
+        if (!this.bgmMuted && !this.fadeTimer) {
+            this.activeDeck.volume = this.bgmVolume;
         }
     }
 
@@ -192,16 +330,19 @@ class SoundFX {
         setTimeout(() => this.playTone(520, "triangle", 0.15, 0.14), 60);
     }
     starUp() {
+        this.duckBgm(0.4, 800);
         [440, 554, 659, 880].forEach((f, idx) => {
             setTimeout(() => this.playTone(f, "triangle", 0.16, 0.15), idx * 70);
         });
     }
     victory() {
+        this.duckBgm(0.28, 1600);
         [523, 659, 784, 1046].forEach((f, idx) => {
             setTimeout(() => this.playTone(f, "sine", 0.22, 0.16), idx * 90);
         });
     }
     defeat() {
+        this.duckBgm(0.28, 1600);
         [392, 349, 311, 261].forEach((f, idx) => {
             setTimeout(() => this.playTone(f, "sawtooth", 0.22, 0.14), idx * 100);
         });
@@ -389,6 +530,17 @@ class ChessTFTApp {
             // Giai đoạn chuẩn bị PvP người thật (Stage 2+)
             this.sfx.playBgm("prep");
         }
+    }
+
+    preloadUpcomingCombatTrack() {
+        if (!this.sfx || !this.tft) return;
+        const stage = this.tft.stage || 1;
+        const playerHp = this.tft?.player?.hp ?? 100;
+        const oppHp = this.tft?.currentOpponent?.hp ?? 100;
+        const roundInStage = this.tft?.roundInStage || 1;
+        const isClimax = (playerHp <= 25 || oppHp <= 25 || (stage >= 4 && roundInStage >= 4));
+        const trackKey = isClimax ? "combat_climax" : (stage <= 2 ? "combat_early" : "combat");
+        this.sfx.preloadTrack(trackKey);
     }
 
     initSocket() {
@@ -5738,6 +5890,10 @@ class ChessTFTApp {
                     b.style.background = "#ef4444";
                     b.style.color = "#ffffff";
                 }
+            }
+
+            if (this.prepSecondsLeft === 3) {
+                this.preloadUpcomingCombatTrack();
             }
 
             if (this.prepSecondsLeft <= 0) {
