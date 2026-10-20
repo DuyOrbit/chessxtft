@@ -31,11 +31,11 @@ class TFTGameManager {
         const econ = window.CHESS_TFT_DATA.ECONOMY_RULES || {};
         const mods = (userProfile && userProfile.customModifiers) ? userProfile.customModifiers : {};
 
-        const startHp = Number(mods.startingHp) || econ.defaultStartingHp || 100;
-        const startGold = Number(mods.startingGold) !== undefined && mods.startingGold !== null
+        const startHp = (mods.startingHp !== undefined && !isNaN(Number(mods.startingHp))) ? Number(mods.startingHp) : (econ.defaultStartingHp || 100);
+        const startGold = (mods.startingGold !== undefined && !isNaN(Number(mods.startingGold)))
             ? Number(mods.startingGold)
             : (econ.defaultStartingGold || 6);
-        const startLevel = Math.min(8, Math.max(1, Number(mods.startingLevel) || econ.defaultStartingLevel || 3));
+        const startLevel = Math.min(8, Math.max(1, (mods.startingLevel !== undefined && !isNaN(Number(mods.startingLevel))) ? Number(mods.startingLevel) : (econ.defaultStartingLevel || 3)));
         const bonusItems = Array.isArray(mods.bonusItems) ? [...mods.bonusItems] : ["stun_hammer", "burn_cloak"];
         const extraClock = Number(mods.extraClockSeconds) || 0;
 
@@ -1044,6 +1044,167 @@ class TFTGameManager {
         }
     }
 
+    // Generate 3 strategic reward options for Stage Armory Transition (Đề xuất 1: Kho Tiếp Tế Chiến Trường)
+    generateStageArmoryChoices(newStage) {
+        if (newStage === 2) {
+            // Stage 1 -> 2 (Early to Mid game)
+            const stage2Items = ["crown_promotion", "cape_sunfire", "frozen_staff", "thorn_armor", "gunblade_vamp", "rfc_cannon"];
+            const chosenItemKey = stage2Items[Math.floor(Math.random() * stage2Items.length)];
+            const itemDef = window.CHESS_TFT_DATA.ITEMS[chosenItemKey] || { name: "Vương Miện Phong Cấp", desc: "+1 Lớp Máu & Tự động Phong Cấp Hậu khi tiến sát sân địch!" };
+
+            const pairOptions = [
+                {
+                    title: "Quân Đoàn Băng Giá",
+                    pieces: ["frost_rook", "frost_knight"],
+                    desc: "Chiêu mộ ngay Xe Băng (4🪙) và Kỵ Sĩ Băng (2🪙) kích hoạt mốc 2 Băng Quốc làm chậm kẻ địch!"
+                },
+                {
+                    title: "Băng Đao Phủ & Xạ Thủ",
+                    pieces: ["mercenary", "archer"],
+                    desc: "Chiêu mộ ngay Đao Phủ (4🪙) và Cung Thủ (2🪙) kích hoạt mốc Xạ Thủ & Kỵ Binh càn quét!"
+                },
+                {
+                    title: "Quân Đoàn Hỏa Ngục",
+                    pieces: ["fire_mage", "pyro_bishop"],
+                    desc: "Chiêu mộ ngay Pháp Sư Lửa (4🪙) và Tượng Hỏa (2🪙) kích hoạt mốc Hỏa Ngục thiêu đốt nổ lan!"
+                }
+            ];
+            const chosenPair = pairOptions[Math.floor(Math.random() * pairOptions.length)];
+
+            return [
+                {
+                    type: "item",
+                    tag: "🛡️ TRANG BỊ ĐỘT PHÁ",
+                    title: itemDef.name,
+                    icon: "⚔️",
+                    itemKey: chosenItemKey,
+                    desc: itemDef.desc || "Trang bị hoàn chỉnh nâng cao chỉ số tác chiến tức thì.",
+                    btnText: `Nhận ${itemDef.name}`
+                },
+                {
+                    type: "pieces",
+                    tag: "♟️ VIỆN TRỢ TƯỚNG",
+                    title: chosenPair.title,
+                    icon: "👑",
+                    pieces: chosenPair.pieces,
+                    desc: chosenPair.desc,
+                    btnText: "Chiêu Mộ 2 Tướng"
+                },
+                {
+                    type: "economy",
+                    tag: "💰 KHO BÁU & ROLL",
+                    title: "Kho Vàng Hoàng Gia & Lượt Roll",
+                    icon: "💎",
+                    gold: 12,
+                    freeRerolls: 2,
+                    xp: 4,
+                    desc: "Nhận ngay +12 Vàng tích lũy, 2 Vé Đổi Lại Miễn Phí (Free Rerolls) và +4 EXP thăng cấp sàn đấu!",
+                    btnText: "Nhận +12🪙, 2 Roll, +4 EXP"
+                }
+            ];
+        } else {
+            // Stage 3+ (Mid to Late game)
+            const stage3Items = ["crown_promotion", "sword_death", "gunblade_vamp", "frozen_staff"];
+            const chosenItemKey = stage3Items[Math.floor(Math.random() * stage3Items.length)];
+            const itemDef = window.CHESS_TFT_DATA.ITEMS[chosenItemKey] || { name: "Vương Miện Cờ Vua Thần Thoại", desc: "+1 Slot tướng trên bàn cờ" };
+
+            const lateOptions = [
+                {
+                    title: "Nữ Hoàng & Đao Phủ",
+                    pieces: ["grand_queen", "cannon"],
+                    desc: "Chiêu mộ Nữ Hoàng Tối Thượng (5🪙) toàn năng và Pháo Cao Xạ (3🪙) bắn tầm xa bá đạo!"
+                },
+                {
+                    title: "Đại Thừa Tướng & Thần Bạc",
+                    pieces: ["chancellor", "gambler"],
+                    desc: "Chiêu mộ Đại Thừa Tướng (5🪙 Xe + Mã kết hợp) và Con Bạc (3🪙 nổ vàng)!"
+                }
+            ];
+            const chosenLate = lateOptions[Math.floor(Math.random() * lateOptions.length)];
+
+            return [
+                {
+                    type: "item",
+                    tag: "👑 VŨ KHÍ THẦN THOẠI",
+                    title: `${itemDef.name} (+5🪙)`,
+                    icon: "⚔️",
+                    itemKey: chosenItemKey,
+                    bonusGold: 5,
+                    desc: `${itemDef.desc} (Kèm theo +5 Vàng viện trợ chiến trường)`,
+                    btnText: `Nhận ${itemDef.name} + 5🪙`
+                },
+                {
+                    type: "pieces",
+                    tag: "🌟 VIỆN TRỢ SIÊU CẤP",
+                    title: chosenLate.title,
+                    icon: "👑",
+                    pieces: chosenLate.pieces,
+                    desc: chosenLate.desc,
+                    btnText: "Chiêu Mộ Tướng 5🪙"
+                },
+                {
+                    type: "economy",
+                    tag: "💎 KHO BÁU ĐẠI ĐẾ",
+                    title: "Kho Vàng & Bão Roll Miễn Phí",
+                    icon: "💰",
+                    gold: 20,
+                    freeRerolls: 4,
+                    xp: 8,
+                    desc: "Nhận ngay +20 Vàng cực lớn, 4 Vé Đổi Lại Miễn Phí và +8 EXP để thăng cấp 7-8 xoay bài thần tốc!",
+                    btnText: "Nhận +20🪙, 4 Roll, +8 EXP"
+                }
+            ];
+        }
+    }
+
+    // Claim selected Stage Armory reward package
+    claimArmoryChoice(choiceIndex) {
+        if (!this.currentArmoryChoices || !this.currentArmoryChoices[choiceIndex]) return { ok: false };
+        const choice = this.currentArmoryChoices[choiceIndex];
+
+        if (choice.type === "item") {
+            if (choice.itemKey) {
+                this.player.items.push(choice.itemKey);
+            }
+            if (choice.bonusGold) {
+                this.player.gold += choice.bonusGold;
+            }
+        } else if (choice.type === "pieces" && Array.isArray(choice.pieces)) {
+            for (const pid of choice.pieces) {
+                const emptyBench = this.player.bench.findIndex(b => b === null);
+                if (emptyBench !== -1) {
+                    this.player.bench[emptyBench] = {
+                        uid: this.nextUid("unit"),
+                        id: pid,
+                        stars: 1,
+                        items: []
+                    };
+                    this.checkAndMergeStars(this.player);
+                } else {
+                    const cost = window.CHESS_TFT_DATA.PIECES[pid]?.cost || 3;
+                    this.player.gold += cost;
+                }
+            }
+        } else if (choice.type === "economy") {
+            if (choice.gold) this.player.gold += choice.gold;
+            if (choice.freeRerolls) this.player.freeRerolls = (this.player.freeRerolls || 0) + choice.freeRerolls;
+            if (choice.xp) this.addPlayerXP(choice.xp);
+        }
+
+        // Give Bot participants an armory bump as well so AI stays competitive
+        this.bots.forEach((b) => {
+            if (!b.eliminated) {
+                b.gold = (b.gold || 0) + 6;
+                b.level = Math.min(8, (b.level || 3) + 1);
+            }
+        });
+
+        this.currentArmoryChoices = null;
+        this.phase = "prep";
+        this.pickPotentialOpponents();
+        return { ok: true, choice };
+    }
+
     // Advance to next Round / Stage and award TFT Income (Base + Interest + Streak + XP)
     advanceToNextRound() {
         const aliveBots = this.bots.filter(b => !b.eliminated);
@@ -1059,9 +1220,12 @@ class TFTGameManager {
         const maxRoundsForStage = currentStageFmt.length || 5;
 
         this.roundInStage += 1;
+        let isStageTransition = false;
+        let prevStage = this.stage;
         if (this.roundInStage > maxRoundsForStage) {
             this.stage += 1;
             this.roundInStage = 1;
+            isStageTransition = true;
         }
 
         const newCfg = this.getStageConfig();
@@ -1083,15 +1247,6 @@ class TFTGameManager {
         this.player.gold += totalIncome;
         this.addPlayerXP(2); // +2 passive XP each round
 
-        // Occasional random item drop on round 1 of Stage 2+
-        let droppedItem = null;
-        if (this.roundInStage === 1 && this.stage >= 2) {
-            const itemKeys = Object.keys(window.CHESS_TFT_DATA.ITEMS);
-            const randomItem = itemKeys[Math.floor(Math.random() * itemKeys.length)];
-            this.player.items.push(randomItem);
-            droppedItem = window.CHESS_TFT_DATA.ITEMS[randomItem].name;
-        }
-
         // Upgrade bots for the new round
         this.upgradeAllBotsForRound();
 
@@ -1100,6 +1255,36 @@ class TFTGameManager {
             this.rollShop(true);
         } else {
             this.shopLocked = false;
+        }
+
+        // Comeback system: Free Rerolls for Loss Streaks (Chuỗi thua từ 3 trở lên được Free Reroll)
+        let freeRerollGiven = false;
+        if (this.player.streak <= -3) {
+            this.player.freeRerolls = (this.player.freeRerolls || 0) + 1;
+            freeRerollGiven = true;
+        }
+
+        // Comeback Mega Cache on 4+ loss streak
+        let comebackPackage = null;
+        if (this.player.streak === -4) {
+            comebackPackage = this.awardComebackCache(this.player);
+        }
+
+        // STAGE ARMORY REWARD (KHO TIẾP TẾ CHIẾN TRƯỜNG KHI CHUYỂN GIAI ĐOẠN)
+        if (isStageTransition && this.stage >= 2) {
+            this.phase = "armory";
+            const armoryChoices = this.generateStageArmoryChoices(this.stage);
+            this.currentArmoryChoices = armoryChoices;
+            return {
+                phase: "armory",
+                isStageTransition: true,
+                newStage: this.stage,
+                prevStage,
+                armoryChoices,
+                freeRerollGiven,
+                comebackPackage,
+                boardScaled: newCfg.cols !== oldCfg.cols
+            };
         }
 
         // Determine phase based on TFT Stage-Round Format
@@ -1115,33 +1300,9 @@ class TFTGameManager {
             this.pickPotentialOpponents();
         }
 
-        // Comeback system: Free Rerolls for Loss Streaks (Chuỗi thua từ 3 trở lên được Free Reroll)
-        let freeRerollGiven = false;
-        if (this.player.streak <= -3) {
-            this.player.freeRerolls = (this.player.freeRerolls || 0) + 1;
-            freeRerollGiven = true;
-        }
-
-        // Comeback Supply Crate for deep loss streak (Chuỗi thua >= 4)
-        let comebackPackage = null;
-        if (this.player.streak <= -4 && !this.player.hasReceivedComebackPackageStage[this.stage]) {
-            this.player.hasReceivedComebackPackageStage[this.stage] = true;
-            const bonusGold = 10;
-            this.player.gold += bonusGold;
-            const itemKeys = Object.keys(window.CHESS_TFT_DATA.ITEMS);
-            const grantedItem = itemKeys[Math.floor(Math.random() * itemKeys.length)];
-            this.player.items.push(grantedItem);
-            comebackPackage = {
-                gold: bonusGold,
-                itemName: window.CHESS_TFT_DATA.ITEMS[grantedItem].name,
-                itemIcon: window.CHESS_TFT_DATA.ITEMS[grantedItem].icon
-            };
-        }
-
         return {
             phase: this.phase,
-            income: { baseIncome, interest, streakBonus, totalIncome },
-            droppedItem,
+            isStageTransition: false,
             freeRerollGiven,
             comebackPackage,
             boardScaled: newCfg.cols !== oldCfg.cols

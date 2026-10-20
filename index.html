@@ -324,8 +324,11 @@
         <div id="banner-waiting-sync" class="waiting-sync-banner hidden">
             <div class="sync-spinner"></div>
             <div class="sync-content">
-                <div class="sync-title">⚔️ VÁN CỜ CỦA BẠN ĐÃ KẾT THÚC!</div>
-                <div id="sync-sub-text" class="sync-sub">Đang chờ các kỳ thủ khác kết thúc ván đấu (1/4 bàn xong)...</div>
+                <div id="sync-title-text" class="sync-title">⚔️ VÁN CỜ CỦA BẠN ĐÃ HOÀN TẤT!</div>
+                <div id="sync-sub-text" class="sync-sub">Đang chờ các kỳ thủ khác kết thúc vòng đấu (1/2 bàn xong)...</div>
+            </div>
+            <div class="sync-scout-pill" title="Mẹo: Bấm vào kỳ thủ ở bảng xếp hạng bên phải để soi bàn trực tiếp">
+                <span>👁️ Bạn có thể bấm soi bài đối thủ ở cột bên phải</span>
             </div>
         </div>
 
@@ -598,6 +601,17 @@
             <div style="text-align:center; margin-top:16px;">
                 <button id="btn-next-round" class="btn-combat-go">Tiếp Tục Sang Vòng Sau ➡️</button>
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL: STAGE ARMORY (KHO TIẾP TẾ CHIẾN TRƯỜNG KHI CHUYỂN GIAI ĐOẠN) -->
+    <div id="modal-armory" class="modal-overlay hidden">
+        <div class="modal-card modal-card-armory">
+            <div class="armory-badge-pill">🎁 KHO TIẾP TẾ CHIẾN TRƯỜNG</div>
+            <h2 id="armory-title" class="modal-title" style="color: #fbbf24; margin-top: 6px;">VIỆN TRỢ GIAI ĐOẠN 2</h2>
+            <p id="armory-sub" class="modal-sub">Mở rộng bàn cờ! Hãy chọn 1 trong 3 Gói Viện Trợ Chiến Lược để bứt phá sức mạnh đội hình của bạn:</p>
+            <div id="armory-timer" class="modal-timer">⏳ Tự động nhận sau: 15s</div>
+            <div id="armory-choices" class="choices-grid choices-grid-armory"></div>
         </div>
     </div>
 

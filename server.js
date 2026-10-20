@@ -605,6 +605,25 @@ io.on("connection", (socket) => {
         const room = rooms.get(code);
         if (!room) return;
         room.liveBoards[playerId] = state;
+        if (state && (state.hp <= 0 || state.eliminated)) {
+            const p = room.players.find(x => x.id === playerId);
+            if (p) {
+                p.eliminated = true;
+                p.hp = 0;
+            }
+            if (room.roundFinished) {
+                for (const key of Object.keys(room.roundFinished)) {
+                    const activeHumans = room.players.filter(x => !x.isBot && !x.eliminated && !x.disconnected && (x.hp === undefined || x.hp > 0));
+                    let finishedCount = 0;
+                    activeHumans.forEach(x => {
+                        if (room.roundFinished[key].has(x.id)) finishedCount++;
+                    });
+                    if (activeHumans.length <= 1 || finishedCount >= activeHumans.length) {
+                        io.to(code).emit("room:allBoardsFinished", { key });
+                    }
+                }
+            }
+        }
         socket.to(code).emit("match:remotePlayerState", {
             playerId,
             state
@@ -620,19 +639,28 @@ io.on("connection", (socket) => {
         if (!room.roundFinished[key]) room.roundFinished[key] = new Set();
         room.roundFinished[key].add(playerId);
 
-        const finishedCount = room.roundFinished[key].size;
-        const totalHumans = room.players.filter(p => !p.isBot).length;
-        const allDone = finishedCount >= totalHumans;
+        // Filter active human players who are not bots and not eliminated
+        const activeHumans = room.players.filter(p => !p.isBot && !p.eliminated && !p.disconnected && (p.hp === undefined || p.hp > 0));
+        const totalHumans = activeHumans.length;
+
+        let finishedCount = 0;
+        activeHumans.forEach(p => {
+            if (room.roundFinished[key].has(p.id)) finishedCount++;
+        });
+
+        const allDone = (totalHumans <= 1) || (finishedCount >= totalHumans);
 
         io.to(code).emit("room:roundCombatProgress", {
             key,
+            stage,
+            round,
             finishedCount,
             totalHumans,
             allDone
         });
 
         if (allDone) {
-            io.to(code).emit("room:allBoardsFinished", { key });
+            io.to(code).emit("room:allBoardsFinished", { key, stage, round });
         }
     });
 
@@ -650,18 +678,39 @@ function handleSocketLeaveRoom(socket) {
     const room = rooms.get(code);
     if (!room) return;
 
-    room.players = room.players.filter(p => p.socketId !== socket.id);
+    const leavingPlayer = room.players.find(p => p.socketId === socket.id);
+    if (room.status === "playing" && leavingPlayer) {
+        leavingPlayer.eliminated = true;
+        leavingPlayer.hp = 0;
+        leavingPlayer.disconnected = true;
+        if (room.roundFinished) {
+            for (const key of Object.keys(room.roundFinished)) {
+                const activeHumans = room.players.filter(p => !p.isBot && !p.eliminated && !p.disconnected && (p.hp === undefined || p.hp > 0));
+                let finishedCount = 0;
+                activeHumans.forEach(p => {
+                    if (room.roundFinished[key].has(p.id)) finishedCount++;
+                });
+                if (activeHumans.length <= 1 || finishedCount >= activeHumans.length) {
+                    io.to(code).emit("room:allBoardsFinished", { key });
+                }
+            }
+        }
+    } else {
+        room.players = room.players.filter(p => p.socketId !== socket.id);
+    }
+
     socket.leave(code);
     socket.data.roomCode = null;
 
-    if (room.players.length === 0) {
+    if (room.players.length === 0 || room.players.every(p => p.isBot || p.disconnected)) {
         rooms.delete(code);
     } else {
-        if (!room.players.some(p => p.isHost)) {
-            room.players[0].isHost = true;
-            room.hostId = room.players[0].id;
-            room.hostSocketId = room.players[0].socketId;
-            room.hostName = room.players[0].name;
+        if (!room.players.some(p => p.isHost && !p.disconnected)) {
+            const firstActive = room.players.find(p => !p.disconnected) || room.players[0];
+            firstActive.isHost = true;
+            room.hostId = firstActive.id;
+            room.hostSocketId = firstActive.socketId;
+            room.hostName = firstActive.name;
         }
         io.to(code).emit("room:updated", room);
     }

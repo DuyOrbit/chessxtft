@@ -4196,5 +4196,125 @@ button {
     }
 }
 
+/* ============================================================================
+   STAGE ARMORY MODAL (KHO TIẾP TẾ CHIẾN TRƯỜNG KHI CHUYỂN GIAI ĐOẠN)
+   ============================================================================ */
+.modal-card-armory {
+    max-width: 890px;
+    width: 95vw;
+    background: radial-gradient(circle at top center, #1e1b4b 0%, #0b1120 75%);
+    border: 2px solid #6366f1;
+    box-shadow: 0 0 50px rgba(99, 102, 241, 0.4), inset 0 0 20px rgba(99, 102, 241, 0.2);
+    text-align: center;
+    padding: 24px 22px;
+}
+
+.armory-badge-pill {
+    display: inline-block;
+    background: rgba(99, 102, 241, 0.25);
+    border: 1px solid #818cf8;
+    color: #c7d2fe;
+    font-size: 0.78rem;
+    font-weight: 800;
+    padding: 4px 14px;
+    border-radius: 99px;
+    letter-spacing: 1px;
+}
+
+.choices-grid-armory {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin-top: 18px;
+}
+
+.choice-card-armory {
+    background: rgba(15, 23, 42, 0.85);
+    border: 2px solid #334155;
+    border-radius: 12px;
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.choice-card-armory:hover {
+    transform: translateY(-4px) scale(1.02);
+    border-color: #fbbf24;
+    box-shadow: 0 10px 30px rgba(251, 191, 36, 0.25);
+    background: rgba(30, 41, 59, 0.95);
+}
+
+.armory-card-tag {
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #93c5fd;
+}
+
+.armory-card-icon {
+    font-size: 2.8rem;
+    margin: 6px 0;
+    line-height: 1;
+    filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.4));
+}
+
+.armory-card-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #fff;
+    margin: 4px 0 8px;
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.armory-card-desc {
+    font-size: 0.78rem;
+    color: #cbd5e1;
+    line-height: 1.45;
+    margin-bottom: 14px;
+    flex: 1;
+}
+
+.armory-card-btn {
+    width: 100%;
+    padding: 9px;
+    font-weight: 800;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    border: 1px solid #fbbf24;
+    color: #000;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.choice-card-armory:hover .armory-card-btn {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    box-shadow: 0 0 16px rgba(251, 191, 36, 0.5);
+}
+
+.sync-scout-pill {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.76rem;
+    color: #93c5fd;
+    font-weight: 600;
+}
+
+
 
 

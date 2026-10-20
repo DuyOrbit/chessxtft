@@ -334,20 +334,58 @@ class ChessTFTApp {
                 this.startNewGameSession(room);
             });
 
-            this.socket.on("room:roundCombatProgress", ({ finishedCount, totalHumans }) => {
+            this.socket.on("room:roundCombatProgress", ({ key, stage, round, finishedCount, totalHumans, allDone }) => {
+                this.roundSyncFinishedCount = finishedCount;
+                this.roundSyncTotalHumans = totalHumans;
                 const text = document.getElementById("sync-sub-text");
                 if (text) {
-                    text.textContent = `Đang chờ các kỳ thủ khác kết thúc ván đấu (${finishedCount}/${totalHumans} bàn xong)...`;
+                    text.textContent = `Đang chờ các kỳ thủ khác kết thúc vòng ${key || ""} (${finishedCount}/${totalHumans} kỳ thủ đã xong)...`;
+                }
+                const resultTimerEl = document.getElementById("round-result-timer");
+                if (resultTimerEl && this.isWaitingForRoundSync && !this.allBoardsFinishedCurrentRound) {
+                    resultTimerEl.textContent = `⏳ Đang chờ kỳ thủ khác (${finishedCount}/${totalHumans} xong)...`;
                 }
             });
 
-            this.socket.on("room:allBoardsFinished", () => {
+            this.socket.on("room:allBoardsFinished", ({ key }) => {
+                this.allBoardsFinishedCurrentRound = true;
+                this.isWaitingForRoundSync = false;
+                this.showToast("✅ Tất cả kỳ thủ đã hoàn tất vòng! Chuẩn bị chuyển vòng...", "success");
+                try { this.sfx.victory(); } catch (e) {}
+
                 const banner = document.getElementById("banner-waiting-sync");
-                if (banner) banner.classList.add("hidden");
+                const titleEl = document.getElementById("sync-title-text");
+                const subEl = document.getElementById("sync-sub-text");
                 const modal = document.getElementById("modal-round-result");
-                if (modal && !modal.classList.contains("hidden")) {
-                    this.proceedAfterRoundModal();
+
+                if (banner && !banner.classList.contains("hidden")) {
+                    if (titleEl) titleEl.textContent = "✅ TẤT CẢ KỲ THỦ ĐÃ HOÀN TẤT VÒNG!";
+                    if (subEl) subEl.textContent = "Đang đồng bộ chuyển sang vòng tiếp theo trong 1.5s...";
+                    setTimeout(() => {
+                        banner.classList.add("hidden");
+                        this.proceedAfterRoundModal();
+                        this.syncMyStateToRoom();
+                    }, 1500);
+                    return;
                 }
+
+                if (modal && !modal.classList.contains("hidden")) {
+                    const btnNext = document.getElementById("btn-next-round");
+                    if (btnNext) btnNext.textContent = "✅ Cả Phòng Đã Xong — Chuyển Vòng";
+                    const timerEl = document.getElementById("round-result-timer");
+                    if (timerEl) timerEl.textContent = "✅ Đang chuyển sang vòng tiếp theo...";
+                    setTimeout(() => {
+                        modal.classList.add("hidden");
+                        this.proceedAfterRoundModal();
+                        this.syncMyStateToRoom();
+                    }, 1200);
+                    return;
+                }
+
+                // If player is already on game screen scouting
+                if (banner) banner.classList.add("hidden");
+                this.proceedAfterRoundModal();
+                this.syncMyStateToRoom();
             });
 
             this.socket.on("match:remotePlayerState", ({ playerId, state }) => {
@@ -2396,6 +2434,21 @@ class ChessTFTApp {
         document.getElementById("btn-next-round").addEventListener("click", () => {
             this.clearRoundResultCountdown();
             document.getElementById("modal-round-result").classList.add("hidden");
+
+            // Nếu đang trong phòng nhiều người và các kỳ thủ khác chưa xong, hiển thị Banner chờ & cho phép soi bài
+            if (this.isWaitingForRoundSync && !this.allBoardsFinishedCurrentRound) {
+                const banner = document.getElementById("banner-waiting-sync");
+                if (banner) {
+                    const titleEl = document.getElementById("sync-title-text");
+                    const subEl = document.getElementById("sync-sub-text");
+                    if (titleEl) titleEl.textContent = "⚔️ VÁN CỜ CỦA BẠN ĐÃ HOÀN TẤT!";
+                    if (subEl) subEl.textContent = `Đang chờ các kỳ thủ khác kết thúc vòng ${this.tft.stage}-${this.tft.roundInStage} (${this.roundSyncFinishedCount || 1}/${this.roundSyncTotalHumans || 2} xong)...`;
+                    banner.classList.remove("hidden");
+                }
+                this.showToast("⏳ Ván của bạn đã xong! Hãy bấm vào đối thủ bên phải để soi bài trong lúc chờ.", "info");
+                return;
+            }
+
             this.proceedAfterRoundModal();
             this.syncMyStateToRoom();
         });
@@ -3664,6 +3717,14 @@ class ChessTFTApp {
         }, thinkMs);
     }
 
+    isMultiplayerWithOtherHumans() {
+        if (!this.socket || !this.socket.connected) return false;
+        if (!this.currentRoom || this.currentRoom.code === "SOLO") return false;
+        if (!Array.isArray(this.currentRoom.players)) return false;
+        const humans = this.currentRoom.players.filter(p => !p.isBot && !p.eliminated);
+        return humans.length > 1;
+    }
+
     finishBlitzCombat() {
         this.stopCombatTimers();
         this.sfx.playBgm("lobby");
@@ -3676,8 +3737,13 @@ class ChessTFTApp {
         this.tft.resolveRoundResults(res, this.chess.goldEarnedPlayer);
         this.renderAll();
 
+        // Kiểm tra xem trận đấu có người chơi thật khác hay không
+        const isMulti = this.isMultiplayerWithOtherHumans();
+        this.isWaitingForRoundSync = isMulti;
+        this.allBoardsFinishedCurrentRound = !isMulti;
+
         // Gửi thông báo hoàn tất ván cờ tới Server để đồng bộ vòng đấu
-        if (this.socket && this.currentRoom) {
+        if (this.socket && this.currentRoom && this.currentRoom.code !== "SOLO") {
             this.socket.emit("room:playerFinishedCombat", {
                 code: this.currentRoom.code,
                 playerId: this.currentUser ? this.currentUser.id : "player",
@@ -3736,7 +3802,24 @@ class ChessTFTApp {
         }
 
         modal.classList.remove("hidden");
-        this.startRoundResultCountdown();
+
+        const btnNext = document.getElementById("btn-next-round");
+        const timerEl = document.getElementById("round-result-timer");
+
+        if (this.isWaitingForRoundSync && !this.allBoardsFinishedCurrentRound) {
+            if (btnNext) btnNext.textContent = "👁️ Soi Bài Đối Thủ (Đang Chờ Vòng Mới)";
+            if (timerEl) timerEl.textContent = `⏳ Đang chờ người chơi khác hoàn tất vòng ${this.tft.stage}-${this.tft.roundInStage}...`;
+            this.clearRoundResultCountdown();
+            // Tự động đóng modal sau 4.5s để người chơi ra bàn cờ quan sát trận của đối thủ
+            this.roundResultTimer = setTimeout(() => {
+                if (!modal.classList.contains("hidden")) {
+                    btnNext?.click();
+                }
+            }, 4500);
+        } else {
+            if (btnNext) btnNext.textContent = "➡️ Tiếp Tục Vòng Mới";
+            this.startRoundResultCountdown();
+        }
     }
 
     proceedAfterRoundModal() {
@@ -3753,10 +3836,6 @@ class ChessTFTApp {
             this.showToast(`📐 Sang Stage ${this.tft.stage}: Bàn cờ mở rộng thành ${cfg.cols}x${cfg.rows}!`, "success");
         }
 
-        if (nextInfo.droppedItem) {
-            this.showToast(`🎁 Bạn nhận được trang bị mới: ${nextInfo.droppedItem}!`, "success");
-        }
-
         if (nextInfo.freeRerollGiven) {
             this.showToast(`🎁 HỖ TRỢ CHUỖI THUA: Bạn nhận được +1 lượt Đổi Shop MIỄN PHÍ!`, "success");
         }
@@ -3765,7 +3844,10 @@ class ChessTFTApp {
             this.showToast(`🔥 TIẾP TẾ LỘI NGƯỢC DÒNG (Chuỗi Thua ≥ 4): Nhận ngay +${nextInfo.comebackPackage.gold}🪙 và ${nextInfo.comebackPackage.itemIcon} ${nextInfo.comebackPackage.itemName}!`, "success");
         }
 
-        if (nextInfo.phase === "augment") {
+        // STAGE ARMORY SELECTION (ĐỀ XUẤT 1: KHO TIẾP TẾ CHIẾN TRƯỜNG KHI CHUYỂN GIAI ĐOẠN)
+        if (nextInfo.phase === "armory") {
+            this.openStageArmoryModal(nextInfo.armoryChoices, nextInfo.newStage);
+        } else if (nextInfo.phase === "augment") {
             this.openAugmentModal();
         } else if (nextInfo.phase === "carousel") {
             this.openCarouselModal();
@@ -3775,6 +3857,82 @@ class ChessTFTApp {
 
         this.renderAll();
         this.syncMyStateToRoom();
+    }
+
+    openStageArmoryModal(choices, newStage) {
+        const modal = document.getElementById("modal-armory");
+        const titleEl = document.getElementById("armory-title");
+        const subEl = document.getElementById("armory-sub");
+        const container = document.getElementById("armory-choices");
+
+        if (titleEl) titleEl.textContent = `🎁 KHO TIẾP TẾ CHIẾN TRƯỜNG — GIAI ĐOẠN ${newStage}`;
+        if (subEl) subEl.textContent = `Chúc mừng bạn đã vượt qua Giai Đoạn ${newStage - 1}! Chọn 1 trong 3 Gói Nâng Cấp để tăng tốc sức mạnh cho đội hình:`;
+
+        if (!container) return;
+        container.innerHTML = "";
+
+        const armoryChoices = choices || [];
+        armoryChoices.forEach((choice, idx) => {
+            const card = document.createElement("div");
+            card.className = "choice-card-armory";
+            card.innerHTML = `
+                <div class="armory-card-tag">${choice.tag}</div>
+                <div class="armory-card-icon">${choice.icon}</div>
+                <div class="armory-card-title">${choice.title}</div>
+                <div class="armory-card-desc">${choice.desc}</div>
+                <button class="armory-card-btn">${choice.btnText || "Nhận Gói Này"}</button>
+            `;
+            card.addEventListener("click", () => {
+                this.clearArmoryCountdown();
+                this.tft.claimArmoryChoice(idx);
+                this.sfx.starUp();
+                modal.classList.add("hidden");
+                this.showToast(`🎁 Đã nhận thành công: ${choice.title}!`, "success");
+
+                // Kiểm tra xem vòng 1 của stage mới có chọn Lõi hay không
+                const stageFmt = (window.CHESS_TFT_DATA.STAGE_ROUNDS_FORMAT && window.CHESS_TFT_DATA.STAGE_ROUNDS_FORMAT[this.tft.stage]) || [];
+                const rDef = stageFmt.find(r => r.round === this.tft.roundInStage);
+                if (rDef && rDef.type === "augment" && this.tft.player.augments.length < 3) {
+                    this.openAugmentModal();
+                } else {
+                    this.startPrepCountdown();
+                }
+                this.renderAll();
+                this.syncMyStateToRoom();
+            });
+            container.appendChild(card);
+        });
+
+        modal.classList.remove("hidden");
+        this.startArmoryCountdown();
+    }
+
+    startArmoryCountdown() {
+        this.clearArmoryCountdown();
+        this.armorySecondsLeft = 15;
+        const timerEl = document.getElementById("armory-timer");
+        if (timerEl) timerEl.textContent = `⏳ Tự động nhận sau: ${this.armorySecondsLeft}s`;
+
+        this.armoryTimer = setInterval(() => {
+            this.armorySecondsLeft--;
+            const el = document.getElementById("armory-timer");
+            if (el) el.textContent = `⏳ Tự động nhận sau: ${this.armorySecondsLeft}s`;
+
+            if (this.armorySecondsLeft <= 0) {
+                this.clearArmoryCountdown();
+                const firstChoice = document.querySelector("#armory-choices .choice-card-armory");
+                if (firstChoice && !document.getElementById("modal-armory")?.classList.contains("hidden")) {
+                    firstChoice.click();
+                }
+            }
+        }, 1000);
+    }
+
+    clearArmoryCountdown() {
+        if (this.armoryTimer) {
+            clearInterval(this.armoryTimer);
+            this.armoryTimer = null;
+        }
     }
 
     openAugmentModal() {
@@ -4036,6 +4194,7 @@ class ChessTFTApp {
         this.clearPrepCountdown();
         this.clearAugmentCountdown();
         this.clearCarouselCountdown();
+        this.clearArmoryCountdown();
         this.clearRoundResultCountdown();
     }
 }
