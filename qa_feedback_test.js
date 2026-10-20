@@ -101,6 +101,12 @@ const fs = require('fs');
         // Buy a piece into bench or place it, then hover
         const shopCard = await page.$(".shop-card");
         if (shopCard) {
+            await shopCard.hover();
+            await page.waitForTimeout(300);
+            const shopTooltipVisible = await page.$eval("#piece-movement-tooltip", el => !el.classList.contains("hidden")).catch(() => false);
+            console.log(`-> Tooltip Mini Grid 5x5 khi hover vào thẻ bài Shop: ${shopTooltipVisible ? "HIỂN THỊ ✅" : "CHƯA HIỆN ❌"}`);
+            await page.screenshot({ path: path.join(screenshotDir, "test_shop_hover_tooltip.png") });
+
             await shopCard.click();
             await page.waitForTimeout(400);
         }
@@ -109,10 +115,21 @@ const fs = require('fs');
         if (benchSlotWithPiece) {
             await benchSlotWithPiece.hover();
             await page.waitForTimeout(300);
-            const previewCellsCount = await page.$$eval("#chess-board .cell-preview-move, #chess-board .cell-preview-attack", els => els.length);
-            console.log(`-> Số ô xem trước nước đi khi rê chuột lên hàng chờ: ${previewCellsCount} (Mong muốn: > 0)`);
-            await page.screenshot({ path: path.join(screenshotDir, "test_hover_preview.png") });
-            console.log("📸 Đã chụp test_hover_preview.png");
+            const benchTooltipVisible = await page.$eval("#piece-movement-tooltip", el => !el.classList.contains("hidden")).catch(() => false);
+            const boardFakePreviewCount = await page.$$eval("#chess-board .cell-preview-move, #chess-board .cell-preview-attack", els => els.length);
+            console.log(`-> Tooltip Mini Grid 5x5 khi hover Hàng Chờ: ${benchTooltipVisible ? "HIỂN THỊ ✅" : "CHƯA HIỆN ❌"}`);
+            console.log(`-> Số ô bị tô màu giả định trên sàn đấu khi hover Hàng Chờ: ${boardFakePreviewCount} (Mong muốn: 0)`);
+            await page.screenshot({ path: path.join(screenshotDir, "test_bench_hover_tooltip.png") });
+        }
+
+        // Test board piece hover (quân đã đặt trên sàn đấu thực tế)
+        const boardPiece = await page.$("#chess-board .chess-piece");
+        if (boardPiece) {
+            await boardPiece.hover();
+            await page.waitForTimeout(300);
+            const boardPreviewCount = await page.$$eval("#chess-board .cell-preview-move, #chess-board .cell-preview-attack", els => els.length);
+            console.log(`-> Số ô tầm đánh/nước đi khi hover quân ĐÃ TRÊN SÀN ĐẤU: ${boardPreviewCount} (Mong muốn: > 0)`);
+            await page.screenshot({ path: path.join(screenshotDir, "test_board_piece_hover.png") });
         }
 
         // 7. Test Hover Piece Range in Combat Phase

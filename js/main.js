@@ -2094,8 +2094,9 @@ class ChessTFTApp {
         return grid;
     }
 
-    highlightPieceMovementPreview(pieceId, centerR = null, centerC = null) {
+    highlightPieceMovementPreview(pieceId, centerR, centerC) {
         this.clearMovementPreview();
+        if (!Number.isInteger(centerR) || !Number.isInteger(centerC)) return;
         const boardEl = document.getElementById("chess-board");
         if (!boardEl) return;
 
@@ -2103,9 +2104,8 @@ class ChessTFTApp {
         const totalRows = cfg.rows;
         const totalCols = cfg.cols;
 
-        // Default position for bench previews: center of player's front deploy row
-        const r0 = Number.isInteger(centerR) ? centerR : (totalRows - cfg.deployRows);
-        const c0 = Number.isInteger(centerC) ? centerC : Math.floor(totalCols / 2);
+        const r0 = centerR;
+        const c0 = centerC;
 
         const grid = this.getPieceMovementGrid(pieceId);
         // grid is 5x5, center is (2,2)
@@ -5260,6 +5260,108 @@ class ChessTFTApp {
         if (tipEl) tipEl.classList.add("hidden");
     }
 
+    showPieceMovementTooltip(pieceId, evt) {
+        const def = window.CHESS_TFT_DATA.PIECES[pieceId];
+        if (!def) return;
+
+        const tipEl = document.getElementById("piece-movement-tooltip");
+        if (!tipEl) return;
+
+        const grid = this.getPieceMovementGrid(pieceId);
+        let cellsHtml = "";
+        let hasMove = false;
+        let hasAttack = false;
+        let hasJump = false;
+        let hasPawnAtk = false;
+        let hasCannon = false;
+
+        for (let r = 0; r < 5; r++) {
+            for (let c = 0; c < 5; c++) {
+                const cellType = grid[r][c];
+                const isLight = (r + c) % 2 === 0;
+                let cellClass = `pmt-cell ${isLight ? "cell-light" : "cell-dark"}`;
+                let cellContent = "";
+
+                if (cellType === "center") {
+                    cellClass += " cell-center";
+                    cellContent = "♟️";
+                } else if (cellType === "move") {
+                    cellClass += " cell-move";
+                    cellContent = "•";
+                    hasMove = true;
+                } else if (cellType === "attack") {
+                    cellClass += " cell-attack";
+                    cellContent = "🎯";
+                    hasAttack = true;
+                } else if (cellType === "jump") {
+                    cellClass += " cell-jump";
+                    cellContent = "⚡";
+                    hasJump = true;
+                } else if (cellType === "pawn-atk") {
+                    cellClass += " cell-pawn-atk";
+                    cellContent = "⚔️";
+                    hasPawnAtk = true;
+                } else if (cellType === "cannon") {
+                    cellClass += " cell-cannon";
+                    cellContent = "💣";
+                    hasCannon = true;
+                }
+
+                cellsHtml += `<div class="${cellClass}">${cellContent}</div>`;
+            }
+        }
+
+        tipEl.innerHTML = `
+            <div class="pmt-header">
+                <div class="pmt-icon">${def.icon}</div>
+                <div>
+                    <div class="pmt-title">${def.name}</div>
+                    <div class="pmt-sub">🎯 Tầm: ${def.range[0]} ô • 🛡️ ${def.baseHp[0]} HP</div>
+                </div>
+            </div>
+            <div class="pmt-board-wrap">
+                <div class="pmt-mini-board">${cellsHtml}</div>
+            </div>
+            <div class="pmt-legend">
+                <div class="pmt-legend-item"><span style="color:#38bdf8;">♟️</span> Quân cờ</div>
+                ${hasMove ? '<div class="pmt-legend-item"><span style="color:#22c55e;">🟢</span> Đi</div>' : ''}
+                ${hasAttack ? '<div class="pmt-legend-item"><span style="color:#c084fc;">🎯</span> Tầm bắn</div>' : ''}
+                ${hasJump ? '<div class="pmt-legend-item"><span style="color:#fbbf24;">⚡</span> Nhảy</div>' : ''}
+                ${hasPawnAtk ? '<div class="pmt-legend-item"><span style="color:#ef4444;">⚔️</span> Ăn chéo</div>' : ''}
+                ${hasCannon ? '<div class="pmt-legend-item"><span style="color:#f97316;">💣</span> Pháo</div>' : ''}
+            </div>
+        `;
+
+        tipEl.classList.remove("hidden");
+        this.movePieceMovementTooltip(evt);
+    }
+
+    movePieceMovementTooltip(evt) {
+        if (!evt) return;
+        const tipEl = document.getElementById("piece-movement-tooltip");
+        if (!tipEl || tipEl.classList.contains("hidden")) return;
+
+        const pad = 14;
+        let x = evt.clientX + pad;
+        let y = evt.clientY + pad;
+
+        const rect = tipEl.getBoundingClientRect();
+        if (x + rect.width > window.innerWidth - 10) {
+            x = Math.max(10, evt.clientX - rect.width - pad);
+        }
+        if (y + rect.height > window.innerHeight - 10) {
+            y = Math.max(10, window.innerHeight - rect.height - 10);
+        }
+
+        tipEl.style.left = `${x}px`;
+        tipEl.style.top = `${y}px`;
+    }
+
+    hidePieceMovementTooltip() {
+        const tipEl = document.getElementById("piece-movement-tooltip");
+        if (tipEl) tipEl.classList.add("hidden");
+    }
+
     // ========================================================================
     // RENDER CHESS BOARD (PREP, BLIND-MAP SCOUTING & LIVE BLITZ COMBAT)
     // ========================================================================
@@ -5760,20 +5862,28 @@ class ChessTFTApp {
                 slotEl.innerHTML = `<span class="bench-empty-label">Hàng chờ ${i + 1}</span>`;
             }
 
-            slotEl.addEventListener("mouseenter", () => {
+            slotEl.addEventListener("mouseenter", (e) => {
                 if (unit) {
                     this.hoveredUnit = { type: "bench", unit, slotIndex: i, uid: unit.uid };
                     slotEl.classList.add("bench-hover-target");
-                    this.highlightPieceMovementPreview(unit.id);
+                    this.clearMovementPreview();
+                    this.showPieceMovementTooltip(unit.id, e);
                 } else {
                     this.hoveredBenchSlot = i;
                     this.hoveredUnit = null;
                     this.clearMovementPreview();
+                    this.hidePieceMovementTooltip();
+                }
+            });
+            slotEl.addEventListener("mousemove", (e) => {
+                if (unit) {
+                    this.movePieceMovementTooltip(e);
                 }
             });
             slotEl.addEventListener("mouseleave", () => {
                 slotEl.classList.remove("bench-hover-target");
                 this.clearMovementPreview();
+                this.hidePieceMovementTooltip();
                 if (this.hoveredUnit && this.hoveredUnit.uid === (unit && unit.uid)) {
                     this.hoveredUnit = null;
                 }
@@ -5961,13 +6071,30 @@ class ChessTFTApp {
             // Attach Synergy Tooltip when hovering trait pills inside Shop cards
             card.querySelectorAll(".shop-trait-pill").forEach(pill => {
                 const tId = pill.getAttribute("data-trait-id");
-                pill.addEventListener("mouseenter", (e) => this.showSynergyTooltip(tId, e, this.tft.player));
+                pill.addEventListener("mouseenter", (e) => {
+                    this.hidePieceMovementTooltip();
+                    this.showSynergyTooltip(tId, e, this.tft.player);
+                });
                 pill.addEventListener("mousemove", (e) => this.moveSynergyTooltip(e));
                 pill.addEventListener("mouseleave", () => this.hideSynergyTooltip());
             });
 
+            card.addEventListener("mouseenter", (e) => {
+                // Don't show piece tooltip if currently hovering synergy pill or guide button
+                if (e.target.closest(".shop-trait-pill") || e.target.closest(".shop-guide-btn")) return;
+                this.showPieceMovementTooltip(def.id, e);
+            });
+            card.addEventListener("mousemove", (e) => {
+                if (!document.getElementById("synergy-tooltip")?.classList.contains("hidden")) return;
+                this.movePieceMovementTooltip(e);
+            });
+            card.addEventListener("mouseleave", () => {
+                this.hidePieceMovementTooltip();
+            });
+
             card.addEventListener("click", () => {
                 this.hideSynergyTooltip();
+                this.hidePieceMovementTooltip();
                 const res = this.tft.buyShopUnit(slot.slotIndex);
                 if (res.ok) {
                     if (res.merged) {

@@ -4596,6 +4596,135 @@ button {
     font-weight: 700;
 }
 
+/* ========================================================================
+   FLOATING PIECE MOVEMENT MINI-GRID TOOLTIP (HÀNG CHỜ & CỬA HÀNG)
+   ======================================================================== */
+.piece-movement-tooltip {
+    position: fixed;
+    z-index: 9999;
+    background: rgba(11, 19, 38, 0.96);
+    border: 1px solid rgba(56, 189, 248, 0.45);
+    border-radius: 12px;
+    padding: 10px 12px;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.75), 0 0 16px rgba(56, 189, 248, 0.2);
+    pointer-events: none;
+    backdrop-filter: blur(8px);
+    width: 200px;
+    transition: opacity 0.12s ease;
+    animation: fadeInTooltip 0.15s ease-out;
+}
+
+.piece-movement-tooltip.hidden {
+    display: none !important;
+}
+
+.pmt-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pmt-icon {
+    font-size: 1.3rem;
+    line-height: 1;
+}
+
+.pmt-title {
+    font-weight: 800;
+    font-size: 0.82rem;
+    color: #f8fafc;
+}
+
+.pmt-sub {
+    font-size: 0.68rem;
+    color: #94a3b8;
+}
+
+.pmt-board-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 6px;
+}
+
+.pmt-mini-board {
+    display: grid;
+    grid-template-columns: repeat(5, 26px);
+    grid-template-rows: repeat(5, 26px);
+    gap: 2px;
+    background: #030712;
+    padding: 3px;
+    border-radius: 6px;
+    border: 1.5px solid #334155;
+    user-select: none;
+}
+
+.pmt-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    border-radius: 3px;
+    background: #0f172a;
+}
+
+.pmt-cell.cell-light {
+    background: #1e293b;
+}
+
+.pmt-cell.cell-center {
+    background: rgba(56, 189, 248, 0.45) !important;
+    border: 1.5px solid #38bdf8;
+    box-shadow: 0 0 6px rgba(56, 189, 248, 0.6);
+}
+
+.pmt-cell.cell-move {
+    background: rgba(34, 197, 94, 0.35) !important;
+    border: 1px solid #22c55e;
+    color: #4ade80;
+}
+
+.pmt-cell.cell-attack {
+    background: rgba(192, 132, 252, 0.38) !important;
+    border: 1px solid #c084fc;
+    color: #e879f9;
+}
+
+.pmt-cell.cell-jump {
+    background: rgba(251, 191, 36, 0.35) !important;
+    border: 1px solid #fbbf24;
+    color: #fde047;
+}
+
+.pmt-cell.cell-pawn-atk {
+    background: rgba(239, 68, 68, 0.38) !important;
+    border: 1px solid #ef4444;
+    color: #f87171;
+}
+
+.pmt-cell.cell-cannon {
+    background: rgba(249, 115, 22, 0.38) !important;
+    border: 1px solid #f97316;
+    color: #fdba74;
+}
+
+.pmt-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    font-size: 0.64rem;
+    color: #94a3b8;
+    line-height: 1.3;
+}
+
+.pmt-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
 /* 5x5 BOARD VISUALIZER */
 .guide-board-wrap {
     display: flex;
