@@ -20,15 +20,19 @@ class SoundFX {
                 name: "Clair Obscur: Expedition 33",
                 tracks: {
                     title: "assets/audio/expedition33_lumiere.webm",
-                    lobby: "assets/audio/expedition33_beneath_the_blue_tree.webm",
-                    prep: "assets/audio/expedition33_monoco.webm",
+                    lobby: "assets/audio/expedition33_lumiere.webm",
+                    prep: "assets/audio/expedition33_yellow_forest.webm",
+                    prep_bot: "assets/audio/expedition33_monoco.webm",
+                    combat_early: "assets/audio/expedition33_beneath_the_blue_tree.webm",
                     combat: "assets/audio/expedition33_clea.webm",
                     combat_climax: "assets/audio/expedition33_combat_climax.webm"
                 },
                 names: {
                     title: "Lumière (Expedition 33)",
-                    lobby: "Spring Meadows - Beneath the Blue Tree",
-                    prep: "Monoco (Expedition 33)",
+                    lobby: "Lumière (Expedition 33)",
+                    prep: "Yellow Forest - Number the Hours",
+                    prep_bot: "Monoco (Expedition 33)",
+                    combat_early: "Spring Meadows - Beneath the Blue Tree",
                     combat: "The Manor - Clea!",
                     combat_climax: "Forgotten Battlefield - Divided Swords"
                 }
@@ -39,6 +43,8 @@ class SoundFX {
                     title: "assets/audio/lobby_theme.mp3",
                     lobby: "assets/audio/lobby_theme.mp3",
                     prep: "assets/audio/lobby_theme.mp3",
+                    prep_bot: "assets/audio/lobby_theme.mp3",
+                    combat_early: "assets/audio/combat_theme.ogg",
                     combat: "assets/audio/combat_theme.ogg",
                     combat_climax: "assets/audio/combat_theme.ogg"
                 },
@@ -46,6 +52,8 @@ class SoundFX {
                     title: "Classic Lobby Theme",
                     lobby: "Classic Lobby Theme",
                     prep: "Classic Lobby Theme",
+                    prep_bot: "Classic Lobby Theme",
+                    combat_early: "Classic Combat Blitz",
                     combat: "Classic Combat Blitz",
                     combat_climax: "Classic Combat Blitz"
                 }
@@ -107,8 +115,10 @@ class SoundFX {
         const pack = this.activePack;
         let targetSrc = pack.tracks[trackName];
         if (!targetSrc) {
-            if (trackName === "title" || trackName === "prep") targetSrc = pack.tracks.lobby;
-            else if (trackName === "combat_climax") targetSrc = pack.tracks.combat;
+            if (trackName === "title" || trackName === "lobby") targetSrc = pack.tracks.lobby || pack.tracks.title;
+            else if (trackName === "prep_bot" || trackName === "prep_augment") targetSrc = pack.tracks.prep_bot || pack.tracks.prep;
+            else if (trackName === "prep") targetSrc = pack.tracks.prep || pack.tracks.lobby;
+            else if (trackName === "combat_early" || trackName === "combat_mid" || trackName === "combat_climax") targetSrc = pack.tracks.combat;
             else return;
         }
 
@@ -323,18 +333,61 @@ class ChessTFTApp {
             this.sfx.playBgm("lobby");
         } else if (screenName === "game") {
             if (this.tft && this.tft.phase === "combat") {
-                const stage = this.tft.stage || 1;
-                const playerHp = this.tft?.player?.hp ?? 100;
-                const oppHp = this.tft?.currentOpponent?.hp ?? 100;
-                const isClimax = stage >= 3 || playerHp <= 25 || oppHp <= 25;
-                this.sfx.playBgm(isClimax ? "combat_climax" : "combat");
+                this.playCombatBgm();
             } else {
-                this.sfx.playBgm("prep");
+                this.playPrepBgm();
             }
         }
 
         if (pushToHistory && window.history && window.history.pushState) {
             window.history.pushState({ screen: screenName, tab: this.currentLobbyTab || "play" }, "");
+        }
+    }
+
+    playCombatBgm() {
+        if (!this.sfx) return;
+        const stage = this.tft ? (this.tft.stage || 1) : 1;
+        const playerHp = this.tft?.player?.hp ?? 100;
+        const oppHp = this.tft?.currentOpponent?.hp ?? 100;
+        const roundInStage = this.tft?.roundInStage || 1;
+
+        // Cao trào combat giữ nguyên: Máu sinh tử <= 25 HP hoặc vòng quyết chiến 4-4/4-5
+        const isClimax = (playerHp <= 25 || oppHp <= 25 || (stage >= 4 && roundInStage >= 4));
+
+        if (isClimax) {
+            this.sfx.playBgm("combat_climax");
+        } else if (stage <= 2) {
+            // Giao tranh đầu game (Stage 1 & 2): Spring Meadows - Beneath the Blue Tree
+            this.sfx.playBgm("combat_early");
+        } else {
+            // Giao tranh giữa và cuối game (Stage 3+): The Manor - Clea!
+            this.sfx.playBgm("combat");
+        }
+    }
+
+    playPrepBgm() {
+        if (!this.sfx) return;
+        if (!this.tft) {
+            this.sfx.playBgm("prep");
+            return;
+        }
+        const stage = this.tft.stage || 1;
+        const isAugment = (this.tft.phase === "augment");
+
+        // Kiểm tra round đánh bot:
+        // - Stage 1 là vòng khởi đầu / đánh quái bot / PVE
+        // - Hoặc ván solo vs bot (chưa có người chơi thật nào khác)
+        // - Hoặc đối thủ hiện tại/sắp tới là AI bot
+        const isSolo = !this.isMultiplayerWithOtherHumans();
+        const curOpp = this.tft.currentOpponent;
+        const isFacingBot = isSolo || stage === 1 || (curOpp && (curOpp.isBot || (curOpp.id && curOpp.id.startsWith("bot_"))));
+
+        if (isAugment || isFacingBot) {
+            // Monoco ở giai đoạn chuẩn bị round đánh bot hoặc chọn lõi
+            this.sfx.playBgm("prep_bot");
+        } else {
+            // Giai đoạn chuẩn bị PvP người thật (Stage 2+)
+            this.sfx.playBgm("prep");
         }
     }
 
@@ -5152,11 +5205,7 @@ class ChessTFTApp {
     // ========================================================================
     startBlitzCombat() {
         this.clearPrepCountdown();
-        const stage = this.tft ? (this.tft.stage || 1) : 1;
-        const playerHp = this.tft?.player?.hp ?? 100;
-        const oppHp = this.tft?.currentOpponent?.hp ?? 100;
-        const isClimax = stage >= 3 || playerHp <= 25 || oppHp <= 25;
-        this.sfx.playBgm(isClimax ? "combat_climax" : "combat");
+        this.playCombatBgm();
         this.selectedPrepUnitUid = null;
         this.selectedItemIndex = null;
         this.selectedCombatSquare = null;
@@ -5329,7 +5378,7 @@ class ChessTFTApp {
 
     finishBlitzCombat() {
         this.stopCombatTimers();
-        this.sfx.playBgm("prep");
+        this.playPrepBgm();
         if (!this.chess || !this.chess.result) return;
 
         const res = this.chess.result;
@@ -5550,6 +5599,7 @@ class ChessTFTApp {
     }
 
     openAugmentModal() {
+        this.sfx.playBgm("prep_bot");
         const modal = document.getElementById("modal-augment");
         const container = document.getElementById("augment-choices");
         container.innerHTML = "";
@@ -5669,7 +5719,7 @@ class ChessTFTApp {
     // ========================================================================
     startPrepCountdown() {
         this.clearPrepCountdown();
-        this.sfx.playBgm("prep");
+        this.playPrepBgm();
         this.prepSecondsLeft = 18; // 18s chuẩn bị nhanh gọn chuẩn TFT
         const badge = document.getElementById("prep-timer-badge");
         if (badge) {
