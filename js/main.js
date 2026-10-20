@@ -36,7 +36,8 @@ class SoundFX {
                     title: "assets/audio/expedition33_lumiere.webm",
                     lobby: "assets/audio/expedition33_lumiere.webm",
                     prep: "assets/audio/expedition33_yellow_forest.webm",
-                    prep_bot: "assets/audio/expedition33_monoco.webm",
+                    carousel: "assets/audio/expedition33_monoco.webm",
+                    armory: "assets/audio/expedition33_monoco.webm",
                     combat_early: "assets/audio/expedition33_beneath_the_blue_tree.webm",
                     combat: "assets/audio/expedition33_clea.webm",
                     combat_climax: "assets/audio/expedition33_combat_climax.webm"
@@ -45,7 +46,8 @@ class SoundFX {
                     title: "Lumière (Expedition 33)",
                     lobby: "Lumière (Expedition 33)",
                     prep: "Yellow Forest - Number the Hours",
-                    prep_bot: "Monoco (Expedition 33)",
+                    carousel: "Monoco - Vòng Đi Chợ",
+                    armory: "Monoco - Kho Tiếp Tế",
                     combat_early: "Spring Meadows - Beneath the Blue Tree",
                     combat: "The Manor - Clea!",
                     combat_climax: "Forgotten Battlefield - Divided Swords"
@@ -57,7 +59,8 @@ class SoundFX {
                     title: "assets/audio/lobby_theme.mp3",
                     lobby: "assets/audio/lobby_theme.mp3",
                     prep: "assets/audio/lobby_theme.mp3",
-                    prep_bot: "assets/audio/lobby_theme.mp3",
+                    carousel: "assets/audio/lobby_theme.mp3",
+                    armory: "assets/audio/lobby_theme.mp3",
                     combat_early: "assets/audio/combat_theme.ogg",
                     combat: "assets/audio/combat_theme.ogg",
                     combat_climax: "assets/audio/combat_theme.ogg"
@@ -66,7 +69,8 @@ class SoundFX {
                     title: "Classic Lobby Theme",
                     lobby: "Classic Lobby Theme",
                     prep: "Classic Lobby Theme",
-                    prep_bot: "Classic Lobby Theme",
+                    carousel: "Classic Lobby Theme",
+                    armory: "Classic Lobby Theme",
                     combat_early: "Classic Combat Blitz",
                     combat: "Classic Combat Blitz",
                     combat_climax: "Classic Combat Blitz"
@@ -135,9 +139,9 @@ class SoundFX {
         let targetSrc = pack.tracks[trackName];
         if (!targetSrc) {
             if (trackName === "title" || trackName === "lobby") targetSrc = pack.tracks.lobby || pack.tracks.title;
-            else if (trackName === "prep_bot" || trackName === "prep_augment") targetSrc = pack.tracks.prep_bot || pack.tracks.prep;
-            else if (trackName === "prep") targetSrc = pack.tracks.prep || pack.tracks.lobby;
-            else if (trackName === "combat_early" || trackName === "combat_mid" || trackName === "combat_climax") targetSrc = pack.tracks.combat;
+            else if (trackName === "carousel" || trackName === "armory") targetSrc = pack.tracks.carousel || pack.tracks.armory || pack.tracks.prep;
+            else if (trackName.startsWith("prep")) targetSrc = pack.tracks.prep || pack.tracks.lobby;
+            else if (trackName.startsWith("combat")) targetSrc = pack.tracks.combat;
             else return null;
         }
         return targetSrc;
@@ -508,28 +512,8 @@ class ChessTFTApp {
 
     playPrepBgm() {
         if (!this.sfx) return;
-        if (!this.tft) {
-            this.sfx.playBgm("prep");
-            return;
-        }
-        const stage = this.tft.stage || 1;
-        const isAugment = (this.tft.phase === "augment");
-
-        // Kiểm tra round đánh bot:
-        // - Stage 1 là vòng khởi đầu / đánh quái bot / PVE
-        // - Hoặc ván solo vs bot (chưa có người chơi thật nào khác)
-        // - Hoặc đối thủ hiện tại/sắp tới là AI bot
-        const isSolo = !this.isMultiplayerWithOtherHumans();
-        const curOpp = this.tft.currentOpponent;
-        const isFacingBot = isSolo || stage === 1 || (curOpp && (curOpp.isBot || (curOpp.id && curOpp.id.startsWith("bot_"))));
-
-        if (isAugment || isFacingBot) {
-            // Monoco ở giai đoạn chuẩn bị round đánh bot hoặc chọn lõi
-            this.sfx.playBgm("prep_bot");
-        } else {
-            // Giai đoạn chuẩn bị PvP người thật (Stage 2+)
-            this.sfx.playBgm("prep");
-        }
+        // Giai đoạn chuẩn bị (Shop / Bench / Xếp quân cờ): Yellow Forest - Number the Hours
+        this.sfx.playBgm("prep");
     }
 
     preloadUpcomingCombatTrack() {
@@ -5675,6 +5659,7 @@ class ChessTFTApp {
     }
 
     openStageArmoryModal(choices, newStage) {
+        this.sfx.playBgm("armory");
         const modal = document.getElementById("modal-armory");
         const titleEl = document.getElementById("armory-title");
         const subEl = document.getElementById("armory-sub");
@@ -5751,7 +5736,7 @@ class ChessTFTApp {
     }
 
     openAugmentModal() {
-        this.sfx.playBgm("prep_bot");
+        this.sfx.playBgm("prep");
         const modal = document.getElementById("modal-augment");
         const container = document.getElementById("augment-choices");
         container.innerHTML = "";
@@ -5785,6 +5770,7 @@ class ChessTFTApp {
     }
 
     openCarouselModal() {
+        this.sfx.playBgm("carousel");
         const modal = document.getElementById("modal-carousel");
         const container = document.getElementById("carousel-choices");
         container.innerHTML = "";
@@ -5872,7 +5858,7 @@ class ChessTFTApp {
     startPrepCountdown() {
         this.clearPrepCountdown();
         this.playPrepBgm();
-        this.prepSecondsLeft = 18; // 18s chuẩn bị nhanh gọn chuẩn TFT
+        this.prepSecondsLeft = 30; // 30s chuẩn thời gian chuẩn bị TFT
         const badge = document.getElementById("prep-timer-badge");
         if (badge) {
             badge.classList.remove("hidden");
@@ -5918,7 +5904,7 @@ class ChessTFTApp {
 
     startAugmentCountdown() {
         this.clearAugmentCountdown();
-        this.augmentSecondsLeft = 12; // 12s chọn Lõi nhanh
+        this.augmentSecondsLeft = 15; // 15s chọn Lõi chuẩn TFT
         const timerEl = document.getElementById("augment-timer");
         if (timerEl) timerEl.textContent = `⏳ Tự động chọn sau: ${this.augmentSecondsLeft}s`;
 
@@ -5951,7 +5937,7 @@ class ChessTFTApp {
 
     startCarouselCountdown() {
         this.clearCarouselCountdown();
-        this.carouselSecondsLeft = 10; // 10s Đi Chợ nhanh
+        this.carouselSecondsLeft = 12; // 12s Đi Chợ chuẩn TFT
         const timerEl = document.getElementById("carousel-timer");
         if (timerEl) timerEl.textContent = `⏳ Tự động nhặt sau: ${this.carouselSecondsLeft}s`;
 
