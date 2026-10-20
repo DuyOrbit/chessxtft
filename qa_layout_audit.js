@@ -19,6 +19,9 @@ const fs = require('fs');
     const screenshotDir = path.join(__dirname, "qa_screenshots");
     if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir, { recursive: true });
 
+    page.on('console', msg => console.log(`  [BROWSER ${msg.type()}]:`, msg.text()));
+    page.on('pageerror', err => console.log(`  [PAGE ERROR STACK]:`, err.stack || err.message));
+
     try {
         await page.goto("http://localhost:3000/", { waitUntil: "networkidle" });
 
@@ -32,9 +35,12 @@ const fs = require('fs');
             await page.waitForTimeout(1000);
         }
 
-        // Vào trận SOLO
         console.log("-> Bấm 'Vào Trận Ngay' (#btn-quick-solo)...");
-        await page.click("#btn-quick-solo");
+        await page.evaluate(() => {
+            const btn = document.getElementById("btn-quick-solo");
+            if (btn) btn.click();
+        });
+        await page.waitForSelector("#screen-game:not(.hidden)", { timeout: 10000 });
         await page.waitForTimeout(1500);
 
         // Chụp màn hình Stage 1 Prep

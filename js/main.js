@@ -2080,8 +2080,8 @@ class ChessTFTApp {
         this.tft.resetGame(this.currentUser, roomData);
         this.chess = null;
         this.selectedPrepUnitUid = null;
-        this.selectedItemIndex = null;
-        document.getElementById("game-room-badge").textContent = roomData ? `Phòng: #${roomData.code}` : "Chế độ: Đấu Đơn";
+        const roomBadge = document.getElementById("game-room-badge");
+        if (roomBadge) roomBadge.textContent = roomData ? `Phòng: #${roomData.code}` : "Chế độ: Đấu Đơn";
         this.showScreen("game");
         this.renderAll();
         this.syncMyStateToRoom();
@@ -5433,16 +5433,18 @@ class ChessTFTApp {
 
         // 4. Combat Move Log
         const logEl = document.getElementById("combat-log");
-        logEl.innerHTML = "";
-        if (!this.chess || this.chess.moveHistory.length === 0) {
-            logEl.innerHTML = `<div class="empty-hint">Nhật ký nước đi Cờ Chớp sẽ hiển thị tại đây.</div>`;
-        } else {
-            const recent = this.chess.moveHistory.slice(-10).reverse();
-            for (const entry of recent) {
-                const row = document.createElement("div");
-                row.className = `log-row log-${entry.side}`;
-                row.textContent = `[Lượt ${entry.turn}] ${entry.text}`;
-                logEl.appendChild(row);
+        if (logEl) {
+            logEl.innerHTML = "";
+            if (!this.chess || this.chess.moveHistory.length === 0) {
+                logEl.innerHTML = `<div class="empty-hint">Nhật ký nước đi Cờ Chớp sẽ hiển thị tại đây.</div>`;
+            } else {
+                const recent = this.chess.moveHistory.slice(-10).reverse();
+                for (const entry of recent) {
+                    const row = document.createElement("div");
+                    row.className = `log-row log-${entry.side}`;
+                    row.textContent = `[Lượt ${entry.turn}] ${entry.text}`;
+                    logEl.appendChild(row);
+                }
             }
         }
     }

@@ -5938,3 +5938,301 @@ button {
     }
 }
 
+/* ============================================================================
+   CUSTOM IN-GAME HUD THEO ĐÚNG SƠ ĐỒ BẢN VẼ PHÁC THẢO (USER SPECIFIED LAYOUT)
+   ============================================================================ */
+
+/* 1. TOP BAR: GIAI ĐOẠN BAO NHIÊU Ở CHÍNH GIỮA ĐỈNH */
+.custom-hud-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    position: relative !important;
+    padding: 4px 16px !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    background: rgba(10, 15, 26, 0.95) !important;
+    border-bottom: 2px solid rgba(245, 158, 11, 0.4) !important;
+}
+
+.hud-center-stage-indicator {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(15, 23, 42, 0.88);
+    border: 2px solid #f59e0b;
+    border-radius: 8px;
+    padding: 3px 18px;
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.25);
+}
+
+.stage-giant-badge {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 900;
+    color: #fbbf24;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.inline-tracker {
+    display: flex !important;
+    gap: 4px !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* 2. CỘT TRÁI: DỌC TRANG BỊ (TRÁI) + TỘC / HỆ A, B, C (PHẢI) */
+.custom-hud-left {
+    display: grid !important;
+    grid-template-columns: 68px 1fr !important;
+    gap: 6px !important;
+    background: rgba(15, 23, 42, 0.75) !important;
+    border: 1px solid rgba(51, 65, 85, 0.6) !important;
+    border-radius: 8px !important;
+    padding: 6px !important;
+    overflow: hidden !important;
+}
+
+.hud-items-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    padding-right: 4px;
+}
+
+.hud-column-title {
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: #fbbf24;
+    text-align: center;
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+}
+
+.hud-item-slots-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    align-items: center;
+    overflow-y: auto;
+}
+
+.hud-item-slots-vertical .inv-slot-compact {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    border: 2px solid #f59e0b !important;
+    border-radius: 6px !important;
+    background: rgba(15, 23, 42, 0.9) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 1.3rem !important;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.2);
+    transition: transform 0.15s ease;
+}
+
+.hud-item-slots-vertical .inv-slot-compact:hover {
+    transform: scale(1.1);
+    border-color: #fde047 !important;
+    box-shadow: 0 0 14px rgba(253, 224, 71, 0.5) !important;
+}
+
+.hud-synergies-column {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+    padding-left: 2px;
+}
+
+.hud-synergies-column .synergy-item {
+    padding: 3px 6px !important;
+    border-radius: 6px !important;
+}
+
+.hud-aug-wrapper {
+    margin-top: auto;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 4px;
+}
+
+/* 3. CỘT PHẢI: NGƯỜI CHƠI A, B, C, D... KÈM MÁU + ĐỒNG HỒ CỜ CHỚP */
+.custom-hud-right {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    overflow: hidden !important;
+}
+
+.custom-leaderboard-box {
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    padding: 6px 8px !important;
+}
+
+.custom-leaderboard-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 3px !important;
+    overflow-y: auto !important;
+}
+
+.custom-leaderboard-list .leader-row {
+    padding: 3px 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+
+.custom-leaderboard-list .leader-top {
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+
+.custom-leaderboard-list .leader-hp-num {
+    font-size: 0.95rem !important;
+    font-weight: 900 !important;
+    color: #ef4444 !important;
+    text-shadow: 0 0 6px rgba(239, 68, 68, 0.5) !important;
+    margin-left: auto !important;
+}
+
+.custom-clocks-box {
+    flex: 0 0 auto !important;
+    padding: 4px 6px !important;
+}
+
+.custom-inspect-box {
+    flex: 0 0 auto !important;
+    max-height: 85px !important;
+    overflow: hidden !important;
+    padding: 4px 6px !important;
+}
+
+/* 4. CỤM HUD DƯỚI ĐÁY BÀN CỜ THEO SƠ ĐỒ */
+.custom-hud-bottom {
+    background: rgba(11, 17, 32, 0.96) !important;
+    border: 2px solid #2e3d5e !important;
+    border-radius: 10px !important;
+    padding: 4px 8px !important;
+    gap: 4px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* THANH PHỤ TRÊN SHOP: TỈ LỆ ROLL | TIỀN | CHUỖI | KHÓA SHOP */
+.hud-shop-top-strip {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    padding: 3px 8px !important;
+    background: rgba(15, 23, 42, 0.8) !important;
+    border-radius: 6px !important;
+    border: 1px solid rgba(56, 189, 248, 0.25) !important;
+}
+
+.hud-strip-box {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
+.strip-label {
+    color: #94a3b8;
+    font-size: 0.7rem;
+    font-weight: 800;
+}
+
+.hud-strip-gold {
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    border-radius: 6px;
+    padding: 2px 10px;
+}
+
+.hud-strip-streak {
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-radius: 6px;
+    padding: 2px 8px;
+}
+
+.hud-strip-lock {
+    padding: 3px 12px !important;
+    border-radius: 6px !important;
+    background: rgba(245, 158, 11, 0.15) !important;
+    border: 1px solid #f59e0b !important;
+    color: #fbbf24 !important;
+    cursor: pointer;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    font-size: 0.74rem !important;
+    font-weight: 800 !important;
+}
+
+.hud-strip-lock:hover {
+    background: rgba(245, 158, 11, 0.3) !important;
+    transform: scale(1.02);
+}
+
+/* KHUNG CHÍNH SHOP: [LEVEL + MUA XP + ROLL] (TRÁI) | 5 Ô CỜ (GIỮA) | VÀO TRẬN (PHẢI) */
+.hud-shop-main-row {
+    display: grid !important;
+    grid-template-columns: 125px 1fr 100px !important;
+    gap: 8px !important;
+    align-items: center !important;
+}
+
+.hud-left-actions-block {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.hud-btn-full {
+    width: 100% !important;
+    padding: 3px 6px !important;
+    border-radius: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    font-size: 0.72rem !important;
+}
+
+.custom-shop-cards {
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 6px !important;
+}
+
+.hud-btn-combat-ready {
+    height: 100% !important;
+    min-height: 82px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-weight: 900 !important;
+    font-size: 0.85rem !important;
+    border-radius: 8px !important;
+    letter-spacing: 0.5px !important;
+}
+

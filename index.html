@@ -388,36 +388,35 @@
          SCREEN 3: MÀN HÌNH TRẬN ĐẤU CHESS TFT (IN-GAME SCREEN)
          ==================================================================== -->
     <div id="screen-game" class="hidden">
-        <!-- TOP BAR -->
-        <header class="top-bar">
+        <!-- TOP BAR: GIAI ĐOẠN BAO NHIÊU (STAGE - ROUND & PHASE TRACKER Ở GIỮA) -->
+        <header class="top-bar custom-hud-header">
             <div class="brand-wrap">
                 <span class="brand-title">♟️ CHESS TFT</span>
                 <span id="game-mode-badge" class="badge-pill badge-mode">🤖 ĐẤU BOT AI</span>
-                <span id="stage-round-badge" class="badge-pill">Vòng 1-1</span>
-                <span id="board-size-badge" class="badge-pill">📐 Bàn cờ: Mini 5x6</span>
-                <span id="game-room-badge" class="badge-pill">Phòng: SOLO</span>
+                <span id="board-size-badge" class="badge-pill">📐 Mini 5x6</span>
             </div>
 
-            <div style="display:flex; align-items:center; gap:8px;">
-                <div id="phase-banner" class="phase-banner phase-prep">
-                    🛠️ GIAI ĐOẠN CHUẨN BỊ
-                </div>
-                <span id="prep-timer-badge" class="badge-pill prep-timer-badge" title="Thời gian chuẩn bị còn lại - Hết giờ sẽ tự động bắt đầu giao tranh!">⏳ 18s</span>
+            <!-- KHỐI GIỮA ĐỈNH: GIAI ĐOẠN BAO NHIÊU (STAGE - ROUND CHÍNH GIỮA THEO SƠ ĐỒ) -->
+            <div class="hud-center-stage-indicator">
+                <div id="stage-round-badge" class="stage-giant-badge">GIAI ĐOẠN 1-1</div>
+                <div id="stage-round-tracker" class="stage-round-tracker inline-tracker"></div>
+                <span id="prep-timer-badge" class="badge-pill prep-timer-badge">⏳ 30s</span>
             </div>
+            <div id="phase-banner" class="hidden"></div>
 
             <div class="player-stats-bar">
-                <span id="player-hp" class="stat-chip stat-hp">100 HP</span>
-                <span id="player-gold" class="stat-chip stat-gold">6 🪙</span>
-                <span id="player-level" class="stat-chip stat-level">Cấp 3 (0/2 XP)</span>
-                <span id="player-unit-cap" class="stat-chip stat-cap">Quân: 2/3 (+1 Vua)</span>
-                <span id="player-streak" class="stat-chip">⚖️ Chuỗi: 0</span>
-                <span id="fortune-chest-badge" class="stat-chip stat-fortune hidden" title="Rương Nổ Hũ Đạo Tặc - Thua chuỗi tích điểm, thắng nổ hũ khủng!">🎰 Rương: 0đ (Chuỗi 0)</span>
-                <button id="btn-toggle-bgm-game" class="btn-audio-pill" style="margin:0; padding:5px 10px; font-size:0.75rem;" title="Bật/Tắt Nhạc Nền">🎵 Nhạc: BẬT</button>
-                <button id="btn-sound-pack-game" class="btn-audio-pill btn-sound-pack-pill" style="margin:0; padding:5px 10px; font-size:0.75rem;" title="Chuyển Đổi Gói Nhạc: Expedition 33 ↔ Cổ Điển">🎼 E33</button>
-                <button id="btn-piece-guide-modal" class="btn-primary" style="margin:0; padding:5px 12px; font-size:0.75rem; background:linear-gradient(135deg, #0ea5e9, #2563eb); font-weight:800; border:1px solid #38bdf8;">♟️ Hướng Dẫn Tướng</button>
-                <button id="btn-rules-modal" class="btn-secondary">📖 Luật & Điểm</button>
-                <button id="btn-surrender-game" class="btn-danger" style="margin:0; padding:5px 10px; font-size:0.75rem;">🏳️ Đầu Hàng</button>
-                <button id="btn-back-lobby" class="btn-game btn-game-gold" style="margin:0; padding:3px 10px; font-size:0.74rem; font-weight:800;">⬅️ Quay Về Sảnh</button>
+                <span id="player-hp" class="hidden">100 HP</span>
+                <span id="player-gold" class="hidden">6 🪙</span>
+                <span id="player-level" class="hidden">Cấp 3</span>
+                <span id="player-unit-cap" class="hidden">Quân: 0/0</span>
+                <span id="player-streak" class="hidden">Chuỗi: 0</span>
+                <button id="btn-rules-modal" class="hidden"></button>
+                <button id="btn-close-rules" class="hidden"></button>
+                <span id="fortune-chest-badge" class="stat-chip stat-fortune hidden">🎰 0đ</span>
+                <button id="btn-toggle-bgm-game" class="btn-audio-pill" title="Bật/Tắt Nhạc Nền">🎵 Nhạc</button>
+                <button id="btn-piece-guide-modal" class="btn-primary" style="padding:4px 10px; font-size:0.75rem;">♟️ Tra Tướng</button>
+                <button id="btn-surrender-game" class="btn-danger" style="margin:0; padding:4px 8px; font-size:0.74rem;">🏳️ Đầu Hàng</button>
+                <button id="btn-back-lobby" class="btn-game btn-game-gold" style="margin:0; padding:3px 8px; font-size:0.74rem;">⬅️ Sảnh</button>
             </div>
         </header>
 
@@ -440,9 +439,6 @@
             </div>
         </div>
 
-        <!-- TFT STAGE ROUND PROGRESSION TRACKER BAR -->
-        <div id="stage-round-tracker" class="stage-round-tracker"></div>
-
         <!-- WAITING FOR OTHER BOARDS TO FINISH (ĐỒNG BỘ VÒNG ĐẤU) -->
         <div id="banner-waiting-sync" class="waiting-sync-banner hidden">
             <div class="sync-spinner"></div>
@@ -455,7 +451,7 @@
             </div>
         </div>
 
-        <!-- TUTORIAL COACH DIALOGUE BOX (HUẤN LUYỆN VIÊN TÂN THỦ) -->
+        <!-- TUTORIAL COACH DIALOGUE BOX -->
         <div id="tutorial-coach-overlay" class="tutorial-coach-bar hidden">
             <div class="coach-icon">🎓</div>
             <div class="coach-content">
@@ -473,34 +469,28 @@
             </div>
         </div>
 
-        <!-- MAIN 3-COLUMN WORKSPACE (CHUẨN BỐ CỤC TFT) -->
+        <!-- MAIN 3-COLUMN WORKSPACE THEO ĐÚNG SƠ ĐỒ HUD BẢN VẼ -->
         <main class="main-workspace tft-layout-grid">
-            <!-- LEFT PANEL: TỘC / HỆ & KHAY TRANG BỊ & LÕI (GIỐNG MÈP TRÁI TFT) -->
-            <aside class="side-panel side-panel-left">
-                <div class="panel-box-wrap">
-                    <div class="panel-section-title">
-                        <span>✨ Tộc / Hệ Kích Hoạt</span>
-                    </div>
+            <!-- CỘT TRÁI: DỌC TRANG BỊ (BÊN TRÁI) + TỘC / HỆ A, B, C (BÊN PHẢI) -->
+            <aside class="side-panel side-panel-left custom-hud-left">
+                <!-- CỘT CON 1: DỌC CÁC Ô TRANG BỊ -->
+                <div class="hud-items-column">
+                    <div class="hud-column-title">TRANG BỊ</div>
+                    <div id="item-inventory" class="hud-item-slots-vertical"></div>
+                </div>
+
+                <!-- CỘT CON 2: TỘC / HỆ A, B, C & LÕI CÔNG NGHỆ -->
+                <div class="hud-synergies-column">
+                    <div class="hud-column-title">TỘC / HỆ</div>
                     <div id="synergy-list" class="synergy-list"></div>
-                </div>
-
-                <div class="panel-box-wrap" style="margin-top:auto;">
-                    <div class="panel-section-title">
-                        <span>🎒 Khay Trang Bị (Bấm Để Lắp)</span>
+                    <div class="hud-aug-wrapper">
+                        <div id="augment-list"></div>
                     </div>
-                    <div id="item-inventory"></div>
-                </div>
-
-                <div class="panel-box-wrap" style="margin-top:6px;">
-                    <div class="panel-section-title">
-                        <span>🔮 Lõi Công Nghệ</span>
-                    </div>
-                    <div id="augment-list"></div>
                 </div>
             </aside>
 
-            <!-- CENTER STAGE: BÀN CỜ VỚI WATERMARK SỐ TƯỚNG + HÀNG CHỜ + CỬA HÀNG -->
-            <section class="center-stage">
+            <!-- CỘT GIỮA: BÀN CỜ (TRUNG TÂM) + HÀNG CHỜ + CỬA HÀNG HUD BÊN DƯỚI -->
+            <section class="center-stage custom-hud-center">
                 <div id="scouting-banner" class="scouting-banner hidden">
                     <div class="scouting-banner-left">
                         <span id="scouting-target-name">🕵️ Đang Xem Bàn Cờ Đối Thủ</span>
@@ -519,109 +509,106 @@
                     🚨 <strong>BẠN ĐANG BỊ CHIẾU TƯỚNG!</strong> Di chuyển Vua hoặc chặn đường tấn công kẻo bị bắt Vua!
                 </div>
 
+                <!-- BÀN CỜ ĐEN CHÍNH GIỮA (ĐÚNG SƠ ĐỒ) -->
                 <div class="board-wrapper">
-                    <!-- SỐ TƯỚNG TRÊN SÀN ĐẤU (WATERMARK CHUẨN TFT: 5/5) -->
                     <div id="board-unit-watermark" class="board-unit-watermark">0/0</div>
                     <div id="chess-board" class="chess-board"></div>
                 </div>
 
-                <!-- BENCH (HÀNG CHỜ 8 Ô NẰM NGANG DƯỚI BÀN CỜ) -->
+                <!-- BENCH (HÀNG CHỜ 8 Ô) -->
                 <div class="bench-container">
                     <div id="bench-grid" class="bench-grid"></div>
                 </div>
 
-                <!-- TFT SHOP CONSOLE (TRẢI NGANG DƯỚI ĐÁY BÀN CỜ) -->
-                <div class="shop-container">
-                    <!-- TỶ LỆ RA TƯỚNG THEO TIER & PHÍM TẮT TFT -->
-                    <div id="shop-odds-bar" class="shop-odds-bar">
-                        <div class="odds-list">
-                            <span class="odds-item tier-1" title="Tướng 1 Vàng"><span class="odds-dot" style="background:#94a3b8;"></span> <span id="odds-tier-1">70%</span></span>
-                            <span class="odds-item tier-2" title="Tướng 2 Vàng"><span class="odds-dot" style="background:#22c55e;"></span> <span id="odds-tier-2">25%</span></span>
-                            <span class="odds-item tier-3" title="Tướng 3 Vàng"><span class="odds-dot" style="background:#3b82f6;"></span> <span id="odds-tier-3">5%</span></span>
-                            <span class="odds-item tier-4" title="Tướng 4 Vàng"><span class="odds-dot" style="background:#a855f7;"></span> <span id="odds-tier-4">0%</span></span>
-                            <span class="odds-item tier-5" title="Tướng 5 Vàng"><span class="odds-dot" style="background:#eab308;"></span> <span id="odds-tier-5">0%</span></span>
+                <!-- CỤM HUD DƯỚI ĐÁY: TỈ LỆ ROLL | TIỀN | CHUỖI | KHÓA SHOP + KHUNG LEVEL/EXP/ROLL/SHOP CARDS -->
+                <div class="shop-container custom-hud-bottom">
+                    <!-- THANH PHỤ TRÊN SHOP: TỈ LỆ ROLL --- TIỀN --- CHUỖI THẮNG/THUA --- KHÓA CỬA HÀNG -->
+                    <div class="hud-shop-top-strip">
+                        <div class="hud-strip-box hud-strip-odds">
+                            <span class="strip-label">TỈ LỆ ROLL:</span>
+                            <div class="odds-list">
+                                <span class="odds-item tier-1" title="1 Vàng"><span class="odds-dot" style="background:#94a3b8;"></span> <span id="odds-tier-1">70%</span></span>
+                                <span class="odds-item tier-2" title="2 Vàng"><span class="odds-dot" style="background:#22c55e;"></span> <span id="odds-tier-2">25%</span></span>
+                                <span class="odds-item tier-3" title="3 Vàng"><span class="odds-dot" style="background:#3b82f6;"></span> <span id="odds-tier-3">5%</span></span>
+                                <span class="odds-item tier-4" title="4 Vàng"><span class="odds-dot" style="background:#a855f7;"></span> <span id="odds-tier-4">0%</span></span>
+                                <span class="odds-item tier-5" title="5 Vàng"><span class="odds-dot" style="background:#eab308;"></span> <span id="odds-tier-5">0%</span></span>
+                            </div>
                         </div>
-                        <div class="shop-hotkeys-inline">
-                            <span class="hk-chip" title="Phím D: Đổi lại 5 thẻ cờ trong Shop (2 Vàng)"><kbd class="hk-key">D</kbd> Đổi Shop</span>
-                            <span class="hk-chip" title="Phím F: Mua 4 Kinh Nghiệm để tăng Cấp (4 Vàng)"><kbd class="hk-key">F</kbd> Mua XP</span>
-                            <span class="hk-chip" title="Phím E: Bán nhanh quân cờ đang trỏ chuột hoặc đang chọn"><kbd class="hk-key">E</kbd> Bán Tướng</span>
-                            <span class="hk-chip" title="Phím W: Đưa tướng lên sân đấu hoặc thu hồi về hàng chờ"><kbd class="hk-key">W</kbd> Đổi Chỗ</span>
-                            <span class="hk-chip" title="Phím Space: Khóa/Mở Khóa cửa hàng giữ bài qua vòng sau (hoặc phím X)"><kbd class="hk-key">Space</kbd> Khóa Shop</span>
+
+                        <div class="hud-strip-box hud-strip-gold">
+                            <span class="gold-coin-icon">🪙</span>
+                            <span class="strip-label">TIỀN:</span>
+                            <span id="hud-gold-amount" class="gold-number">6</span>
+                            <span id="hud-interest-badge" class="hud-pill interest-pill">+0 Lãi</span>
                         </div>
+
+                        <div class="hud-strip-box hud-strip-streak">
+                            <span class="strip-label">CHUỖI:</span>
+                            <span id="hud-streak-badge" class="hud-pill streak-pill">⚖️ Chuỗi 0</span>
+                        </div>
+
+                        <!-- NÚT KHÓA CỬA HÀNG (ĐẶT Ở GÓC PHẢI TRÊN SHOP THEO SƠ ĐỒ) -->
+                        <button id="btn-lock-shop" class="btn-tft-lock hud-strip-lock" title="Khóa/Mở khóa cửa hàng cho vòng sau (Phím tắt: Space / X)">
+                            <span id="btn-lock-icon">🔓</span>
+                            <span id="btn-lock-text" class="lock-btn-title">Khóa Shop</span>
+                            <span class="hud-keybind-badge lock-keybind">Space</span>
+                        </button>
                     </div>
 
-                    <!-- TFT PRO ECONOMY & LEVEL BAR -->
-                    <div class="tft-economy-hud">
-                        <!-- CẤP ĐỘ & MUA XP & ĐỔI LẠI (BÊN TRÁI) -->
-                        <div class="hud-exp-block">
+                    <!-- KHUNG CHÍNH SHOP: [LEVEL + MUA XP + ROLL] (BÊN TRÁI) | 5 Ô CỜ (CHÍNH GIỮA & PHẢI) -->
+                    <div class="hud-shop-main-row">
+                        <!-- KHỐI LEVEL & MUA XP & ROLL CỬA HÀNG -->
+                        <div class="hud-left-actions-block">
                             <div class="hud-level-info">
                                 <div class="level-text-row">
-                                    <span id="hud-level-name" class="hud-level-tag">CẤP 3</span>
+                                    <span id="hud-level-name" class="hud-level-tag">LEVEL 3</span>
                                     <span id="hud-xp-ratio" class="hud-xp-ratio">0 / 2 XP</span>
                                 </div>
                                 <div class="tft-progress-bar">
                                     <div id="hud-xp-progress" class="tft-progress-fill" style="width: 0%;"></div>
                                 </div>
                             </div>
-                            <div class="hud-btn-stack">
-                                <button id="btn-buy-xp" class="btn-tft-xp" title="Mua 4 điểm kinh nghiệm với 4 vàng (Phím tắt: F)">
-                                    <div class="hud-btn-main">
-                                        <span class="xp-btn-title">⬆️ MUA XP</span>
-                                        <span class="hud-keybind-badge">F</span>
-                                    </div>
-                                    <span class="xp-btn-cost">4 🪙</span>
-                                </button>
-                                <button id="btn-reroll" class="btn-tft-reroll" title="Làm mới 5 quân cờ trong cửa hàng (Phím tắt: D)">
-                                    <div class="hud-btn-main">
-                                        <span class="reroll-btn-title">🎲 ĐỔI LẠI</span>
-                                        <span class="hud-keybind-badge">D</span>
-                                    </div>
-                                    <span id="reroll-cost-label" class="reroll-btn-cost">2 🪙</span>
-                                </button>
-                                <button id="btn-lock-shop" class="btn-tft-lock" title="Khóa/Mở khóa cửa hàng cho vòng sau (Phím tắt: Space / X)">
-                                    <div class="hud-btn-main">
-                                        <span id="btn-lock-icon">🔓</span>
-                                        <span id="btn-lock-text" class="lock-btn-title">Khóa Shop</span>
-                                        <span class="hud-keybind-badge lock-keybind">Space</span>
-                                    </div>
-                                    <span id="btn-lock-label" class="lock-btn-cost">Giữ bài</span>
-                                </button>
-                            </div>
+
+                            <button id="btn-buy-xp" class="btn-tft-xp hud-btn-full" title="Mua 4 XP với 4 vàng (Phím tắt: F)">
+                                <div class="hud-btn-main">
+                                    <span class="xp-btn-title">⬆️ MUA XP</span>
+                                    <span class="hud-keybind-badge">F</span>
+                                </div>
+                                <span class="xp-btn-cost">4 🪙</span>
+                            </button>
+
+                            <button id="btn-reroll" class="btn-tft-reroll hud-btn-full" title="Đổi lại 5 quân cờ (Phím tắt: D)">
+                                <div class="hud-btn-main">
+                                    <span class="reroll-btn-title">🎲 ROLL SHOP</span>
+                                    <span class="hud-keybind-badge">D</span>
+                                </div>
+                                <span id="reroll-cost-label" class="reroll-btn-cost">2 🪙</span>
+                            </button>
                         </div>
 
-                        <!-- 5 THẺ BÀI TƯỚNG SHOP (TRUNG TÂM) -->
-                        <div id="shop-cards" class="shop-cards"></div>
+                        <!-- 5 THẺ BÀI QUÂN CỜ THEO SƠ ĐỒ -->
+                        <div id="shop-cards" class="shop-cards custom-shop-cards"></div>
 
-                        <!-- TIỀN VÀNG & GIAO TRANH (BÊN PHẢI) -->
-                        <div class="hud-gold-side">
-                            <div class="gold-big-display">
-                                <span class="gold-coin-icon">🪙</span>
-                                <span id="hud-gold-amount" class="gold-number">6</span>
-                            </div>
-                            <div class="gold-meta-row">
-                                <span id="hud-interest-badge" class="hud-pill interest-pill">+0 Lãi</span>
-                                <span id="hud-streak-badge" class="hud-pill streak-pill">🔥 Chuỗi 0</span>
-                            </div>
-                            <div style="display:flex; gap:6px; margin-top:4px;">
-                                <button id="btn-start-combat" class="btn-combat-go" style="padding: 6px 16px; font-size:0.85rem;">⚔️ VÀO TRẬN</button>
-                            </div>
-                        </div>
+                        <!-- NÚT VÀO TRẬN ĐẶT CẠNH SHOP -->
+                        <button id="btn-start-combat" class="btn-combat-go hud-btn-combat-ready" title="Bắt đầu giao tranh ngay lập tức">⚔️ VÀO TRẬN</button>
                     </div>
                 </div>
             </section>
 
-            <!-- RIGHT PANEL: 8 KỲ THỦ LEADERBOARD & CLOCKS & INSPECTOR (GIỐNG MÉP PHẢI TFT) -->
-            <aside class="side-panel side-panel-right">
-                <div class="panel-box-wrap">
+            <!-- CỘT PHẢI: DANH SÁCH NGƯỜI CHƠI A, B, C, D... KÈM MÁU (100, 90, 80...) + ĐỒNG HỒ CỜ CHỚP -->
+            <aside class="side-panel side-panel-right custom-hud-right">
+                <div class="panel-box-wrap custom-leaderboard-box">
                     <div class="panel-section-title">
-                        <span>🏆 8 Kỳ Thủ (Bấm Soi Bài)</span>
+                        <span>🏆 KỲ THỦ (SOI BÀI)</span>
+                        <span class="text-muted" style="font-size:0.7rem;">MÁU</span>
                     </div>
-                    <div id="leaderboard-list" class="leaderboard-list"></div>
+                    <div id="leaderboard-list" class="leaderboard-list custom-leaderboard-list"></div>
                 </div>
 
-                <div class="panel-box-wrap" style="margin-top:6px;">
+                <!-- ĐỒNG HỒ CỜ CHỚP BÊN DƯỚI BXH -->
+                <div class="panel-box-wrap custom-clocks-box">
                     <div class="panel-section-title">
-                        <span>⏱️ Đồng Hồ Cờ Chớp</span>
+                        <span>⏱️ ĐỒNG HỒ CỜ CHỚP</span>
                     </div>
                     <div class="blitz-clocks">
                         <div id="clock-box-player" class="clock-box">
@@ -635,19 +622,12 @@
                     </div>
                 </div>
 
-                <div class="panel-box-wrap" style="margin-top:6px;">
+                <div class="panel-box-wrap custom-inspect-box">
                     <div class="panel-section-title">
-                        <span>🔍 Quân Đang Chọn</span>
+                        <span>🔍 QUÂN ĐANG CHỌN</span>
                     </div>
                     <div id="selected-unit-box"></div>
-                    <button id="btn-sell-selected" class="btn-danger hidden" style="margin-top:4px;">💰 Bán Quân</button>
-                </div>
-
-                <div class="panel-box-wrap" style="margin-top:6px;">
-                    <div class="panel-section-title">
-                        <span>📜 Nhật Ký Đấu</span>
-                    </div>
-                    <div id="combat-log" class="combat-log"></div>
+                    <button id="btn-sell-selected" class="btn-danger hidden">💰 Bán Quân</button>
                 </div>
             </aside>
         </main>
