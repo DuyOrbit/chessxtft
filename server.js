@@ -328,7 +328,9 @@ function getPublicRoomsList() {
                 playerCount: r.players.length,
                 maxPlayers: 8,
                 timeMode: r.timeMode,
-                fillBots: r.fillBots
+                fillBots: r.fillBots,
+                isSpectatorHost: !!r.isSpectatorHost,
+                spectatorCount: (r.spectators || []).length
             });
         }
     }
@@ -344,7 +346,7 @@ app.get("/api/rooms/list", (req, res) => {
 });
 
 app.post("/api/rooms/create", (req, res) => {
-    const { user, timeMode = "standard", fillBots = true } = req.body || {};
+    const { user, timeMode = "standard", fillBots = true, isSpectator = false } = req.body || {};
     let code = generateRoomCode();
     while (rooms.has(code)) code = generateRoomCode();
 
@@ -358,8 +360,18 @@ app.post("/api/rooms/create", (req, res) => {
         hostName: freshUser.displayName || freshUser.username,
         timeMode,
         fillBots: !!fillBots,
+        isSpectatorHost: !!isSpectator,
         status: "waiting",
-        players: [
+        spectators: isSpectator ? [
+            {
+                id: freshUser.id,
+                socketId: null,
+                name: freshUser.displayName || freshUser.username,
+                avatar: freshUser.avatar || "🎙️",
+                isHost: true
+            }
+        ] : [],
+        players: isSpectator ? [] : [
             {
                 id: freshUser.id,
                 socketId: null,
@@ -472,8 +484,8 @@ io.on("connection", (socket) => {
         if (idx !== -1) matchmakingQueue.splice(idx, 1);
     });
 
-    // Create a new Room
-    socket.on("room:create", ({ user, timeMode = "standard", fillBots = true }, cb) => {
+    // Create a new Room (Can be created as player or as spectator/caster)
+    socket.on("room:create", ({ user, timeMode = "standard", fillBots = true, isSpectator = false }, cb) => {
         let code = generateRoomCode();
         while (rooms.has(code)) code = generateRoomCode();
 
@@ -488,8 +500,18 @@ io.on("connection", (socket) => {
             hostName: freshUser.displayName || freshUser.username,
             timeMode, // "standard" (45/60/75s) | "relaxed" (75/90/120s) | "blitz" (25/35/45s)
             fillBots: !!fillBots,
+            isSpectatorHost: !!isSpectator,
             status: "waiting", // "waiting" | "playing"
-            players: [
+            spectators: isSpectator ? [
+                {
+                    id: freshUser.id,
+                    socketId: socket.id,
+                    name: freshUser.displayName || freshUser.username,
+                    avatar: freshUser.avatar || "🎙️",
+                    isHost: true
+                }
+            ] : [],
+            players: isSpectator ? [] : [
                 {
                     id: freshUser.id,
                     socketId: socket.id,
@@ -508,27 +530,55 @@ io.on("connection", (socket) => {
         socket.join(code);
         socket.data.roomCode = code;
         socket.data.userId = freshUser.id;
+        socket.data.isSpectator = !!isSpectator;
 
         broadcastRoomsList();
         if (cb) cb({ ok: true, room });
     });
 
-    // Join an existing Room by Code
-    socket.on("room:join", ({ code, user }, cb) => {
+    // Join an existing Room by Code (Can join as Contestant or as Spectator)
+    socket.on("room:join", ({ code, user, asSpectator = false }, cb) => {
         const cleanCode = String(code || "").trim().toUpperCase();
         const room = rooms.get(cleanCode);
         if (!room) {
             return cb && cb({ ok: false, msg: `Không tìm thấy phòng mã '${cleanCode}'!` });
         }
-        if (room.status !== "waiting") {
+        if (room.status !== "waiting" && !asSpectator) {
             return cb && cb({ ok: false, msg: "Phòng này đã bắt đầu trận đấu!" });
-        }
-        if (room.players.length >= 8) {
-            return cb && cb({ ok: false, msg: "Phòng đã đủ 8 người chơi!" });
         }
 
         const dbUsers = readJSON(FILES.users, []);
         const freshUser = dbUsers.find(u => u.id === user?.id) || user;
+
+        if (asSpectator) {
+            if (!room.spectators) room.spectators = [];
+            const existingSpec = room.spectators.find(s => s.id === freshUser.id);
+            if (existingSpec) {
+                existingSpec.socketId = socket.id;
+            } else {
+                room.spectators.push({
+                    id: freshUser.id,
+                    socketId: socket.id,
+                    name: freshUser.displayName || freshUser.username,
+                    avatar: freshUser.avatar || "👁️",
+                    isHost: false
+                });
+            }
+
+            socket.join(cleanCode);
+            socket.data.roomCode = cleanCode;
+            socket.data.userId = freshUser.id;
+            socket.data.isSpectator = true;
+
+            io.to(cleanCode).emit("room:updated", room);
+            broadcastRoomsList();
+            if (cb) cb({ ok: true, room, isSpectator: true });
+            return;
+        }
+
+        if (room.players.length >= 8) {
+            return cb && cb({ ok: false, msg: "Phòng đã đủ 8 người chơi!" });
+        }
 
         const existing = room.players.find(p => p.id === freshUser.id);
         if (existing) {
@@ -549,6 +599,7 @@ io.on("connection", (socket) => {
         socket.join(cleanCode);
         socket.data.roomCode = cleanCode;
         socket.data.userId = freshUser.id;
+        socket.data.isSpectator = false;
 
         io.to(cleanCode).emit("room:updated", room);
         broadcastRoomsList();
@@ -582,12 +633,44 @@ io.on("connection", (socket) => {
         const rules = readJSON(FILES.rules, {});
         const entities = readJSON(FILES.entities, {});
 
+        // Auto-fill bots to complete 8 players if fillBots is enabled
+        if (room.fillBots !== false && room.players.length < 8) {
+            const botProfiles = [
+                { name: "Đại Kiện Tướng Magnus", avatar: "🤖", elo: 1800, style: "Tấn Công Tổng Lực", favTrait: "cavalry" },
+                { name: "Bá Tước Bóng Đêm", avatar: "🦇", elo: 1750, style: "Sát Thủ Cờ Chớp", favTrait: "assassin" },
+                { name: "Phù Thủy Băng Giá", avatar: "🧙‍♀️", elo: 1650, style: "Phép Thuật Khống Chế", favTrait: "sorcerer" },
+                { name: "Hiệp Sĩ Hoàng Gia", avatar: "🛡️", elo: 1600, style: "Hộ Vệ Bất Tử", favTrait: "guardian" },
+                { name: "Xạ Thủ Tinh Anh", avatar: "🏹", elo: 1550, style: "Tầm Xa Xuyên Giáp", favTrait: "sniper" },
+                { name: "Đạo Tặc Thần Bài", avatar: "🎰", elo: 1500, style: "Nổ Hũ Kinh Tế", favTrait: "fortune" },
+                { name: "Kỳ Thủ Martin", avatar: "♟️", elo: 1200, style: "Cân Bằng Cơ Bản", favTrait: "royal" }
+            ];
+            let bIdx = 0;
+            while (room.players.length < 8) {
+                const bp = botProfiles[bIdx % botProfiles.length];
+                room.players.push({
+                    id: `bot_fill_${Date.now()}_${bIdx}`,
+                    socketId: null,
+                    name: bp.name,
+                    avatar: bp.avatar,
+                    elo: bp.elo,
+                    style: bp.style,
+                    favTrait: bp.favTrait,
+                    customModifiers: {},
+                    isHost: false,
+                    isBot: true
+                });
+                bIdx++;
+            }
+        }
+
         // Refresh each human player's customModifiers from DB right before match start
         const dbUsers = readJSON(FILES.users, []);
         room.players.forEach(p => {
-            const dbU = dbUsers.find(u => u.id === p.id);
-            if (dbU) {
-                p.customModifiers = dbU.customModifiers || {};
+            if (!p.isBot) {
+                const dbU = dbUsers.find(u => u.id === p.id);
+                if (dbU) {
+                    p.customModifiers = dbU.customModifiers || {};
+                }
             }
         });
 
@@ -678,40 +761,67 @@ function handleSocketLeaveRoom(socket) {
     const room = rooms.get(code);
     if (!room) return;
 
-    const leavingPlayer = room.players.find(p => p.socketId === socket.id);
-    if (room.status === "playing" && leavingPlayer) {
-        leavingPlayer.eliminated = true;
-        leavingPlayer.hp = 0;
-        leavingPlayer.disconnected = true;
-        if (room.roundFinished) {
-            for (const key of Object.keys(room.roundFinished)) {
-                const activeHumans = room.players.filter(p => !p.isBot && !p.eliminated && !p.disconnected && (p.hp === undefined || p.hp > 0));
-                let finishedCount = 0;
-                activeHumans.forEach(p => {
-                    if (room.roundFinished[key].has(p.id)) finishedCount++;
-                });
-                if (activeHumans.length <= 1 || finishedCount >= activeHumans.length) {
-                    io.to(code).emit("room:allBoardsFinished", { key });
-                }
+    if (socket.data.isSpectator && Array.isArray(room.spectators)) {
+        room.spectators = room.spectators.filter(s => s.socketId !== socket.id);
+        if (room.hostSocketId === socket.id) {
+            // Transfer host to first player or next spectator
+            if (room.players.length > 0) {
+                const firstPlayer = room.players.find(p => !p.disconnected) || room.players[0];
+                firstPlayer.isHost = true;
+                room.hostId = firstPlayer.id;
+                room.hostSocketId = firstPlayer.socketId;
+                room.hostName = firstPlayer.name;
+                room.isSpectatorHost = false;
+            } else if (room.spectators.length > 0) {
+                const firstSpec = room.spectators[0];
+                firstSpec.isHost = true;
+                room.hostId = firstSpec.id;
+                room.hostSocketId = firstSpec.socketId;
+                room.hostName = firstSpec.name;
+                room.isSpectatorHost = true;
             }
         }
     } else {
-        room.players = room.players.filter(p => p.socketId !== socket.id);
+        const leavingPlayer = room.players.find(p => p.socketId === socket.id);
+        if (room.status === "playing" && leavingPlayer) {
+            leavingPlayer.eliminated = true;
+            leavingPlayer.hp = 0;
+            leavingPlayer.disconnected = true;
+            if (room.roundFinished) {
+                for (const key of Object.keys(room.roundFinished)) {
+                    const activeHumans = room.players.filter(p => !p.isBot && !p.eliminated && !p.disconnected && (p.hp === undefined || p.hp > 0));
+                    let finishedCount = 0;
+                    activeHumans.forEach(p => {
+                        if (room.roundFinished[key].has(p.id)) finishedCount++;
+                    });
+                    if (activeHumans.length <= 1 || finishedCount >= activeHumans.length) {
+                        io.to(code).emit("room:allBoardsFinished", { key });
+                    }
+                }
+            }
+        } else {
+            room.players = room.players.filter(p => p.socketId !== socket.id);
+        }
+
+        if (!room.isSpectatorHost && !room.players.some(p => p.isHost && !p.disconnected)) {
+            const firstActive = room.players.find(p => !p.disconnected) || room.players[0];
+            if (firstActive) {
+                firstActive.isHost = true;
+                room.hostId = firstActive.id;
+                room.hostSocketId = firstActive.socketId;
+                room.hostName = firstActive.name;
+            }
+        }
     }
 
     socket.leave(code);
     socket.data.roomCode = null;
+    socket.data.isSpectator = false;
 
-    if (room.players.length === 0 || room.players.every(p => p.isBot || p.disconnected)) {
+    const totalActive = (room.players || []).filter(p => !p.isBot && !p.disconnected).length + (room.spectators || []).length;
+    if (totalActive === 0) {
         rooms.delete(code);
     } else {
-        if (!room.players.some(p => p.isHost && !p.disconnected)) {
-            const firstActive = room.players.find(p => !p.disconnected) || room.players[0];
-            firstActive.isHost = true;
-            room.hostId = firstActive.id;
-            room.hostSocketId = firstActive.socketId;
-            room.hostName = firstActive.name;
-        }
         io.to(code).emit("room:updated", room);
     }
     broadcastRoomsList();

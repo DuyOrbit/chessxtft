@@ -305,6 +305,13 @@
                         <button id="btn-create-room" class="btn-game btn-game-gold" style="height:38px; align-self:flex-end;">➕ Tạo Phòng Mới</button>
                     </div>
 
+                    <div class="room-options-row" style="margin-top:8px; display:flex; align-items:center;">
+                        <label class="checkbox-label" style="font-size:0.82rem; cursor:pointer;">
+                            <input type="checkbox" id="chk-host-as-spectator" />
+                            <span style="color:#38bdf8; font-weight:700;">👁️ Tạo phòng với tư cách Khán Giả / Trọng Tài (Caster Mode: Xem 4 bàn cờ 8 người cùng lúc)</span>
+                        </label>
+                    </div>
+
                     <div class="room-join-row" style="margin-top:10px;">
                         <input type="text" id="input-room-code" class="lobby-input" placeholder="NHẬP MÃ PHÒNG (VD: TFT888)..." maxlength="8" />
                         <button id="btn-join-code" class="btn-game btn-game-cyan">🔑 Vào Phòng</button>
@@ -327,6 +334,19 @@
                         </div>
                         <button id="btn-leave-room" class="btn-danger" style="width:auto; margin:0;">Rời Phòng</button>
                     </div>
+
+                    <!-- SPECTATOR / CASTER ALERT -->
+                    <div id="waiting-spectator-alert" class="caster-host-badge hidden">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="font-size:1.6rem;">🎙️</span>
+                            <div>
+                                <div style="font-weight:800; color:#38bdf8; font-size:0.92rem;">CHẾ ĐỘ TRỌNG TÀI / CASTER QUAN SÁT</div>
+                                <div style="font-size:0.75rem; color:#cbd5e1;">Bạn đang xem với tư cách Khán Giả. Khi giải đấu bắt đầu, bạn sẽ theo dõi trực tiếp 4 bàn cờ của 8 kỳ thủ trên màn hình 2x2.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="waiting-spectators-list" class="waiting-spectators-bar hidden"></div>
 
                     <div class="waiting-room-settings">
                         <label class="checkbox-label">
@@ -591,7 +611,7 @@
         <!-- SPECTATOR TOP CONTROL BAR -->
         <header class="top-bar" style="flex-shrink:0;">
             <div class="brand-wrap">
-                <span class="brand-title" style="color:#38bdf8;">👁️ QUAN SÁT GIẢI ĐẤU 8 BOT (4 MÀN HÌNH)</span>
+                <span id="spec-brand-title" class="brand-title" style="color:#38bdf8;">👁️ QUAN SÁT GIẢI ĐẤU 8 BOT (4 MÀN HÌNH)</span>
                 <span id="spec-stage-badge" class="badge-pill">Vòng 1-1</span>
                 <span id="spec-boardsize-badge" class="badge-pill">📐 Bàn cờ: 5x6</span>
                 <span id="spec-alive-badge" class="badge-pill">🤖 Còn sống: 8/8 Bot</span>
@@ -622,7 +642,7 @@
             <!-- LEFT SIDEBAR: 8 BOTS STATUS & TOURNAMENT LOG -->
             <aside class="spectator-sidebar">
                 <div class="panel-section-title">
-                    <span>🤖 Bảng Xếp Hạng 8 Bot (Can Thiệp Nhanh)</span>
+                    <span id="spec-leaderboard-title">🤖 Bảng Xếp Hạng 8 Kỳ Thủ (Can Thiệp Nhanh)</span>
                 </div>
                 <div id="spec-leaderboard" class="spec-leaderboard"></div>
 

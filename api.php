@@ -463,8 +463,9 @@ if ($action === 'room_create' && $pdo) {
     $roomName = trim($body['roomName'] ?? "Phòng của $hostName");
     $fillBots = !isset($body['fillBots']) || $body['fillBots'] ? 1 : 0;
     $timeMode = $body['timeMode'] ?? 'standard';
+    $isSpectator = !empty($body['isSpectator']);
 
-    $players = [[
+    $players = $isSpectator ? [] : [[
         'id' => $hostId,
         'username' => $user['username'] ?? 'guest',
         'displayName' => $hostName,
@@ -476,6 +477,13 @@ if ($action === 'room_create' && $pdo) {
         'level' => 3,
         'board' => []
     ]];
+
+    $spectators = $isSpectator ? [[
+        'id' => $hostId,
+        'name' => $hostName,
+        'avatar' => $user['avatar'] ?? '🎙️',
+        'isHost' => true
+    ]] : [];
 
     $stmt = $pdo->prepare("INSERT INTO rooms (code, name, hostId, hostName, fillBots, timeMode, status, players_json) VALUES (?, ?, ?, ?, ?, ?, 'waiting', ?)");
     $stmt->execute([$code, $roomName, $hostId, $hostName, $fillBots, $timeMode, json_encode($players, JSON_UNESCAPED_UNICODE)]);
@@ -490,6 +498,8 @@ if ($action === 'room_create' && $pdo) {
             'fillBots' => $fillBots === 1,
             'timeMode' => $timeMode,
             'status' => 'waiting',
+            'isSpectatorHost' => $isSpectator,
+            'spectators' => $spectators,
             'players' => $players
         ]
     ], JSON_UNESCAPED_UNICODE);
@@ -499,6 +509,7 @@ if ($action === 'room_create' && $pdo) {
 if ($action === 'room_join' && $pdo) {
     $code = strtoupper(trim($body['code'] ?? ''));
     $user = $body['user'] ?? [];
+    $asSpectator = !empty($body['asSpectator']);
     $stmt = $pdo->prepare("SELECT * FROM rooms WHERE code = ?");
     $stmt->execute([$code]);
     $r = $stmt->fetch();
@@ -507,7 +518,7 @@ if ($action === 'room_join' && $pdo) {
         exit;
     }
     $players = json_decode($r['players_json'], true) ?: [];
-    if (count($players) >= 8) {
+    if (!$asSpectator && count($players) >= 8) {
         echo json_encode(['ok' => false, 'msg' => 'Phòng đã đủ 8 người chơi!']);
         exit;
     }
@@ -516,7 +527,7 @@ if ($action === 'room_join' && $pdo) {
     foreach ($players as &$p) {
         if ($p['id'] === $uid) { $exists = true; break; }
     }
-    if (!$exists) {
+    if (!$exists && !$asSpectator) {
         $players[] = [
             'id' => $uid,
             'username' => $user['username'] ?? 'guest',

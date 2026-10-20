@@ -1798,6 +1798,35 @@ button {
     border-style: dashed;
 }
 
+.caster-host-badge {
+    background: linear-gradient(135deg, rgba(8, 47, 73, 0.9), rgba(15, 23, 42, 0.95));
+    border: 1px solid #38bdf8;
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.22);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    animation: pulse-caster-glow 2.5s infinite alternate ease-in-out;
+}
+
+@keyframes pulse-caster-glow {
+    0% { box-shadow: 0 0 10px rgba(56, 189, 248, 0.2); }
+    100% { box-shadow: 0 0 20px rgba(56, 189, 248, 0.45); }
+}
+
+.waiting-spectators-bar {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin-bottom: 10px;
+    font-size: 0.76rem;
+    color: #94a3b8;
+}
+
+.waiting-spectators-bar strong {
+    color: #38bdf8;
+}
+
 /* CODEX ENCYCLOPEDIA TABS & CARDS */
 .codex-tabs {
     display: flex;
@@ -1964,6 +1993,44 @@ button {
 .spec-bot-row.eliminated {
     opacity: 0.42;
     filter: grayscale(0.8);
+}
+
+.spec-bot-row.real-player {
+    border: 1px solid rgba(56, 189, 248, 0.65);
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(8, 47, 73, 0.45));
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.18);
+}
+
+.spec-real-player-pill {
+    background: linear-gradient(135deg, #0284c7, #0369a1);
+    color: #ffffff;
+    font-size: 0.62rem;
+    font-weight: 800;
+    padding: 1px 6px;
+    border-radius: 999px;
+    border: 1px solid #38bdf8;
+    letter-spacing: 0.3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    box-shadow: 0 0 6px rgba(56, 189, 248, 0.3);
+}
+
+.btn-join-spectator {
+    background: linear-gradient(135deg, #0369a1, #0284c7) !important;
+    border: 1px solid #38bdf8 !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    padding: 4px 10px !important;
+    border-radius: 6px !important;
+    cursor: pointer;
+    font-size: 0.74rem !important;
+    transition: all 0.2s ease;
+}
+.btn-join-spectator:hover {
+    background: linear-gradient(135deg, #0284c7, #38bdf8) !important;
+    color: #0f172a !important;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
 }
 
 .spec-bot-top {

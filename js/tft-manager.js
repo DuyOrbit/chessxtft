@@ -1378,8 +1378,88 @@ class TFTGameManager {
     }
 
     // ========================================================================
-    // ADMIN SPECTATOR MODE: 8-BOT TOURNAMENT (4 SIMULTANEOUS MATCHES)
+    // ADMIN SPECTATOR MODE: 8-BOT TOURNAMENT & MULTIPLAYER SPECTATOR
     // ========================================================================
+    resetMultiplayerSpectatorTournament(roomData) {
+        this.stage = 1;
+        this.roundInStage = 1;
+        this.timeMode = roomData?.timeMode || "standard";
+        this.spectatorBots = [];
+
+        const econ = window.CHESS_TFT_DATA.ECONOMY_RULES || {};
+        const cfg = this.getStageConfig();
+        const baseProfiles = window.CHESS_TFT_DATA.BOT_NAMES || [];
+        const itemIds = Object.keys(window.CHESS_TFT_DATA.ITEMS || {});
+
+        const contestants = Array.isArray(roomData?.players) ? [...roomData.players] : [];
+        let fillCounter = 0;
+        while (contestants.length < 8) {
+            const bp = baseProfiles[fillCounter % baseProfiles.length] || {
+                name: `Kỳ Thủ AI #${fillCounter + 1}`,
+                avatar: "🤖",
+                style: "Cân Bằng"
+            };
+            contestants.push({
+                id: `filler_${Date.now()}_${fillCounter}`,
+                name: bp.name,
+                avatar: bp.avatar,
+                isBot: true,
+                elo: 1400,
+                style: bp.style || "Cân Bằng"
+            });
+            fillCounter++;
+        }
+
+        for (let i = 0; i < 8; i++) {
+            const p = contestants[i];
+            const isReal = !p.isBot;
+            const customMods = p.customModifiers || {};
+
+            const startingHp = Number(customMods.startingHp) || econ.defaultStartingHp || 100;
+            const startingGold = Number(customMods.startingGold) || econ.defaultStartingGold || 6;
+            const startingLevel = Math.min(8, Math.max(1, Number(customMods.startingLevel) || 3));
+
+            const bot = {
+                id: p.id || `spec_contestant_${i}`,
+                name: p.name || `Kỳ Thủ #${i + 1}`,
+                avatar: p.avatar || (isReal ? "👑" : "🤖"),
+                style: p.style || (isReal ? "Cao Thủ Người Thật" : "Cân Bằng"),
+                favTrait: p.favTrait || (isReal ? "royal" : "cavalry"),
+                isBot: !isReal,
+                isRealPlayer: isReal,
+                elo: p.elo || 1000,
+                hp: startingHp,
+                maxHp: startingHp,
+                gold: startingGold,
+                level: startingLevel,
+                xp: 0,
+                streak: 0,
+                board: [],
+                bench: [],
+                items: [],
+                augments: [],
+                eliminated: false,
+                customModifiers: customMods
+            };
+
+            this.initBotStarterBoard(bot, cfg);
+
+            // Grant bonus items or 1 starter item
+            const nonKings = bot.board.filter(u => u.id !== "king");
+            if (Array.isArray(customMods.bonusItems) && customMods.bonusItems.length > 0 && nonKings.length > 0) {
+                customMods.bonusItems.forEach(itemId => {
+                    if (window.CHESS_TFT_DATA.ITEMS && window.CHESS_TFT_DATA.ITEMS[itemId]) {
+                        nonKings[0].items.push(itemId);
+                    }
+                });
+            } else if (nonKings.length > 0 && itemIds.length > 0) {
+                nonKings[0].items.push(itemIds[i % itemIds.length]);
+            }
+
+            this.spectatorBots.push(bot);
+        }
+    }
+
     reset8BotTournament() {
         this.stage = 1;
         this.roundInStage = 1;
@@ -1410,6 +1490,7 @@ class TFTGameManager {
                 style: prof.style,
                 favTrait: prof.favTrait,
                 isBot: true,
+                isRealPlayer: false,
                 hp: econ.defaultStartingHp || 100,
                 maxHp: econ.defaultStartingHp || 100,
                 gold: econ.defaultStartingGold || 6,
@@ -1440,6 +1521,17 @@ class TFTGameManager {
         const alive = this.spectatorBots.filter(b => !b.eliminated);
         for (const bot of alive) {
             this.positionBotBoard(bot, cfg);
+        }
+
+        // Adjust clocks for chosen room timeMode
+        let matchBlitzTime = cfg.blitzTime;
+        let matchIncrement = cfg.increment;
+        if (this.timeMode === "relaxed") {
+            matchBlitzTime = Math.round(cfg.blitzTime * 1.55);
+            matchIncrement = cfg.increment + 1;
+        } else if (this.timeMode === "blitz") {
+            matchBlitzTime = Math.max(18, Math.round(cfg.blitzTime * 0.62));
+            matchIncrement = Math.max(1, cfg.increment - 1);
         }
 
         // Shuffle alive bots to form 4 pairs
@@ -1479,9 +1571,9 @@ class TFTGameManager {
                 isExhibition,
                 mapDef,
                 engine,
-                clockA: cfg.blitzTime,
-                clockB: cfg.blitzTime,
-                increment: cfg.increment,
+                clockA: matchBlitzTime,
+                clockB: matchBlitzTime,
+                increment: matchIncrement,
                 resolved: false,
                 summaryText: "⚔️ Đang giao tranh Cờ Chớp..."
             });

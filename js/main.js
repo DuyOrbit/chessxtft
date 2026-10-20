@@ -312,6 +312,15 @@ class ChessTFTApp {
                 }
                 this.currentRoom = room;
                 this.isRankedMode = !!room.isRanked;
+
+                const isSpectator = (room.isSpectatorHost && this.currentUser?.id === room.hostId) ||
+                    (Array.isArray(room.spectators) && room.spectators.some(s => s.id === this.currentUser?.id));
+
+                if (isSpectator) {
+                    this.startMultiplayerSpectatorSession(room);
+                    return;
+                }
+
                 if (this.currentUser) {
                     const meInRoom = room.players.find(p => p.id === this.currentUser.id);
                     if (meInRoom && meInRoom.customModifiers) {
@@ -768,12 +777,14 @@ class ChessTFTApp {
         // Create Room (Supports both Socket.IO and WampServer PHP+MySQL)
         document.getElementById("btn-create-room").addEventListener("click", async () => {
             const timeMode = document.getElementById("select-room-timemode").value;
+            const isSpectator = !!document.getElementById("chk-host-as-spectator")?.checked;
             if (this.socket && this.socket.connected) {
-                this.socket.emit("room:create", { user: this.currentUser, timeMode, fillBots: true }, (res) => {
+                this.socket.emit("room:create", { user: this.currentUser, timeMode, fillBots: true, isSpectator }, (res) => {
                     if (res && res.ok) {
                         this.currentRoom = res.room;
                         this.renderWaitingRoom();
-                        this.showToast(`Đã tạo phòng ${res.room.code}! Hãy gửi mã này cho bạn bè!`, "success");
+                        const roleMsg = isSpectator ? "với tư cách Trọng Tài / Khán Giả (Caster)" : "";
+                        this.showToast(`Đã tạo phòng ${res.room.code} ${roleMsg}! Hãy gửi mã này cho bạn bè!`, "success");
                     } else {
                         this.showToast(res?.msg || "Không thể tạo phòng!", "warn");
                     }
@@ -784,7 +795,7 @@ class ChessTFTApp {
                 const res = await fetch("api.php?action=room_create", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ user: this.currentUser, timeMode, fillBots: true })
+                    body: JSON.stringify({ user: this.currentUser, timeMode, fillBots: true, isSpectator })
                 });
                 const d = await res.json();
                 if (d.ok && d.room) {
@@ -976,13 +987,18 @@ class ChessTFTApp {
         }
     }
 
-    async joinRoomByCode(code) {
+    async joinRoomByCode(code, asSpectator = false) {
+        if (!code) {
+            this.showToast("Vui lòng nhập Mã Phòng 6 ký tự!", "warn");
+            return;
+        }
         if (this.socket && this.socket.connected) {
-            this.socket.emit("room:join", { code, user: this.currentUser }, (res) => {
+            this.socket.emit("room:join", { code, user: this.currentUser, asSpectator }, (res) => {
                 if (res && res.ok) {
                     this.currentRoom = res.room;
                     this.renderWaitingRoom();
-                    this.showToast(`Đã vào phòng ${res.room.code}!`, "success");
+                    const specMsg = asSpectator ? "với tư cách Khán Giả" : "";
+                    this.showToast(`Đã vào phòng ${res.room.code} ${specMsg}!`, "success");
                 } else {
                     this.showToast((res && res.msg) || "Không thể vào phòng!", "warn");
                 }
@@ -993,7 +1009,7 @@ class ChessTFTApp {
             const res = await fetch("api.php?action=room_join", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ code, user: this.currentUser })
+                body: JSON.stringify({ code, user: this.currentUser, asSpectator })
             });
             const d = await res.json();
             if (d.ok && d.room) {
@@ -1027,16 +1043,35 @@ class ChessTFTApp {
         for (const r of list) {
             const row = document.createElement("div");
             row.className = "room-item-row";
+            const casterTag = r.isSpectatorHost ? `<span class="badge-pill" style="font-size:0.68rem; background:rgba(56,189,248,0.2); color:#38bdf8; border:1px solid #38bdf8; margin-left:4px;">🎙️ Caster Host</span>` : "";
+            const specCountTag = r.spectatorCount > 0 ? `<span style="font-size:0.7rem; color:#94a3b8; margin-left:6px;">👁️ ${r.spectatorCount}</span>` : "";
+
             row.innerHTML = `
                 <div>
-                    <div style="font-weight:800; color:var(--accent-gold);">Phòng #${r.code} — Chủ phòng: ${r.hostName}</div>
+                    <div style="font-weight:800; color:var(--accent-gold); display:flex; align-items:center; gap:4px;">
+                        <span>Phòng #${r.code} — Chủ phòng: ${r.hostName}</span>
+                        ${casterTag}
+                        ${specCountTag}
+                    </div>
                     <div style="font-size:0.74rem; color:var(--text-muted);">${modeLabels[r.timeMode] || r.timeMode} • Người chơi: ${r.playerCount}/8 ${r.fillBots ? "(+Bot tự lấp)" : ""}</div>
                 </div>
-                <button class="btn-primary">Vào Phòng</button>
+                <div style="display:flex; gap:6px; align-items:center;">
+                    ${r.playerCount < 8 ? `<button class="btn-primary btn-join-contestant" style="padding:4px 10px; font-size:0.75rem;">⚔️ Thi Đấu</button>` : ""}
+                    <button class="btn-join-spectator" title="Xem trực tiếp 4 bàn cờ 8 người cùng lúc">👁️ Xem Trực Tiếp</button>
+                </div>
             `;
-            row.querySelector("button").addEventListener("click", () => {
-                this.joinRoomByCode(r.code);
-            });
+            const joinBtn = row.querySelector(".btn-join-contestant");
+            if (joinBtn) {
+                joinBtn.addEventListener("click", () => {
+                    this.joinRoomByCode(r.code, false);
+                });
+            }
+            const specBtn = row.querySelector(".btn-join-spectator");
+            if (specBtn) {
+                specBtn.addEventListener("click", () => {
+                    this.joinRoomByCode(r.code, true);
+                });
+            }
             container.appendChild(row);
         }
     }
@@ -1058,12 +1093,34 @@ class ChessTFTApp {
         document.getElementById("chk-fill-bots").checked = this.currentRoom.fillBots !== false;
 
         const isHost = this.currentUser && this.currentRoom.hostId === this.currentUser.id;
+        const isSpectator = (this.currentRoom.isSpectatorHost && isHost) ||
+            (Array.isArray(this.currentRoom.spectators) && this.currentRoom.spectators.some(s => s.id === this.currentUser?.id));
+
+        const specAlert = document.getElementById("waiting-spectator-alert");
+        if (specAlert) specAlert.classList.toggle("hidden", !isSpectator);
+
+        const specListEl = document.getElementById("waiting-spectators-list");
+        if (specListEl) {
+            const specs = this.currentRoom.spectators || [];
+            if (specs.length > 0) {
+                specListEl.classList.remove("hidden");
+                specListEl.innerHTML = `👁️ <strong>Trọng Tài / Khán Giả (${specs.length}):</strong> ` +
+                    specs.map(s => `${s.avatar || "👁️"} ${s.name}${s.isHost ? " 👑(Chủ phòng)" : ""}`).join(", ");
+            } else {
+                specListEl.classList.add("hidden");
+            }
+        }
+
         document.getElementById("chk-fill-bots").disabled = !isHost;
         const startBtn = document.getElementById("btn-host-start-match");
         startBtn.disabled = !isHost;
-        startBtn.textContent = isHost
-            ? "⚔️ BẮT ĐẦU TRẬN ĐẤU (Đủ 8 ghế cùng Bot)"
-            : `⏳ Đang chờ Chủ Phòng (${this.currentRoom.hostName}) bắt đầu...`;
+        if (isHost) {
+            startBtn.textContent = isSpectator
+                ? "🎙️ BẮT ĐẦU GIẢI ĐẤU (CHỦ PHÒNG QUAN SÁT 4 BÀN)"
+                : "⚔️ BẮT ĐẦU TRẬN ĐẤU (Đủ 8 ghế cùng Bot)";
+        } else {
+            startBtn.textContent = `⏳ Đang chờ Chủ Phòng (${this.currentRoom.hostName}) bắt đầu...`;
+        }
 
         const grid = document.getElementById("waiting-players-grid");
         grid.innerHTML = "";
@@ -2158,6 +2215,17 @@ class ChessTFTApp {
         if (backBtn) {
             backBtn.addEventListener("click", () => {
                 this.stopSpectatorTimers();
+                if (this.isMultiplayerSpectator) {
+                    if (this.socket && this.socket.connected) {
+                        this.socket.emit("room:leave");
+                    }
+                    this.isMultiplayerSpectator = false;
+                    this.currentRoom = null;
+                    const brandTitle = document.getElementById("spec-brand-title");
+                    if (brandTitle) brandTitle.innerHTML = "👁️ QUAN SÁT GIẢI ĐẤU 8 BOT (4 MÀN HÌNH)";
+                    const newBtn = document.getElementById("btn-spec-new-8bots");
+                    if (newBtn) newBtn.style.display = "";
+                }
                 this.showScreen("lobby");
             });
         }
@@ -2196,6 +2264,7 @@ class ChessTFTApp {
     }
 
     start8BotSpectatorMode() {
+        this.isMultiplayerSpectator = false;
         this.stopCombatTimers();
         this.stopSpectatorTimers();
         this.specPaused = false;
@@ -2207,10 +2276,49 @@ class ChessTFTApp {
         const pauseBtn = document.getElementById("btn-spec-pause");
         if (pauseBtn) pauseBtn.textContent = "⏸️ Tạm Dừng";
 
+        const brandTitle = document.getElementById("spec-brand-title");
+        if (brandTitle) brandTitle.innerHTML = "👁️ QUAN SÁT GIẢI ĐẤU 8 BOT (4 MÀN HÌNH)";
+        const newBtn = document.getElementById("btn-spec-new-8bots");
+        if (newBtn) newBtn.style.display = "";
+
         this.tft.reset8BotTournament();
         this.showScreen("spectator");
         this.startSpectatorRoundMatches();
         this.showToast("👁️ Đang phát trực tiếp 4 bàn đấu của 8 Bot AI cùng lúc!", "success");
+    }
+
+    startMultiplayerSpectatorSession(roomData) {
+        this.isMultiplayerSpectator = true;
+        this.currentRoom = roomData;
+        this.stopCombatTimers();
+        this.stopSpectatorTimers();
+        this.specPaused = false;
+        this.specZoomIndex = null;
+
+        const realCount = (roomData?.players || []).filter(p => !p.isBot).length;
+        this.specGlobalLogs = [
+            `🎬 TRỰC TIẾP GIẢI ĐẤU 8 KỲ THỦ (PHÒNG #${roomData.code})!`,
+            `👥 Có ${realCount} người chơi thật cùng tranh tài trên 4 bàn Cờ Chớp cùng lúc!`,
+            `🎙️ Chế độ Caster / Trọng Tài: Bạn đang theo dõi toàn cảnh 4 màn hình 2x2 siêu mượt.`
+        ];
+
+        const pauseBtn = document.getElementById("btn-spec-pause");
+        if (pauseBtn) pauseBtn.textContent = "⏸️ Tạm Dừng";
+
+        const brandTitle = document.getElementById("spec-brand-title");
+        if (brandTitle) {
+            brandTitle.innerHTML = `🎙️ TRỰC TIẾP GIẢI ĐẤU 8 KỲ THỦ • PHÒNG #${roomData.code}`;
+        }
+
+        const newBtn = document.getElementById("btn-spec-new-8bots");
+        if (newBtn) {
+            newBtn.style.display = "none";
+        }
+
+        this.tft.resetMultiplayerSpectatorTournament(roomData);
+        this.showScreen("spectator");
+        this.startSpectatorRoundMatches();
+        this.showToast(`🎙️ Đang phát sóng trực tiếp 4 bàn đấu của Phòng #${roomData.code}!`, "success");
     }
 
     startSpectatorRoundMatches() {
@@ -2399,9 +2507,15 @@ class ChessTFTApp {
         const cfg = this.tft.getStageConfig();
         const aliveCount = this.tft.spectatorBots.filter(b => !b.eliminated).length;
 
-        document.getElementById("spec-stage-badge").textContent = `Vòng ${this.tft.stage}-${this.tft.roundInStage}`;
-        document.getElementById("spec-boardsize-badge").textContent = `📐 Bàn cờ: ${cfg.cols}x${cfg.rows}`;
-        document.getElementById("spec-alive-badge").textContent = `🤖 Còn sống: ${aliveCount}/8 Bot`;
+        const roleLabel = this.isMultiplayerSpectator ? "Kỳ thủ" : "Bot";
+        document.getElementById("spec-alive-badge").textContent = `${this.isMultiplayerSpectator ? "👥" : "🤖"} Còn sống: ${aliveCount}/8 ${roleLabel}`;
+
+        const lbTitleEl = document.getElementById("spec-leaderboard-title");
+        if (lbTitleEl) {
+            lbTitleEl.textContent = this.isMultiplayerSpectator
+                ? "👥 Bảng Xếp Hạng 8 Kỳ Thủ (Trực Tiếp)"
+                : "🤖 Bảng Xếp Hạng 8 Bot (Can Thiệp Nhanh)";
+        }
 
         this.renderSpectatorLeaderboard();
 
@@ -2433,27 +2547,32 @@ class ChessTFTApp {
         const sorted = [...this.tft.spectatorBots].sort((a, b) => b.hp - a.hp);
         sorted.forEach((bot, idx) => {
             const row = document.createElement("div");
-            row.className = `spec-bot-row ${bot.eliminated ? "eliminated" : ""}`;
+            const isReal = !!bot.isRealPlayer;
+            row.className = `spec-bot-row ${bot.eliminated ? "eliminated" : ""} ${isReal ? "real-player" : ""}`;
 
             const unitsHtml = bot.board.map(u => {
                 const def = window.CHESS_TFT_DATA.PIECES[u.id];
                 return `<span class="spec-bot-unit-pill" title="${def.name}">${def.icon}${"★".repeat(u.stars || 1)}</span>`;
             }).join("");
 
+            const realTag = isReal
+                ? `<span class="spec-real-player-pill">👤 NGƯỜI THẬT</span>`
+                : `<span style="font-size:0.65rem; color:#94a3b8;">🤖 BOT</span>`;
+
             row.innerHTML = `
                 <div class="spec-bot-top">
-                    <span>#${idx + 1} ${bot.avatar} ${bot.name}</span>
-                    <span style="color:${bot.hp > 40 ? "#4ade80" : "#f87171"};">❤️ ${bot.hp}</span>
+                    <span>#${idx + 1} ${bot.avatar} ${bot.name} ${realTag}</span>
+                    <span style="color:${bot.hp > 40 ? "#4ade80" : "#f87171"}; font-weight:800;">❤️ ${bot.hp}</span>
                 </div>
                 <div class="spec-bot-meta">
-                    <span>Lv.${bot.level} • 🪙 ${bot.gold} • Hệ: ${bot.style}</span>
+                    <span>Lv.${bot.level} • 🪙 ${bot.gold} • ${isReal ? `ELO ${bot.elo || 1000}` : `Hệ: ${bot.style}`}</span>
                     <span>${bot.streak > 0 ? `🔥+${bot.streak}` : (bot.streak < 0 ? `❄️${bot.streak}` : "⚖️0")}</span>
                 </div>
                 <div class="spec-bot-units">${unitsHtml}</div>
                 <div class="spec-bot-admin-btns">
-                    <button class="spec-mini-btn btn-buff-hp" title="Admin cộng +25 Máu cho Bot này">+25 ❤️</button>
-                    <button class="spec-mini-btn btn-buff-star" title="Admin nâng toàn bộ đội hình Bot này lên +1 Sao">⬆️ Nâng Sao</button>
-                    <button class="spec-mini-btn btn-buff-item" title="Admin tặng thêm Trang bị cho Bot này">🎁 +Đồ</button>
+                    <button class="spec-mini-btn btn-buff-hp" title="Admin cộng +25 Máu cho Kỳ thủ này">+25 ❤️</button>
+                    <button class="spec-mini-btn btn-buff-star" title="Admin nâng toàn bộ đội hình lên +1 Sao">⬆️ Nâng Sao</button>
+                    <button class="spec-mini-btn btn-buff-item" title="Admin tặng thêm Trang bị">🎁 +Đồ</button>
                 </div>
             `;
 
@@ -2526,12 +2645,12 @@ class ChessTFTApp {
 
             <div class="spec-fighters-bar">
                 <div class="spec-fighter side-blue ${!eng.gameOver && eng.turn === "player" ? "turn-active" : ""}">
-                    <span>${m.botA.avatar} ${m.botA.name} (❤️${m.botA.hp})</span>
+                    <span>${m.botA.avatar} ${m.botA.name} ${m.botA.isRealPlayer ? '<span class="spec-real-player-pill">👤 THẬT</span>' : ''} (❤️${m.botA.hp})</span>
                     <span id="spec-clock-a-${m.matchIndex}">⏱️ ${m.clockA.toFixed(1)}s</span>
                 </div>
                 <span class="spec-vs-pill">VS</span>
                 <div class="spec-fighter side-red ${!eng.gameOver && eng.turn === "enemy" ? "turn-active" : ""}">
-                    <span>${m.botB.avatar} ${m.botB.name} (❤️${m.botB.hp})</span>
+                    <span>${m.botB.avatar} ${m.botB.name} ${m.botB.isRealPlayer ? '<span class="spec-real-player-pill">👤 THẬT</span>' : ''} (❤️${m.botB.hp})</span>
                     <span id="spec-clock-b-${m.matchIndex}">⏱️ ${m.clockB.toFixed(1)}s</span>
                 </div>
             </div>

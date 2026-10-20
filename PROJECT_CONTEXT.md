@@ -72,6 +72,16 @@ f:\chesstft\
    - Nút Khóa Shop trên thanh kinh tế HUD hiển thị trạng thái phát sáng viền hổ phách hoàng gia (Amber Gold Pulse).
    - Dải nhãn cảnh báo `🔒 SHOP ĐÃ KHÓA (GIỮ CHO VÒNG SAU)` hiển thị trên khung thẻ bài.
    - Khi chuyển hiệp mới (`nextRound`), engine TFT tự động giữ nguyên 5 thẻ bài và thông báo Toast mở khóa cho kỳ thủ.
+6. **Chế Độ Khán Giả / Trọng Tài Trực Tiếp 8 Người (Multiplayer Spectator / Caster Mode 🎙️)**:
+   - Khi tạo phòng bạn bè, chủ phòng có tùy chọn checkbox: `👁️ Tạo phòng với tư cách Khán Giả / Trọng Tài (Caster Mode: Xem 4 bàn cờ 8 người cùng lúc)`.
+   - Chủ phòng không chiếm 1 trong 8 ghế thi đấu, dành toàn bộ 8 ghế cho người chơi thật (hoặc bot tự lấp nếu thiếu).
+   - Người chơi khác tại danh sách phòng có nút `👁️ Xem Trực Tiếp` để tham gia phòng với tư cách khán giả không giới hạn số lượng.
+   - Khi trận đấu bắt đầu, khán giả/caster được chuyển sang giao diện `#screen-spectator` chia 4 màn hình 2x2 siêu mượt, theo dõi trực tiếp 4 cặp đấu cùng lúc:
+     - Bảng Xếp Hạng 8 Kỳ Thủ bên trái có nhãn `👤 NGƯỜI THẬT` kèm chỉ số ELO phát sáng nổi bật so với Bot AI.
+     - Đồng hồ Cờ Chớp đếm ngược trực tiếp cho từng người chơi trên cả 4 bàn theo đúng cấu hình thời gian phòng (Tiêu chuẩn / Thư thả / Siêu chớp).
+     - Nút điều chỉnh tốc độ trận đấu (0.5x, 1x, 2x, 4x), Tạm Dừng, Phóng to 1 bàn bất kỳ (Zoom-in), Sang vòng tiếp.
+     - Nhật ký chiến đấu ghi lại chi tiết diễn biến thắng/thua/hết giờ/chiếu hết của cả 4 bàn cờ.
+     - Nút `🏠 Về Sảnh` tự động rời phòng sạch sẽ và hoàn trả giao diện chuẩn.
 
 ---
 
