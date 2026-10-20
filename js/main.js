@@ -14,13 +14,67 @@ class SoundFX {
         this.bgmAudio.loop = true;
         this.bgmAudio.volume = this.bgmMuted ? 0 : this.bgmVolume;
 
-        this.tracks = {
-            lobby: "assets/audio/lobby_theme.mp3",
-            combat: "assets/audio/combat_theme.ogg"
+        this.currentPack = localStorage.getItem("chess_tft_sound_pack") || "expedition33";
+        this.packs = {
+            expedition33: {
+                name: "Clair Obscur: Expedition 33",
+                tracks: {
+                    title: "assets/audio/expedition33_title.webm",
+                    lobby: "assets/audio/expedition33_lobby.webm",
+                    prep: "assets/audio/expedition33_prep.webm",
+                    combat: "assets/audio/expedition33_combat.webm",
+                    combat_climax: "assets/audio/expedition33_combat_climax.webm"
+                },
+                names: {
+                    title: "Lumière (Expedition 33)",
+                    lobby: "Spring Meadows - Linen and Cotton",
+                    prep: "Yellow Forest - Number the Hours",
+                    combat: "Spring Meadows - Get Up! For Lumière!",
+                    combat_climax: "Forgotten Battlefield - Divided Swords"
+                }
+            },
+            classic: {
+                name: "Cổ Điển / Classic Theme",
+                tracks: {
+                    title: "assets/audio/lobby_theme.mp3",
+                    lobby: "assets/audio/lobby_theme.mp3",
+                    prep: "assets/audio/lobby_theme.mp3",
+                    combat: "assets/audio/combat_theme.ogg",
+                    combat_climax: "assets/audio/combat_theme.ogg"
+                },
+                names: {
+                    title: "Classic Lobby Theme",
+                    lobby: "Classic Lobby Theme",
+                    prep: "Classic Lobby Theme",
+                    combat: "Classic Combat Blitz",
+                    combat_climax: "Classic Combat Blitz"
+                }
+            }
         };
 
         this.userUnlocked = false;
         this.setupUserUnlock();
+    }
+
+    get activePack() {
+        return this.packs[this.currentPack] || this.packs.expedition33;
+    }
+
+    getCurrentTrackName() {
+        if (!this.currentTrack) return "Không có";
+        const pack = this.activePack;
+        return (pack.names && pack.names[this.currentTrack]) || this.currentTrack;
+    }
+
+    cycleSoundPack() {
+        this.currentPack = this.currentPack === "expedition33" ? "classic" : "expedition33";
+        localStorage.setItem("chess_tft_sound_pack", this.currentPack);
+        if (this.currentTrack) {
+            const track = this.currentTrack;
+            this.currentTrack = null;
+            this.playBgm(track);
+        }
+        return this.activePack;
     }
 
     setupUserUnlock() {
@@ -50,11 +104,17 @@ class SoundFX {
     }
 
     playBgm(trackName) {
-        if (!this.tracks[trackName]) return;
+        const pack = this.activePack;
+        let targetSrc = pack.tracks[trackName];
+        if (!targetSrc) {
+            if (trackName === "title" || trackName === "prep") targetSrc = pack.tracks.lobby;
+            else if (trackName === "combat_climax") targetSrc = pack.tracks.combat;
+            else return;
+        }
+
         if (this.currentTrack === trackName && !this.bgmAudio.paused) return;
 
         this.currentTrack = trackName;
-        const targetSrc = this.tracks[trackName];
 
         try {
             if (this.bgmAudio.src.indexOf(targetSrc) === -1) {
@@ -257,13 +317,19 @@ class ChessTFTApp {
         if (specEl) specEl.classList.toggle("hidden", screenName !== "spectator");
         this.hideSynergyTooltip();
 
-        if (screenName === "lobby" || screenName === "auth") {
+        if (screenName === "auth") {
+            this.sfx.playBgm("title");
+        } else if (screenName === "lobby" || screenName === "spectator") {
             this.sfx.playBgm("lobby");
         } else if (screenName === "game") {
             if (this.tft && this.tft.phase === "combat") {
-                this.sfx.playBgm("combat");
+                const stage = this.tft.stage || 1;
+                const playerHp = this.tft?.player?.hp ?? 100;
+                const oppHp = this.tft?.currentOpponent?.hp ?? 100;
+                const isClimax = stage >= 3 || playerHp <= 25 || oppHp <= 25;
+                this.sfx.playBgm(isClimax ? "combat_climax" : "combat");
             } else {
-                this.sfx.playBgm("lobby");
+                this.sfx.playBgm("prep");
             }
         }
 
@@ -3708,7 +3774,7 @@ class ChessTFTApp {
         const footerCloseGuideBtn = document.getElementById("btn-footer-close-guide");
         if (footerCloseGuideBtn) footerCloseGuideBtn.addEventListener("click", () => this.closePieceGuide());
 
-        // BGM Toggle Buttons (Lobby & Game Header)
+        // BGM Toggle Buttons (Lobby & Game Header) & Sound Pack Switcher
         const updateBgmButtons = () => {
             const isPlaying = !this.sfx.bgmMuted;
             const text = isPlaying ? "🎵 Nhạc: BẬT" : "🔇 Nhạc: TẮT";
@@ -3722,13 +3788,24 @@ class ChessTFTApp {
                 btn2.textContent = text;
                 btn2.classList.toggle("audio-off", !isPlaying);
             }
+            const isE33 = this.sfx.currentPack === "expedition33";
+            const labelPack = document.getElementById("label-sound-pack");
+            const btnPackGame = document.getElementById("btn-sound-pack-game");
+            if (labelPack) labelPack.textContent = isE33 ? "🎼 OST: Expedition 33" : "🎼 OST: Cổ Điển";
+            if (btnPackGame) btnPackGame.textContent = isE33 ? "🎼 E33" : "🎼 Classic";
         };
 
         const onToggleBgm = () => {
             this.sfx.toggleBgm();
             updateBgmButtons();
-            const state = !this.sfx.bgmMuted ? "Đã bật nhạc nền 🎵" : "Đã tắt nhạc nền 🔇";
+            const state = !this.sfx.bgmMuted ? `Đã bật: ${this.sfx.getCurrentTrackName()} 🎵` : "Đã tắt nhạc nền 🔇";
             this.showToast(state, "info");
+        };
+
+        const onCycleSoundPack = () => {
+            const pack = this.sfx.cycleSoundPack();
+            updateBgmButtons();
+            this.showToast(`Đã chuyển bộ nhạc sang: ${pack.name} 🎼`, "success");
         };
 
         const btnBgm1 = document.getElementById("btn-toggle-bgm");
@@ -3736,6 +3813,12 @@ class ChessTFTApp {
 
         const btnBgm2 = document.getElementById("btn-toggle-bgm-game");
         if (btnBgm2) btnBgm2.addEventListener("click", onToggleBgm);
+
+        const btnPack1 = document.getElementById("btn-sound-pack");
+        if (btnPack1) btnPack1.addEventListener("click", onCycleSoundPack);
+
+        const btnPack2 = document.getElementById("btn-sound-pack-game");
+        if (btnPack2) btnPack2.addEventListener("click", onCycleSoundPack);
 
         updateBgmButtons();
 
@@ -5069,7 +5152,11 @@ class ChessTFTApp {
     // ========================================================================
     startBlitzCombat() {
         this.clearPrepCountdown();
-        this.sfx.playBgm("combat");
+        const stage = this.tft ? (this.tft.stage || 1) : 1;
+        const playerHp = this.tft?.player?.hp ?? 100;
+        const oppHp = this.tft?.currentOpponent?.hp ?? 100;
+        const isClimax = stage >= 3 || playerHp <= 25 || oppHp <= 25;
+        this.sfx.playBgm(isClimax ? "combat_climax" : "combat");
         this.selectedPrepUnitUid = null;
         this.selectedItemIndex = null;
         this.selectedCombatSquare = null;
@@ -5242,7 +5329,7 @@ class ChessTFTApp {
 
     finishBlitzCombat() {
         this.stopCombatTimers();
-        this.sfx.playBgm("lobby");
+        this.sfx.playBgm("prep");
         if (!this.chess || !this.chess.result) return;
 
         const res = this.chess.result;
@@ -5582,7 +5669,7 @@ class ChessTFTApp {
     // ========================================================================
     startPrepCountdown() {
         this.clearPrepCountdown();
-        this.sfx.playBgm("lobby");
+        this.sfx.playBgm("prep");
         this.prepSecondsLeft = 18; // 18s chuẩn bị nhanh gọn chuẩn TFT
         const badge = document.getElementById("prep-timer-badge");
         if (badge) {

@@ -5659,7 +5659,31 @@ button {
     }
 }
 
-
-
-
-
+/* SOUND PACK SWITCHER BUTTONS */
+.btn-sound-pack-sidebar {
+    margin-top: 4px;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    background: rgba(245, 158, 11, 0.12) !important;
+    border: 1px solid rgba(245, 158, 11, 0.35) !important;
+    color: #fbbf24 !important;
+    transition: all 0.2s ease;
+}
+.btn-sound-pack-sidebar:hover {
+    background: rgba(245, 158, 11, 0.25) !important;
+    border-color: #f59e0b !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
+}
+.btn-sound-pack-pill {
+    background: rgba(245, 158, 11, 0.15) !important;
+    border: 1px solid rgba(245, 158, 11, 0.45) !important;
+    color: #fbbf24 !important;
+    font-weight: 700 !important;
+    transition: all 0.2s ease;
+}
+.btn-sound-pack-pill:hover {
+    background: rgba(245, 158, 11, 0.3) !important;
+    border-color: #fbbf24 !important;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.35);
+}
