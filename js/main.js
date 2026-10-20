@@ -408,6 +408,10 @@ class ChessTFTApp {
         this.roundResultTimer = null;
         this.roundResultSecondsLeft = 4;
 
+        // Post-match spectate states
+        this.isPostMatchSpectating = false;
+        this.isFinishedCombat = false;
+
         this.initSocket();
         this.bindStaticEvents();
         this.bindAuthAndLobbyEvents();
@@ -514,6 +518,37 @@ class ChessTFTApp {
         if (!this.sfx) return;
         // Giai đoạn chuẩn bị (Shop / Bench / Xếp quân cờ): Yellow Forest - Number the Hours
         this.sfx.playBgm("prep");
+    }
+
+    cycleScoutingPlayer(direction = 1) {
+        if (!this.tft) return;
+        const all = this.tft.getAllParticipants ? this.tft.getAllParticipants() : [];
+        if (all.length <= 1) return;
+        const currentId = this.tft.scoutingPlayerId || "player";
+        const currentIndex = all.findIndex(p => p.id === currentId);
+        let nextIndex = (currentIndex + direction + all.length) % all.length;
+        this.tft.scoutingPlayerId = all[nextIndex].id;
+        const target = all[nextIndex];
+        this.showToast(`👁️ Đang xem nhà: ${target.name} (${target.avatar || "🦊"})`, "info");
+        this.renderAll();
+    }
+
+    startEliminatedSpectatorSession() {
+        this.stopCombatTimers();
+        this.clearAllCountdowns();
+        this.isPostMatchSpectating = false;
+
+        if (this.currentRoom && this.currentRoom.code !== "SOLO") {
+            this.startMultiplayerSpectatorSession(this.currentRoom);
+        } else {
+            const aliveBots = this.tft.getAllParticipants().filter(p => !p.eliminated && p.id !== "player");
+            this.tft.spectatorBots = aliveBots.length > 0 ? aliveBots : (this.tft.bots || []);
+            this.spectatorPovTargetId = this.tft.spectatorBots[0]?.id || "bot_0";
+            this.setSpectatorMode("pov", this.spectatorPovTargetId);
+            this.showScreen("spectator");
+            this.startSpectatorRoundMatches();
+        }
+        this.showToast("👁️ Bạn đang ở chế độ Khán Giả theo dõi giải đấu!", "info");
     }
 
     preloadUpcomingCombatTrack() {
@@ -3929,6 +3964,31 @@ class ChessTFTApp {
             this.renderAll();
         });
 
+        document.getElementById("btn-scout-prev")?.addEventListener("click", () => this.cycleScoutingPlayer(-1));
+        document.getElementById("btn-scout-next")?.addEventListener("click", () => this.cycleScoutingPlayer(1));
+        document.getElementById("btn-scout-proceed")?.addEventListener("click", () => {
+            this.isPostMatchSpectating = false;
+            this.tft.scoutingPlayerId = "player";
+            this.proceedAfterRoundModal();
+        });
+
+        document.getElementById("btn-spectate-other-boards")?.addEventListener("click", () => {
+            this.clearRoundResultCountdown();
+            document.getElementById("modal-round-result").classList.add("hidden");
+            this.isPostMatchSpectating = true;
+            const others = this.tft.getAllParticipants().filter(p => p.id !== "player" && !p.eliminated);
+            if (others.length > 0) {
+                this.tft.scoutingPlayerId = others[0].id;
+            }
+            this.showToast("👁️ Bạn đang xem trận đấu các nhà khác! Bấm [1]/[2] hoặc click danh sách để đổi nhà.", "info");
+            this.renderAll();
+        });
+
+        document.getElementById("btn-gameover-spectate")?.addEventListener("click", () => {
+            document.getElementById("modal-gameover").classList.add("hidden");
+            this.startEliminatedSpectatorSession();
+        });
+
         document.getElementById("btn-sell-selected").addEventListener("click", () => {
             if (!this.selectedPrepUnitUid) return;
             const res = this.tft.sellUnit(this.selectedPrepUnitUid);
@@ -4037,6 +4097,29 @@ class ChessTFTApp {
             if (openModal) return;
 
             const k = e.key.toLowerCase();
+            if (k === "1") {
+                const canCycle = (this.tft.phase === "prep") || (!this.chess || this.chess.gameOver) || this.isPostMatchSpectating || this.tft.player.eliminated;
+                if (canCycle) {
+                    e.preventDefault();
+                    this.cycleScoutingPlayer(-1);
+                    return;
+                }
+            } else if (k === "2") {
+                const canCycle = (this.tft.phase === "prep") || (!this.chess || this.chess.gameOver) || this.isPostMatchSpectating || this.tft.player.eliminated;
+                if (canCycle) {
+                    e.preventDefault();
+                    this.cycleScoutingPlayer(1);
+                    return;
+                }
+            } else if (e.key === " " || e.key === "Spacebar") {
+                if (this.tft && this.tft.scoutingPlayerId && this.tft.scoutingPlayerId !== "player") {
+                    e.preventDefault();
+                    this.tft.scoutingPlayerId = "player";
+                    this.renderAll();
+                    return;
+                }
+            }
+
             if (k === "d") {
                 e.preventDefault();
                 this.handleHotkeyReroll();
@@ -4443,8 +4526,9 @@ class ChessTFTApp {
                     this.setSpectatorMode("pov", part.id);
                     return;
                 }
-                if (this.tft.phase !== "prep") {
-                    this.showToast("Đang trong trận Cờ Chớp, không thể chuyển màn hình soi bài!", "warn");
+                const canScout = (this.tft.phase === "prep") || (!this.chess || this.chess.gameOver) || this.isFinishedCombat || this.isPostMatchSpectating || this.tft.player.eliminated;
+                if (!canScout) {
+                    this.showToast("Đang trong lượt đánh Cờ Chớp của bạn, hãy hoàn thành trận đấu trước khi xem nhà khác!", "warn");
                     return;
                 }
                 this.tft.scoutingPlayerId = part.id;
@@ -4640,28 +4724,36 @@ class ChessTFTApp {
             return;
         }
 
-        if (this.tft.phase === "prep") {
-            const viewed = this.tft.getParticipantById(this.tft.scoutingPlayerId);
-            const isScoutingOther = viewed.id !== "player";
-
-            if (isScoutingOther) {
-                scoutBanner.classList.remove("hidden");
-                document.getElementById("scouting-target-name").textContent = `🕵️ Đang Soi Bài: ${viewed.name} (Cấp ${viewed.level} • ${viewed.hp} HP)`;
-                // When scouting another player, their terrain is hidden for fair play!
-                mapInfoBar.innerHTML = `
-                    <span class="map-hidden-pill">🕶️ Bản Đồ Đối Thủ: <strong>ĐANG ẨN</strong> (Chỉ soi được quân cờ & đội hình, địa hình sân khách được bảo mật!)</span>
-                `;
-            } else {
-                scoutBanner.classList.add("hidden");
-                // On player's HOME board: REVEAL the upcoming map & terrain so player can strategically position pawns and avoid rocks/walls!
-                const mapDef = this.tft.currentMap || window.CHESS_TFT_DATA.MAPS[0];
-                mapInfoBar.innerHTML = `
-                    <span class="map-active-pill" style="background:${mapDef.themeColor}">🗺️ Bản Đồ Vòng Tới: ${mapDef.name}</span>
-                    <span class="map-desc-text">${mapDef.desc}</span>
-                `;
+        const isScoutingOther = this.tft.scoutingPlayerId && this.tft.scoutingPlayerId !== "player";
+        if (isScoutingOther) {
+            const viewed = this.tft.getParticipantById(this.tft.scoutingPlayerId) || this.tft.player;
+            scoutBanner.classList.remove("hidden");
+            const targetNameEl = document.getElementById("scouting-target-name");
+            if (targetNameEl) {
+                targetNameEl.textContent = `🕵️ Đang Xem Bàn Cờ: ${viewed.name} (${viewed.avatar || "🦊"}) • Cấp ${viewed.level} • ${viewed.hp} HP`;
             }
 
-            this.renderPrepBoardCells(boardEl, cfg, viewed, isScoutingOther);
+            const btnProceed = document.getElementById("btn-scout-proceed");
+            if (btnProceed) {
+                btnProceed.classList.toggle("hidden", !this.isPostMatchSpectating);
+            }
+
+            mapInfoBar.innerHTML = `
+                <span class="map-hidden-pill">👁️ Khán Giả: <strong>${viewed.name}</strong> • Phím <strong>[1]</strong> / <strong>[2]</strong> hoặc click BXH để đổi nhà</span>
+            `;
+
+            this.renderPrepBoardCells(boardEl, cfg, viewed, true);
+            return;
+        }
+
+        if (this.tft.phase === "prep") {
+            scoutBanner.classList.add("hidden");
+            const mapDef = this.tft.currentMap || window.CHESS_TFT_DATA.MAPS[0];
+            mapInfoBar.innerHTML = `
+                <span class="map-active-pill" style="background:${mapDef.themeColor}">🗺️ Bản Đồ Vòng Tới: ${mapDef.name}</span>
+                <span class="map-desc-text">${mapDef.desc}</span>
+            `;
+            this.renderPrepBoardCells(boardEl, cfg, this.tft.player, false);
         } else if (this.tft.phase === "combat" && this.chess) {
             scoutBanner.classList.add("hidden");
             mapInfoBar.innerHTML = `
@@ -5515,6 +5607,7 @@ class ChessTFTApp {
     finishBlitzCombat() {
         this.stopCombatTimers();
         this.playPrepBgm();
+        this.isFinishedCombat = true;
         if (!this.chess || !this.chess.result) return;
 
         const res = this.chess.result;
@@ -5619,6 +5712,9 @@ class ChessTFTApp {
 
     proceedAfterRoundModal() {
         this.clearRoundResultCountdown();
+        this.isPostMatchSpectating = false;
+        this.isFinishedCombat = false;
+        this.tft.scoutingPlayerId = "player";
         const nextInfo = this.tft.advanceToNextRound();
 
         if (nextInfo.phase === "gameover") {
@@ -5857,6 +5953,9 @@ class ChessTFTApp {
     // ========================================================================
     startPrepCountdown() {
         this.clearPrepCountdown();
+        this.isPostMatchSpectating = false;
+        this.isFinishedCombat = false;
+        if (this.tft) this.tft.scoutingPlayerId = "player";
         this.playPrepBgm();
         this.prepSecondsLeft = 30; // 30s chuẩn thời gian chuẩn bị TFT
         const badge = document.getElementById("prep-timer-badge");
