@@ -51,8 +51,10 @@ f:\chesstft\
 ---
 
 ## ⚔️ 4. Quy Tắc & Cơ Chế Gameplay Đã Hoàn Thiện
-1. **Bàn cờ Mini 5x6**:
+1. **Bàn cờ Mini 5x6 & Luật Thắng Bại Mới**:
    - Vua (King) là linh hồn, bị bắt là thua ngay (hoặc trừ lượng máu lớn).
+   - **Cơ chế Hết Cờ Đặt Trên Sân (Trừ Vua)**: 1 trong 2 bên bị tiêu diệt sạch toàn bộ quân cờ trợ chiến trước (chỉ còn lại duy nhất Vua) sẽ **THUA NGAY LẬP TỨC**. Máu bị trừ tính theo **Luật Hòa Hơn Cờ**: `Sát thương = (3 + Stage) + Chênh lệch quân số còn lại của bên thắng`.
+   - **Luật Hòa Hơn Cờ**: Khi hết số lượt tối đa hoặc hết giờ hòa cờ, hệ thống so sánh quân số hai bên — bên nào còn nhiều quân hơn sẽ giành chiến thắng theo thế "Hòa hơn cờ" (bên kém cờ bị trừ máu theo độ chênh lệch quân số).
    - Quân cờ giữ nguyên cách đi/ăn của Cờ Vua cổ điển (Mã nhảy chữ L, Tượng đi chéo, Xe đi thẳng, Hậu đa năng, Tốt tiến 1 ăn chéo).
 2. **Hệ Thống TFT**:
    - 15 quân cờ phân cấp 1⭐, 2⭐ (ghép 3 quân 1⭐), 3⭐ (ghép 3 quân 2⭐).

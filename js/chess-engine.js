@@ -616,6 +616,24 @@ class BlitzChessEngine {
                     events.push(`⚔️ ${attacker.name} tiêu diệt ${target.name}!`);
                 }
 
+                // CƠ CHẾ MỚI: 1 trong 2 bên hết sạch cờ đặt trên sân (trừ Vua) trước sẽ THUA NGAY LẬP TỨC!
+                if (!target.isKing && this.countNonKingPieces(oppSide) === 0) {
+                    events.push(`👑 ${oppSide === "player" ? "Bạn" : "Đối Thủ"} đã hết sạch quân cờ trợ chiến trên sân (chỉ còn lại Vua cô độc)!`);
+                    this.lastAction = {
+                        fromR: action.fromR,
+                        fromC: action.fromC,
+                        toR: action.toR,
+                        toC: action.toC,
+                        stopR: attacker.r,
+                        stopC: attacker.c,
+                        type: action.type,
+                        side: side
+                    };
+                    this.endMatch(side, "pieces_eliminated", `Quét Sạch Toàn Bộ Quân Lực (${oppSide === "player" ? "Bạn" : "Đối Thủ"} hết cờ trừ Vua)!`);
+                    this.moveHistory.push({ turn: this.turnCount, side, text: events.join(" • ") });
+                    return { events, clockBonus, gameOver: true };
+                }
+
                 // Mercenary gold reward
                 if (attacker.id === "mercenary" && side === "player") {
                     const goldGain = attacker.stars >= 3 ? 3 : (attacker.stars === 2 ? 2 : 1);
@@ -788,6 +806,21 @@ class BlitzChessEngine {
                             this.moveHistory.push({ turn: this.turnCount, side, text: events.join(" • ") });
                             return { events, clockBonus, gameOver: true };
                         }
+
+                        // Kiểm tra nếu thiêu đốt làm 1 trong 2 bên hết sạch cờ trợ chiến (chỉ còn Vua)
+                        const pNonKing = this.countNonKingPieces("player");
+                        const eNonKing = this.countNonKingPieces("enemy");
+                        if (pNonKing === 0 || eNonKing === 0) {
+                            if (pNonKing === 0 && eNonKing === 0) {
+                                this.endMatch("draw", "draw", "Hòa Cờ (Cả hai bên cùng hết cờ trợ chiến)!");
+                            } else if (pNonKing === 0) {
+                                this.endMatch("enemy", "pieces_eliminated", "Quét Sạch Quân Lực (Bạn hết cờ trừ Vua)!");
+                            } else {
+                                this.endMatch("player", "pieces_eliminated", "Quét Sạch Quân Lực (Đối thủ hết cờ trừ Vua)!");
+                            }
+                            this.moveHistory.push({ turn: this.turnCount, side, text: events.join(" • ") });
+                            return { events, clockBonus, gameOver: true };
+                        }
                     }
                 }
             }
@@ -815,7 +848,16 @@ class BlitzChessEngine {
             // If all units are stunned, pass turn back or if truly no units can move
             const oppUnstunnedMoves = this.getAllSideActions(oppSide, true);
             if (oppUnstunnedMoves.length === 0) {
-                this.endMatch("draw", "draw", "Hòa Cờ (Hết nước đi hợp lệ)!");
+                // Áp dụng luật Hòa Hơn Cờ
+                const pPieces = this.countSurvivingPieces("player");
+                const ePieces = this.countSurvivingPieces("enemy");
+                if (pPieces > ePieces) {
+                    this.endMatch("player", "draw_advantage", `Hòa Hơn Cờ (Bạn còn ${pPieces} quân vs Đối thủ ${ePieces} quân)!`);
+                } else if (ePieces > pPieces) {
+                    this.endMatch("enemy", "draw_advantage", `Hòa Hơn Cờ (Đối thủ còn ${ePieces} quân vs Bạn ${pPieces} quân)!`);
+                } else {
+                    this.endMatch("draw", "draw", "Hòa Cờ (Hết nước đi & Bằng quân số)!");
+                }
                 this.moveHistory.push({ turn: this.turnCount - 1, side, text: events.join(" • ") });
                 return { events, clockBonus, gameOver: true };
             } else {
@@ -835,7 +877,16 @@ class BlitzChessEngine {
         }
 
         if (this.turnCount > this.maxTurns) {
-            this.endMatch("draw", "draw", "Hòa Cờ (Hết số lượt giao tranh tối đa)!");
+            // Áp dụng luật Hòa Hơn Cờ khi hết số lượt tối đa
+            const pPieces = this.countSurvivingPieces("player");
+            const ePieces = this.countSurvivingPieces("enemy");
+            if (pPieces > ePieces) {
+                this.endMatch("player", "draw_advantage", `Hòa Hơn Cờ (Bạn còn ${pPieces} quân vs Đối thủ ${ePieces} quân)!`);
+            } else if (ePieces > pPieces) {
+                this.endMatch("enemy", "draw_advantage", `Hòa Hơn Cờ (Đối thủ còn ${ePieces} quân vs Bạn ${pPieces} quân)!`);
+            } else {
+                this.endMatch("draw", "draw", "Hòa Cờ (Hết số lượt giao tranh & Bằng quân số)!");
+            }
             this.moveHistory.push({ turn: this.turnCount - 1, side, text: events.join(" • ") });
             return { events, clockBonus, gameOver: true };
         }
@@ -849,6 +900,19 @@ class BlitzChessEngine {
         for (let r = 0; r < this.rows; r++) {
             for (let c = 0; c < this.cols; c++) {
                 if (this.board[r][c] && this.board[r][c].side === side) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    countNonKingPieces(side) {
+        let count = 0;
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.cols; c++) {
+                const p = this.board[r][c];
+                if (p && p.side === side && !p.isKing) {
                     count++;
                 }
             }
@@ -925,6 +989,10 @@ class BlitzChessEngine {
                     score += 120; // Stripping King armor layer
                 } else if (target.hp <= dmg) {
                     score += 55 + (window.CHESS_TFT_DATA.PIECES[target.id]?.cost || 1) * 12;
+                    // Cực kỳ ưu tiên tiêu diệt quân cờ cuối cùng của đối thủ để thắng ngay lập tức!
+                    if (this.countNonKingPieces(oppSide) <= 1) {
+                        score += 600;
+                    }
                 } else {
                     score += 28 + dmg * 10;
                 }

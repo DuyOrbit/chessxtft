@@ -822,11 +822,26 @@ class TFTGameManager {
             const cmPerUnit = df.checkmatePerUnit !== undefined ? Number(df.checkmatePerUnit) : 2;
 
             const base = cmBase + this.stage * cmMult;
-            const unitDmg = winnerPiecesLeft * cmPerUnit;
+            const unitDmg = (winnerPiecesLeft || 0) * cmPerUnit;
             const total = base + unitDmg + royalBonus;
             return {
                 damage: total,
                 formulaText: `Chiếu Hết / Hết Giờ (Trừ Nặng): ${base} (Cơ bản) + ${unitDmg} (${winnerPiecesLeft} quân sống x${cmPerUnit})${royalBonus ? ` + ${royalBonus} (Hoàng Gia)` : ""} = -${total} Máu!`
+            };
+        } else if (resultType === "pieces_eliminated" || resultType === "draw_advantage") {
+            // CƠ CHẾ MỚI: Hết Cờ Trừ Vua & Luật Hòa Hơn Cờ (Sát thương tính theo chênh lệch quân số)
+            const kcBase = df.kingCaptureBase !== undefined ? Number(df.kingCaptureBase) : 3;
+            const kcMult = df.kingCaptureStageMult !== undefined ? Number(df.kingCaptureStageMult) : 1;
+
+            const base = kcBase + this.stage * kcMult;
+            const diff = Math.max(1, (winnerPiecesLeft || 0) - (loserPiecesLeft || 0));
+            const total = base + diff + royalBonus;
+            const label = resultType === "pieces_eliminated"
+                ? "Hết Cờ Đặt Trên Sân Trừ Vua (Luật Hơn Cờ)"
+                : "Hòa Hơn Cờ (Nhiều Quân Hơn)";
+            return {
+                damage: total,
+                formulaText: `${label}: ${base} (Cơ bản Stage ${this.stage}) + ${diff} (Hơn ${diff} quân trên sân)${royalBonus ? ` + ${royalBonus} (Hoàng Gia)` : ""} = -${total} Máu!`
             };
         } else {
             // "king_captured" -> Forgot they were in check and got King eaten!
@@ -834,7 +849,7 @@ class TFTGameManager {
             const kcMult = df.kingCaptureStageMult !== undefined ? Number(df.kingCaptureStageMult) : 1;
 
             const base = kcBase + this.stage * kcMult;
-            const diff = Math.max(0, winnerPiecesLeft - loserPiecesLeft);
+            const diff = Math.max(0, (winnerPiecesLeft || 0) - (loserPiecesLeft || 0));
             const total = base + diff + royalBonus;
             return {
                 damage: total,
@@ -851,6 +866,21 @@ class TFTGameManager {
         // 1. Apply Player vs Current Opponent Result
         this.player.gold += goldFromMercenary;
 
+        // Xử lý Hòa Hơn Cờ nếu kết quả hòa nhưng có chênh lệch quân số
+        if (playerMatchResult.winner === "draw") {
+            const pCount = playerMatchResult.playerPiecesLeft || 0;
+            const eCount = playerMatchResult.enemyPiecesLeft || 0;
+            if (pCount > eCount) {
+                playerMatchResult.winner = "player";
+                playerMatchResult.reason = "draw_advantage";
+                playerMatchResult.reasonLabel = `Hòa Hơn Cờ (Bạn còn ${pCount} vs Đối thủ ${eCount} quân)`;
+            } else if (eCount > pCount) {
+                playerMatchResult.winner = "enemy";
+                playerMatchResult.reason = "draw_advantage";
+                playerMatchResult.reasonLabel = `Hòa Hơn Cờ (Đối thủ còn ${eCount} vs Bạn ${pCount} quân)`;
+            }
+        }
+
         if (playerMatchResult.winner === "draw") {
             const dmgInfo = this.calculateMatchDamage(null, "draw", playerMatchResult.playerPiecesLeft, playerMatchResult.enemyPiecesLeft);
             this.player.hp = Math.max(0, this.player.hp - dmgInfo.damage);
@@ -859,7 +889,7 @@ class TFTGameManager {
             opp.streak = 0;
             this.roundMatchLogs.push({
                 isPlayerMatch: true,
-                summary: `⚖️ Hòa với ${opp.name}! (${dmgInfo.formulaText})`
+                summary: `⚖️ Hòa Bằng Cờ với ${opp.name}! (${dmgInfo.formulaText})`
             });
         } else if (playerMatchResult.winner === "player") {
             const dmgInfo = this.calculateMatchDamage(
@@ -874,7 +904,7 @@ class TFTGameManager {
             opp.streak = opp.streak < 0 ? opp.streak - 1 : -1;
             this.roundMatchLogs.push({
                 isPlayerMatch: true,
-                summary: `🏆 Bạn thắng ${opp.name} (${playerMatchResult.reasonLabel})! ${dmgInfo.formulaText}`
+                summary: `🏆 Bạn thắng ${opp.name} (${playerMatchResult.reasonLabel || "Chiến Thắng"})! ${dmgInfo.formulaText}`
             });
         } else {
             const dmgInfo = this.calculateMatchDamage(
@@ -889,7 +919,7 @@ class TFTGameManager {
             opp.streak = opp.streak > 0 ? opp.streak + 1 : 1;
             this.roundMatchLogs.push({
                 isPlayerMatch: true,
-                summary: `💔 Bạn thua ${opp.name} (${playerMatchResult.reasonLabel})! ${dmgInfo.formulaText}`
+                summary: `💔 Bạn thua ${opp.name} (${playerMatchResult.reasonLabel || "Thất Bại"})! ${dmgInfo.formulaText}`
             });
         }
 
@@ -1015,19 +1045,31 @@ class TFTGameManager {
                 const b2Power = b2.board.reduce((s, u) => s + u.stars * 2 + (u.items?.length || 0), 0) + Math.random() * 6;
                 const winner = b1Power >= b2Power ? b1 : b2;
                 const loser = b1Power >= b2Power ? b2 : b1;
-                const isCheckmate = Math.random() < 0.55;
+                const rType = Math.random();
+                let outcomeType = "pieces_eliminated";
+                let outcomeLabel = "Quét Sạch Cờ";
+                if (rType < 0.45) {
+                    outcomeType = "pieces_eliminated";
+                    outcomeLabel = "Quét Sạch Cờ";
+                } else if (rType < 0.78) {
+                    outcomeType = "checkmate";
+                    outcomeLabel = "Chiếu Hết";
+                } else {
+                    outcomeType = "king_captured";
+                    outcomeLabel = "Ăn Vua";
+                }
                 const winUnits = Math.max(2, Math.floor(Math.random() * winner.board.length) + 1);
-                const loseUnits = Math.max(1, Math.floor(Math.random() * 2));
+                const loseUnits = outcomeType === "pieces_eliminated" ? 1 : Math.max(1, Math.floor(Math.random() * 2));
                 const dmgInfo = this.calculateMatchDamage(
                     winner,
-                    isCheckmate ? "checkmate" : "king_captured",
+                    outcomeType,
                     winUnits,
                     loseUnits
                 );
                 loser.hp = Math.max(0, loser.hp - dmgInfo.damage);
                 this.roundMatchLogs.push({
                     isPlayerMatch: false,
-                    summary: `⚔️ ${winner.name} hạ ${loser.name} bằng ${isCheckmate ? "Chiếu Hết" : "Ăn Vua"} (-${dmgInfo.damage} Máu)`
+                    summary: `⚔️ ${winner.name} hạ ${loser.name} bằng ${outcomeLabel} (-${dmgInfo.damage} Máu)`
                 });
             }
         }
