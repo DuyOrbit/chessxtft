@@ -491,7 +491,14 @@ io.on("connection", (socket) => {
 
         // Always fetch latest customModifiers from DB for this user
         const dbUsers = readJSON(FILES.users, []);
-        const freshUser = dbUsers.find(u => u.id === user?.id) || user;
+        const foundUser = user ? (dbUsers.find(u => u.id === user.id) || user) : null;
+        const freshUser = foundUser || {
+            id: socket.id,
+            displayName: "Kỳ Thủ",
+            username: "player_" + socket.id.slice(0, 4),
+            avatar: isSpectator ? "🎙️" : "👑",
+            stats: { elo: 1000 }
+        };
 
         const room = {
             code,
@@ -548,7 +555,14 @@ io.on("connection", (socket) => {
         }
 
         const dbUsers = readJSON(FILES.users, []);
-        const freshUser = dbUsers.find(u => u.id === user?.id) || user;
+        const foundUser = user ? (dbUsers.find(u => u.id === user.id) || user) : null;
+        const freshUser = foundUser || {
+            id: socket.id,
+            displayName: asSpectator ? "Khán Giả" : "Kỳ Thủ",
+            username: (asSpectator ? "spec_" : "player_") + socket.id.slice(0, 4),
+            avatar: asSpectator ? "👁️" : "👑",
+            stats: { elo: 1000 }
+        };
 
         if (asSpectator) {
             if (!room.spectators) room.spectators = [];
@@ -614,6 +628,93 @@ io.on("connection", (socket) => {
         if (fillBots !== undefined) room.fillBots = !!fillBots;
         io.to(code).emit("room:updated", room);
         broadcastRoomsList();
+    });
+
+    // Switch role between Contestant (player) and Spectator
+    socket.on("room:switchRole", ({ code, targetRole }, cb) => {
+        const cleanCode = String(code || "").trim().toUpperCase();
+        const room = rooms.get(cleanCode);
+        if (!room) return cb && cb({ ok: false, msg: "Phòng không tồn tại!" });
+        if (room.status !== "waiting") return cb && cb({ ok: false, msg: "Trận đấu đã bắt đầu, không thể đổi vai trò!" });
+
+        const userId = socket.data.userId;
+        const dbUsers = readJSON(FILES.users, []);
+        const freshUser = dbUsers.find(u => u.id === userId) || { id: userId, username: "Khách", displayName: "Khách" };
+
+        if (!room.spectators) room.spectators = [];
+        if (!room.players) room.players = [];
+
+        if (targetRole === "spectator") {
+            const pIdx = room.players.findIndex(p => p.id === userId || p.socketId === socket.id);
+            let wasHost = (room.hostSocketId === socket.id || room.hostId === userId);
+            if (pIdx !== -1) {
+                if (room.players[pIdx].isHost) wasHost = true;
+                room.players.splice(pIdx, 1);
+            }
+            const existingSpec = room.spectators.find(s => s.id === userId || s.socketId === socket.id);
+            if (!existingSpec) {
+                room.spectators.push({
+                    id: userId,
+                    socketId: socket.id,
+                    name: freshUser.displayName || freshUser.username,
+                    avatar: freshUser.avatar || "👁️",
+                    isHost: wasHost
+                });
+            } else {
+                existingSpec.socketId = socket.id;
+                if (wasHost) existingSpec.isHost = true;
+            }
+
+            if (wasHost) {
+                room.isSpectatorHost = true;
+                room.hostId = userId;
+                room.hostSocketId = socket.id;
+                room.hostName = freshUser.displayName || freshUser.username;
+            }
+            socket.data.isSpectator = true;
+            io.to(cleanCode).emit("room:updated", room);
+            broadcastRoomsList();
+            if (cb) cb({ ok: true, role: "spectator", room });
+        } else if (targetRole === "player") {
+            if (room.players.length >= 8) {
+                return cb && cb({ ok: false, msg: "Ghế thi đấu đã đủ 8 người!" });
+            }
+            const sIdx = room.spectators.findIndex(s => s.id === userId || s.socketId === socket.id);
+            let wasHost = (room.hostSocketId === socket.id || room.hostId === userId);
+            if (sIdx !== -1) {
+                if (room.spectators[sIdx].isHost) wasHost = true;
+                room.spectators.splice(sIdx, 1);
+            }
+            const existingPlayer = room.players.find(p => p.id === userId || p.socketId === socket.id);
+            if (!existingPlayer) {
+                room.players.push({
+                    id: userId,
+                    socketId: socket.id,
+                    name: freshUser.displayName || freshUser.username,
+                    avatar: freshUser.avatar || "👑",
+                    elo: freshUser.stats?.elo || 1000,
+                    customModifiers: freshUser.customModifiers || {},
+                    isHost: wasHost,
+                    isBot: false
+                });
+            } else {
+                existingPlayer.socketId = socket.id;
+                if (wasHost) existingPlayer.isHost = true;
+            }
+
+            if (wasHost) {
+                room.isSpectatorHost = false;
+                room.hostId = userId;
+                room.hostSocketId = socket.id;
+                room.hostName = freshUser.displayName || freshUser.username;
+            }
+            socket.data.isSpectator = false;
+            io.to(cleanCode).emit("room:updated", room);
+            broadcastRoomsList();
+            if (cb) cb({ ok: true, role: "player", room });
+        } else {
+            if (cb) cb({ ok: false, msg: "Vai trò không hợp lệ!" });
+        }
     });
 
     // Leave Room

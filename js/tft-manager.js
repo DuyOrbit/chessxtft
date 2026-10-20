@@ -1293,8 +1293,23 @@ class TFTGameManager {
         const newStageFmt = (window.CHESS_TFT_DATA.STAGE_ROUNDS_FORMAT && window.CHESS_TFT_DATA.STAGE_ROUNDS_FORMAT[this.stage]) || [];
         const roundDef = newStageFmt.find(r => r.round === this.roundInStage) || { type: "combat" };
 
-        if (roundDef.type === "augment" && this.player.augments.length < 3) {
-            this.phase = "augment";
+        if (roundDef.type === "augment") {
+            const allAugs = (window.CHESS_TFT_DATA.AUGMENTS || []).map(a => a.id);
+            for (const opp of this.opponents) {
+                if (!opp.augments) opp.augments = [];
+                if (opp.augments.length < 3) {
+                    const unowned = allAugs.filter(a => !opp.augments.includes(a));
+                    if (unowned.length > 0) {
+                        opp.augments.push(unowned[Math.floor(Math.random() * unowned.length)]);
+                    }
+                }
+            }
+            if (this.player.augments.length < 3) {
+                this.phase = "augment";
+            } else {
+                this.phase = "prep";
+                this.pickPotentialOpponents();
+            }
         } else if (roundDef.type === "carousel") {
             this.phase = "carousel";
         } else {
@@ -1667,6 +1682,17 @@ class TFTGameManager {
                     pick.items.push(itemIds[Math.floor(Math.random() * itemIds.length)]);
                 }
             }
+
+            // Award augments progressively to spectator bots (up to 3 augments)
+            if (!bot.augments) bot.augments = [];
+            const allAugs = (window.CHESS_TFT_DATA.AUGMENTS || []).map(a => a.id);
+            if (this.stage >= 2 && bot.augments.length < Math.min(3, this.stage - 1)) {
+                const unowned = allAugs.filter(a => !bot.augments.includes(a));
+                if (unowned.length > 0) {
+                    bot.augments.push(unowned[Math.floor(Math.random() * unowned.length)]);
+                }
+            }
+
             this.positionBotBoard(bot, newCfg);
         }
 

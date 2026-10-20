@@ -178,6 +178,11 @@ class ChessTFTApp {
         this.specAutoNextTimeout = null;
         this.specGlobalLogs = [];
 
+        // In-Match Spectator Modes (Mode 1: POV 1 Kỳ Thủ, Mode 2: Multi-Screen 4 Bàn Đấu)
+        this.spectatorMode = "multi"; // "multi" | "pov"
+        this.isSpectatorPOV = false;
+        this.spectatorPovTargetId = null;
+
         // Auto countdown timers (Anti-stalling / Chống câu giờ)
         this.prepTimer = null;
         this.prepSecondsLeft = 30;
@@ -406,18 +411,44 @@ class ChessTFTApp {
             });
 
             this.socket.on("match:remotePlayerState", ({ playerId, state }) => {
-                if (!this.tft) return;
-                const remotePart = this.tft.bots.find(b => b.remoteUserId === playerId);
-                if (remotePart && state) {
+                if (!this.tft || !state) return;
+                const remotePart = this.tft.bots?.find(b => b.remoteUserId === playerId);
+                if (remotePart) {
                     remotePart.hp = state.hp;
                     remotePart.level = state.level;
-                    if (Array.isArray(state.board)) {
-                        remotePart.board = state.board;
-                    }
+                    if (state.gold !== undefined) remotePart.gold = state.gold;
+                    if (state.streak !== undefined) remotePart.streak = state.streak;
+                    if (Array.isArray(state.board)) remotePart.board = state.board;
+                    if (Array.isArray(state.bench)) remotePart.bench = state.bench;
+                    if (Array.isArray(state.items)) remotePart.items = state.items;
+                    if (Array.isArray(state.augments)) remotePart.augments = state.augments;
+                    if (state.eliminated !== undefined) remotePart.eliminated = state.eliminated;
                     this.renderLeaderboard();
                     if (this.tft.scoutingPlayerId === remotePart.id) {
                         this.renderBoardArea();
                         this.renderSynergies();
+                        this.renderBench();
+                        this.renderRightPanel();
+                    }
+                }
+                // Also update in spectator tournament if spectator mode is active
+                if (Array.isArray(this.tft.spectatorBots)) {
+                    const specPart = this.tft.spectatorBots.find(b => b.remoteUserId === playerId || b.id === playerId);
+                    if (specPart) {
+                        specPart.hp = state.hp;
+                        specPart.level = state.level;
+                        if (state.gold !== undefined) specPart.gold = state.gold;
+                        if (state.streak !== undefined) specPart.streak = state.streak;
+                        if (Array.isArray(state.board)) specPart.board = state.board;
+                        if (Array.isArray(state.bench)) specPart.bench = state.bench;
+                        if (Array.isArray(state.items)) specPart.items = state.items;
+                        if (Array.isArray(state.augments)) specPart.augments = state.augments;
+                        if (state.eliminated !== undefined) specPart.eliminated = state.eliminated;
+                        if (this.currentScreen === "spectator") {
+                            this.renderSpectatorView();
+                        } else if (this.isSpectatorPOV && this.spectatorPovTargetId === specPart.id) {
+                            this.renderSpectatorPOV();
+                        }
                     }
                 }
             });
@@ -451,7 +482,13 @@ class ChessTFTApp {
             state: {
                 hp: this.tft.player.hp,
                 level: this.tft.player.level,
-                board: this.tft.player.board
+                gold: this.tft.player.gold,
+                streak: this.tft.player.streak,
+                board: this.tft.player.board,
+                bench: this.tft.player.bench,
+                items: this.tft.player.items,
+                augments: this.tft.player.augments,
+                eliminated: this.tft.player.eliminated
             }
         });
     }
@@ -840,6 +877,28 @@ class ChessTFTApp {
             this.renderWaitingRoom();
         });
 
+        document.getElementById("btn-switch-to-spectator")?.addEventListener("click", () => {
+            if (!this.socket || !this.currentRoom) return;
+            this.socket.emit("room:switchRole", { code: this.currentRoom.code, targetRole: "spectator" }, (res) => {
+                if (res && res.ok) {
+                    this.showToast("👁️ Bạn đã chuyển sang Hàng Ghế Khán Giả / Trọng Tài!", "info");
+                } else {
+                    this.showToast(res?.msg || "Không thể chuyển vai trò!", "warn");
+                }
+            });
+        });
+
+        document.getElementById("btn-switch-to-player")?.addEventListener("click", () => {
+            if (!this.socket || !this.currentRoom) return;
+            this.socket.emit("room:switchRole", { code: this.currentRoom.code, targetRole: "player" }, (res) => {
+                if (res && res.ok) {
+                    this.showToast("⚔️ Bạn đã chuyển vào Ghế Thi Đấu!", "success");
+                } else {
+                    this.showToast(res?.msg || "Không thể chuyển vai trò!", "warn");
+                }
+            });
+        });
+
         document.getElementById("chk-fill-bots").addEventListener("change", (e) => {
             if (this.currentRoom) {
                 this.currentRoom.fillBots = e.target.checked;
@@ -1099,9 +1158,23 @@ class ChessTFTApp {
         const specAlert = document.getElementById("waiting-spectator-alert");
         if (specAlert) specAlert.classList.toggle("hidden", !isSpectator);
 
+        // Role switcher buttons toggle
+        const btnToSpec = document.getElementById("btn-switch-to-spectator");
+        const btnToPlayer = document.getElementById("btn-switch-to-player");
+        if (btnToSpec && btnToPlayer) {
+            btnToSpec.style.display = isSpectator ? "none" : "";
+            btnToPlayer.style.display = isSpectator ? "" : "none";
+            const isFull = this.currentRoom.players.length >= 8;
+            btnToPlayer.disabled = isFull;
+            btnToPlayer.title = isFull ? "Ghế thi đấu đã đủ 8 người!" : "Chuyển vào ghế thi đấu";
+        }
+
+        const specs = this.currentRoom.spectators || [];
+        const specCountEl = document.getElementById("waiting-spectator-count");
+        if (specCountEl) specCountEl.textContent = specs.length;
+
         const specListEl = document.getElementById("waiting-spectators-list");
         if (specListEl) {
-            const specs = this.currentRoom.spectators || [];
             if (specs.length > 0) {
                 specListEl.classList.remove("hidden");
                 specListEl.innerHTML = `👁️ <strong>Trọng Tài / Khán Giả (${specs.length}):</strong> ` +
@@ -1116,7 +1189,7 @@ class ChessTFTApp {
         startBtn.disabled = !isHost;
         if (isHost) {
             startBtn.textContent = isSpectator
-                ? "🎙️ BẮT ĐẦU GIẢI ĐẤU (CHỦ PHÒNG QUAN SÁT 4 BÀN)"
+                ? "🎙️ BẮT ĐẦU GIẢI ĐẤU (CHỦ PHÒNG QUAN SÁT)"
                 : "⚔️ BẮT ĐẦU TRẬN ĐẤU (Đủ 8 ghế cùng Bot)";
         } else {
             startBtn.textContent = `⏳ Đang chờ Chủ Phòng (${this.currentRoom.hostName}) bắt đầu...`;
@@ -1148,6 +1221,29 @@ class ChessTFTApp {
                 `;
             }
             grid.appendChild(slot);
+        }
+
+        // Render Spectators Grid
+        const specGridEl = document.getElementById("waiting-spectators-grid");
+        if (specGridEl) {
+            specGridEl.innerHTML = "";
+            if (specs.length === 0) {
+                specGridEl.innerHTML = `<div class="empty-hint" style="grid-column:1/-1; padding:10px 0;">Chưa có khán giả nào. Bấm 'Chuyển Sang Khán Giả' để theo dõi trực tiếp trận đấu!</div>`;
+            } else {
+                specs.forEach(s => {
+                    const card = document.createElement("div");
+                    const isMe = s.id === this.currentUser?.id;
+                    card.className = `waiting-spec-card ${isMe ? "self-spec" : ""}`;
+                    card.innerHTML = `
+                        <span class="waiting-spec-av">${s.avatar || "👁️"}</span>
+                        <div>
+                            <div class="waiting-spec-name">${s.name} ${s.isHost ? "👑" : ""} ${isMe ? "(Bạn)" : ""}</div>
+                            <div class="waiting-spec-sub">${s.isHost ? "🎙️ Trọng Tài / Chủ Phòng" : "👁️ Khán Giả Theo Dõi"}</div>
+                        </div>
+                    `;
+                    specGridEl.appendChild(card);
+                });
+            }
         }
     }
 
@@ -2261,6 +2357,35 @@ class ChessTFTApp {
                 this.scheduleSpectatorTick();
             });
         });
+
+        const specToPovBtn = document.getElementById("btn-spec-switch-to-pov");
+        if (specToPovBtn) {
+            specToPovBtn.addEventListener("click", () => {
+                const firstAlive = (this.tft.spectatorBots || []).find(b => !b.eliminated) || this.tft.spectatorBots?.[0];
+                this.setSpectatorMode("pov", firstAlive?.id);
+            });
+        }
+
+        const povToMultiBtn = document.getElementById("btn-spec-switch-to-multi");
+        if (povToMultiBtn) {
+            povToMultiBtn.addEventListener("click", () => {
+                this.setSpectatorMode("multi");
+            });
+        }
+
+        const prevPlayerBtn = document.getElementById("btn-spec-prev-player");
+        if (prevPlayerBtn) {
+            prevPlayerBtn.addEventListener("click", () => {
+                this.cycleSpectatorPOVTarget(-1);
+            });
+        }
+
+        const nextPlayerBtn = document.getElementById("btn-spec-next-player");
+        if (nextPlayerBtn) {
+            nextPlayerBtn.addEventListener("click", () => {
+                this.cycleSpectatorPOVTarget(1);
+            });
+        }
     }
 
     start8BotSpectatorMode() {
@@ -2354,7 +2479,11 @@ class ChessTFTApp {
             }
 
             if (anyClockUpdated) {
-                this.updateSpectatorClocksOnly();
+                if (this.isSpectatorPOV) {
+                    this.updateSpectatorPovClocksOnly();
+                } else {
+                    this.updateSpectatorClocksOnly();
+                }
                 this.checkAllSpectatorMatchesFinished();
             }
         }, 100);
@@ -2401,7 +2530,11 @@ class ChessTFTApp {
 
         if (anyMoved) {
             this.sfx.move();
-            this.renderSpectatorView();
+            if (this.isSpectatorPOV) {
+                this.renderSpectatorPOV();
+            } else {
+                this.renderSpectatorView();
+            }
             this.checkAllSpectatorMatchesFinished();
         }
     }
@@ -2428,7 +2561,11 @@ class ChessTFTApp {
             this.specClockInterval = null;
         }
 
-        this.renderSpectatorView();
+        if (this.isSpectatorPOV) {
+            this.renderSpectatorPOV();
+        } else {
+            this.renderSpectatorView();
+        }
 
         const aliveBots = this.tft.spectatorBots.filter(b => !b.eliminated);
         if (aliveBots.length <= 1) {
@@ -2503,7 +2640,28 @@ class ChessTFTApp {
         }
     }
 
+    updateSpectatorPovClocksOnly() {
+        if (!this.isSpectatorPOV || !this.tft) return;
+        const viewed = this.getViewedParticipant();
+        if (!viewed) return;
+        const m = this.specMatches?.find(match => match.botA.id === viewed.id || match.botB.id === viewed.id);
+        if (!m) return;
+        const pClock = document.getElementById("clock-player");
+        const eClock = document.getElementById("clock-enemy");
+        const pBox = document.getElementById("clock-box-player");
+        const eBox = document.getElementById("clock-box-enemy");
+        if (pClock) pClock.textContent = `${m.clockA.toFixed(1)}s`;
+        if (eClock) eClock.textContent = `${m.clockB.toFixed(1)}s`;
+        if (pBox) pBox.classList.toggle("clock-active", m.engine.turn === "player" && !m.engine.gameOver);
+        if (eBox) eBox.classList.toggle("clock-active", m.engine.turn === "enemy" && !m.engine.gameOver);
+    }
+
     renderSpectatorView() {
+        if (this.isSpectatorPOV) {
+            this.renderSpectatorPOV();
+            return;
+        }
+
         const cfg = this.tft.getStageConfig();
         const aliveCount = this.tft.spectatorBots.filter(b => !b.eliminated).length;
 
@@ -2559,15 +2717,23 @@ class ChessTFTApp {
                 ? `<span class="spec-real-player-pill">👤 NGƯỜI THẬT</span>`
                 : `<span style="font-size:0.65rem; color:#94a3b8;">🤖 BOT</span>`;
 
+            // Augments badges
+            const augsHtml = (bot.augments || []).map(augId => {
+                const def = (window.CHESS_TFT_DATA.AUGMENTS || []).find(a => a.id === augId);
+                if (!def) return "";
+                return `<span class="lb-aug-badge" title="[Lõi] ${def.name}: ${def.desc}">${def.icon} ${def.name}</span>`;
+            }).join("");
+
             row.innerHTML = `
                 <div class="spec-bot-top">
-                    <span>#${idx + 1} ${bot.avatar} ${bot.name} ${realTag}</span>
+                    <span>#${idx + 1} ${bot.avatar} ${bot.name} ${realTag} <button class="btn-pov-card btn-view-bot-pov" title="Xem góc nhìn 1 người">👁️ POV</button></span>
                     <span style="color:${bot.hp > 40 ? "#4ade80" : "#f87171"}; font-weight:800;">❤️ ${bot.hp}</span>
                 </div>
                 <div class="spec-bot-meta">
                     <span>Lv.${bot.level} • 🪙 ${bot.gold} • ${isReal ? `ELO ${bot.elo || 1000}` : `Hệ: ${bot.style}`}</span>
                     <span>${bot.streak > 0 ? `🔥+${bot.streak}` : (bot.streak < 0 ? `❄️${bot.streak}` : "⚖️0")}</span>
                 </div>
+                ${augsHtml ? `<div class="lb-badges-cluster" style="margin:2px 0 4px;">${augsHtml}</div>` : ""}
                 <div class="spec-bot-units">${unitsHtml}</div>
                 <div class="spec-bot-admin-btns">
                     <button class="spec-mini-btn btn-buff-hp" title="Admin cộng +25 Máu cho Kỳ thủ này">+25 ❤️</button>
@@ -2575,6 +2741,11 @@ class ChessTFTApp {
                     <button class="spec-mini-btn btn-buff-item" title="Admin tặng thêm Trang bị">🎁 +Đồ</button>
                 </div>
             `;
+
+            row.querySelector(".btn-view-bot-pov")?.addEventListener("click", (e) => {
+                e.stopPropagation();
+                this.setSpectatorMode("pov", bot.id);
+            });
 
             row.querySelector(".btn-buff-hp").addEventListener("click", () => {
                 bot.hp = Math.min(200, bot.hp + 25);
@@ -2645,12 +2816,12 @@ class ChessTFTApp {
 
             <div class="spec-fighters-bar">
                 <div class="spec-fighter side-blue ${!eng.gameOver && eng.turn === "player" ? "turn-active" : ""}">
-                    <span>${m.botA.avatar} ${m.botA.name} ${m.botA.isRealPlayer ? '<span class="spec-real-player-pill">👤 THẬT</span>' : ''} (❤️${m.botA.hp})</span>
+                    <span>${m.botA.avatar} ${m.botA.name} ${m.botA.isRealPlayer ? '<span class="spec-real-player-pill">👤 THẬT</span>' : ''} (❤️${m.botA.hp}) <button class="btn-pov-card btn-card-pov-a" title="Xem camera 1 người">👁️ POV</button></span>
                     <span id="spec-clock-a-${m.matchIndex}">⏱️ ${m.clockA.toFixed(1)}s</span>
                 </div>
                 <span class="spec-vs-pill">VS</span>
                 <div class="spec-fighter side-red ${!eng.gameOver && eng.turn === "enemy" ? "turn-active" : ""}">
-                    <span>${m.botB.avatar} ${m.botB.name} ${m.botB.isRealPlayer ? '<span class="spec-real-player-pill">👤 THẬT</span>' : ''} (❤️${m.botB.hp})</span>
+                    <span>${m.botB.avatar} ${m.botB.name} ${m.botB.isRealPlayer ? '<span class="spec-real-player-pill">👤 THẬT</span>' : ''} (❤️${m.botB.hp}) <button class="btn-pov-card btn-card-pov-b" title="Xem camera 1 người">👁️ POV</button></span>
                     <span id="spec-clock-b-${m.matchIndex}">⏱️ ${m.clockB.toFixed(1)}s</span>
                 </div>
             </div>
@@ -2661,6 +2832,15 @@ class ChessTFTApp {
 
             <div class="spec-match-footer">${footerText}</div>
         `;
+
+        card.querySelector(".btn-card-pov-a")?.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.setSpectatorMode("pov", m.botA.id);
+        });
+        card.querySelector(".btn-card-pov-b")?.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.setSpectatorMode("pov", m.botB.id);
+        });
 
         card.querySelector(".btn-zoom-board").addEventListener("click", () => {
             this.specZoomIndex = isZoomed ? null : m.matchIndex;
@@ -2718,9 +2898,294 @@ class ChessTFTApp {
     }
 
     // ========================================================================
+    // IN-MATCH SPECTATOR MODES: POV 1 KỲ THỦ & 4 BÀN ĐẤU MULTI-SCREEN
+    // ========================================================================
+    setSpectatorMode(mode, targetId = null) {
+        this.spectatorMode = mode;
+        if (mode === "pov") {
+            this.isSpectatorPOV = true;
+            const participants = this.tft.spectatorBots || (this.tft.getAllParticipants ? this.tft.getAllParticipants() : []);
+            if (targetId) {
+                this.spectatorPovTargetId = targetId;
+            } else if (!this.spectatorPovTargetId || !participants.some(p => p.id === this.spectatorPovTargetId)) {
+                const firstAlive = participants.find(p => !p.eliminated) || participants[0];
+                this.spectatorPovTargetId = firstAlive?.id || "bot_0";
+            }
+
+            // Show game screen with POV controls
+            this.showScreen("game");
+            const povBar = document.getElementById("spec-pov-control-bar");
+            if (povBar) povBar.classList.remove("hidden");
+
+            // Disable / hide interactive buttons for spectator
+            const actionBtns = [
+                document.getElementById("btn-start-combat"),
+                document.getElementById("btn-reroll"),
+                document.getElementById("btn-buy-xp"),
+                document.getElementById("btn-lock-shop"),
+                document.getElementById("btn-surrender-game")
+            ];
+            actionBtns.forEach(b => { if (b) b.style.display = "none"; });
+
+            this.renderSpectatorPOV();
+            const target = participants.find(p => p.id === this.spectatorPovTargetId);
+            this.showToast(`👁️ Đang theo dõi góc nhìn POV của ${target?.name || "Kỳ thủ"}!`, "info");
+        } else {
+            // Mode "multi" (4-board split view)
+            this.isSpectatorPOV = false;
+            const povBar = document.getElementById("spec-pov-control-bar");
+            if (povBar) povBar.classList.add("hidden");
+
+            // Restore action buttons
+            const actionBtns = [
+                document.getElementById("btn-start-combat"),
+                document.getElementById("btn-reroll"),
+                document.getElementById("btn-buy-xp"),
+                document.getElementById("btn-lock-shop"),
+                document.getElementById("btn-surrender-game")
+            ];
+            actionBtns.forEach(b => { if (b) b.style.display = ""; });
+
+            this.showScreen("spectator");
+            this.renderSpectatorView();
+            this.showToast("📺 Đã chuyển sang chế độ theo dõi 4 bàn cờ cùng lúc!", "info");
+        }
+    }
+
+    cycleSpectatorPOVTarget(dir = 1) {
+        const participants = this.tft.spectatorBots || (this.tft.getAllParticipants ? this.tft.getAllParticipants() : []);
+        if (!participants || participants.length === 0) return;
+        let curIdx = participants.findIndex(p => p.id === this.spectatorPovTargetId);
+        if (curIdx === -1) curIdx = 0;
+        const newIdx = (curIdx + dir + participants.length) % participants.length;
+        this.spectatorPovTargetId = participants[newIdx].id;
+        this.renderSpectatorPOV();
+        this.sfx.move();
+        this.showToast(`👁️ Chuyển camera sang: ${participants[newIdx].name}`, "info");
+    }
+
+    getViewedParticipant() {
+        if (this.isSpectatorPOV) {
+            const participants = this.tft.spectatorBots || (this.tft.getAllParticipants ? this.tft.getAllParticipants() : []);
+            return participants.find(p => p.id === this.spectatorPovTargetId) || participants[0] || this.tft.player;
+        }
+        if (this.tft && this.tft.scoutingPlayerId && this.tft.scoutingPlayerId !== "player") {
+            return this.tft.getParticipantById(this.tft.scoutingPlayerId) || this.tft.player;
+        }
+        return this.tft ? this.tft.player : null;
+    }
+
+    renderSpectatorPOV() {
+        if (!this.isSpectatorPOV || !this.tft) return;
+        const viewed = this.getViewedParticipant();
+        if (!viewed) return;
+
+        // 1. Update POV control bar info
+        const avEl = document.getElementById("spec-pov-target-av");
+        const nameEl = document.getElementById("spec-pov-target-name");
+        const statsEl = document.getElementById("spec-pov-target-stats");
+        if (avEl) avEl.textContent = viewed.avatar || "👑";
+        if (nameEl) nameEl.textContent = `Đang Xem: ${viewed.name} ${viewed.isRealPlayer ? "(Người thật)" : ""}`;
+        if (statsEl) {
+            const streakStr = viewed.streak > 0 ? `🔥+${viewed.streak}` : (viewed.streak < 0 ? `❄️${viewed.streak}` : "⚖️0");
+            statsEl.textContent = `❤️ ${viewed.hp} HP • Lv.${viewed.level} • 🪙 ${viewed.gold} Vàng • Chuỗi ${streakStr}`;
+        }
+
+        // 2. Update Top Bar indicators
+        const hpEl = document.getElementById("player-hp");
+        if (hpEl) hpEl.textContent = `${viewed.hp} HP`;
+        const goldEl = document.getElementById("player-gold");
+        if (goldEl) goldEl.textContent = `${viewed.gold} 🪙`;
+        const lvlEl = document.getElementById("player-level");
+        if (lvlEl) lvlEl.textContent = `Cấp ${viewed.level}`;
+        const capEl = document.getElementById("player-unit-cap");
+        if (capEl) capEl.textContent = `Quân: ${(viewed.board || []).length}/${viewed.level + 1}`;
+        const stageBadge = document.getElementById("stage-round-badge");
+        if (stageBadge) stageBadge.textContent = `Vòng ${this.tft.stage}-${this.tft.roundInStage}`;
+
+        const hudLvl = document.getElementById("hud-level-name");
+        if (hudLvl) hudLvl.textContent = `CẤP ${viewed.level}`;
+        const hudGold = document.getElementById("hud-gold-amount");
+        if (hudGold) hudGold.textContent = viewed.gold;
+
+        // 3. Render Synergies of viewed participant
+        this.renderSynergies();
+
+        // 4. Render Items & Augments in Left Panel
+        this.renderRightPanel();
+
+        // 5. Render Bench
+        this.renderBench();
+
+        // 6. Render Board (Prep vs Combat)
+        this.renderBoardArea();
+
+        // 7. Render Leaderboard with POV highlights
+        this.renderSpectatorPOVLeaderboard();
+    }
+
+    renderSpectatorPOVBoard(boardEl, cfg) {
+        const viewed = this.getViewedParticipant();
+        if (!viewed) return;
+
+        const scoutBanner = document.getElementById("scouting-banner");
+        const mapInfoBar = document.getElementById("map-info-bar");
+
+        boardEl.style.gridTemplateColumns = `repeat(${cfg.cols}, 1fr)`;
+        boardEl.style.gridTemplateRows = `repeat(${cfg.rows}, 1fr)`;
+        boardEl.innerHTML = "";
+
+        const activeMatch = this.specMatches?.find(m => m.botA.id === viewed.id || m.botB.id === viewed.id);
+        const inActiveCombat = activeMatch && !activeMatch.engine.gameOver;
+
+        if (inActiveCombat) {
+            if (scoutBanner) {
+                scoutBanner.classList.remove("hidden");
+                const targetText = document.getElementById("scouting-target-name");
+                if (targetText) targetText.textContent = `🔴 [TRỰC TIẾP]: ${activeMatch.botA.name} VS ${activeMatch.botB.name} (Bàn #${activeMatch.matchIndex + 1})`;
+            }
+            if (mapInfoBar) {
+                mapInfoBar.innerHTML = `
+                    <span class="map-active-pill" style="background:${activeMatch.mapDef.themeColor}">🗺️ ${activeMatch.mapDef.name}</span>
+                    <span class="map-desc-text">${activeMatch.summaryText || "Đang giao tranh Cờ Chớp trực tiếp..."}</span>
+                `;
+            }
+            this.renderSpectatorEngineOnMainBoard(boardEl, cfg, activeMatch, viewed);
+        } else {
+            if (scoutBanner) {
+                scoutBanner.classList.remove("hidden");
+                const targetText = document.getElementById("scouting-target-name");
+                if (targetText) targetText.textContent = `👁️ [GIAI ĐOẠN XẾP CỜ]: Đang theo dõi bàn cờ & hàng chờ của ${viewed.name}`;
+            }
+            if (mapInfoBar) {
+                const mapDef = this.tft.currentMap || window.CHESS_TFT_DATA.MAPS[0];
+                mapInfoBar.innerHTML = `
+                    <span class="map-active-pill" style="background:${mapDef.themeColor}">🗺️ Bản Đồ: ${mapDef.name}</span>
+                    <span class="map-desc-text">Kỳ thủ đang sắp xếp đội hình và trang bị.</span>
+                `;
+            }
+            this.renderPrepBoardCells(boardEl, cfg, viewed, true);
+        }
+    }
+
+    renderSpectatorEngineOnMainBoard(boardEl, cfg, m, viewed) {
+        const eng = m.engine;
+
+        // Update blitz clocks on right panel
+        const pLabel = document.querySelector("#clock-box-player .clock-label");
+        const eLabel = document.querySelector("#clock-box-enemy .clock-label");
+        const pClock = document.getElementById("clock-player");
+        const eClock = document.getElementById("clock-enemy");
+        const pBox = document.getElementById("clock-box-player");
+        const eBox = document.getElementById("clock-box-enemy");
+
+        if (pLabel) pLabel.textContent = `${m.botA.name.slice(0, 10)} ${m.botA.id === viewed.id ? "👁️" : ""}`;
+        if (eLabel) eLabel.textContent = `${m.botB.name.slice(0, 10)} ${m.botB.id === viewed.id ? "👁️" : ""}`;
+        if (pClock) pClock.textContent = `${m.clockA.toFixed(1)}s`;
+        if (eClock) eClock.textContent = `${m.clockB.toFixed(1)}s`;
+        if (pBox) pBox.classList.toggle("clock-active", eng.turn === "player" && !eng.gameOver);
+        if (eBox) eBox.classList.toggle("clock-active", eng.turn === "enemy" && !eng.gameOver);
+
+        for (let r = 0; r < cfg.rows; r++) {
+            for (let c = 0; c < cfg.cols; c++) {
+                const cell = document.createElement("div");
+                const isLight = (r + c) % 2 === 0;
+                const terr = typeof eng.getTerrain === "function" ? eng.getTerrain(r, c) : (eng.terrain && eng.terrain[`${r},${c}`]);
+                cell.className = `board-cell ${isLight ? "cell-light" : "cell-dark"}`;
+
+                if (terr) {
+                    cell.classList.add(`terrain-${terr}`);
+                    const terrBadge = document.createElement("span");
+                    terrBadge.className = "terrain-badge";
+                    if (terr === "river") terrBadge.textContent = "🌊 Sông";
+                    else if (terr === "wall") terrBadge.textContent = "🧱 Tường";
+                    else if (terr === "lava") terrBadge.textContent = "🌋 Dung Nham";
+                    else if (terr === "rune") terrBadge.textContent = "✨ +Tầm";
+                    cell.appendChild(terrBadge);
+                }
+
+                if (eng.lastAction) {
+                    if ((eng.lastAction.fromR === r && eng.lastAction.fromC === c) ||
+                        (eng.lastAction.toR === r && eng.lastAction.toC === c)) {
+                        cell.classList.add("cell-last-move");
+                    }
+                }
+
+                const piece = eng.board[r][c];
+                if (piece) {
+                    const pieceEl = this.createPieceDOM(piece);
+                    cell.appendChild(pieceEl);
+                }
+                boardEl.appendChild(cell);
+            }
+        }
+    }
+
+    renderSpectatorPOVLeaderboard() {
+        const listEl = document.getElementById("leaderboard-list");
+        if (!listEl) return;
+        listEl.innerHTML = "";
+
+        const bots = [...(this.tft.spectatorBots || [])].sort((a, b) => b.hp - a.hp);
+        for (const bot of bots) {
+            const row = document.createElement("div");
+            const isTarget = bot.id === this.spectatorPovTargetId;
+            row.className = `leader-row ${isTarget ? "leader-scouted leader-self" : ""} ${bot.eliminated ? "leader-dead" : ""}`;
+
+            const hpPercent = Math.max(0, Math.min(100, bot.hp));
+            const nonKingCount = (bot.board || []).filter(u => u.id !== "king").length;
+
+            const augBadges = (bot.augments || []).map(augId => {
+                const def = (window.CHESS_TFT_DATA.AUGMENTS || []).find(a => a.id === augId);
+                if (!def) return "";
+                return `<span class="lb-aug-badge" title="[Lõi] ${def.name}: ${def.desc}">${def.icon}</span>`;
+            }).join("");
+
+            const equippedItems = [];
+            (bot.board || []).forEach(u => {
+                (u.items || []).forEach(itId => {
+                    const it = window.CHESS_TFT_DATA.ITEMS[itId];
+                    if (it) equippedItems.push(it);
+                });
+            });
+            const itemBadges = equippedItems.slice(0, 5).map(it =>
+                `<span class="lb-item-badge" title="[Trang bị] ${it.name}: ${it.desc}">${it.icon}</span>`
+            ).join("");
+
+            const badgesCluster = (augBadges || itemBadges)
+                ? `<div class="lb-badges-cluster">${augBadges} ${itemBadges}</div>`
+                : "";
+
+            const targetTag = isTarget ? `<span class="opponent-scout-badge" style="background:#0ea5e9;">👁️ Đang xem</span>` : "";
+
+            row.innerHTML = `
+                <div class="leader-top">
+                    <span class="leader-avatar">${bot.avatar}</span>
+                    <div class="leader-info">
+                        <div class="leader-name">${bot.name} ${targetTag}</div>
+                        <div class="leader-sub">Cấp ${bot.level} • ${nonKingCount} Quân ${bot.isRealPlayer ? "• Người thật" : ""}</div>
+                        ${badgesCluster}
+                    </div>
+                    <span class="leader-hp-num">${bot.hp} HP</span>
+                </div>
+                <div class="leader-hp-bar">
+                    <div class="leader-hp-fill" style="width:${hpPercent}%; background:${bot.hp > 50 ? "#22c55e" : (bot.hp > 25 ? "#f59e0b" : "#ef4444")}"></div>
+                </div>
+            `;
+
+            row.addEventListener("click", () => {
+                this.setSpectatorMode("pov", bot.id);
+            });
+
+            listEl.appendChild(row);
+        }
+    }
+
+    // ========================================================================
     // TFT HOTKEY ACTIONS (D / F / E / W / X) & LOCK SHOP
     // ========================================================================
     handleHotkeyReroll() {
+        if (this.isSpectatorPOV) return;
         const gameScreen = document.getElementById("screen-game");
         if (!gameScreen || gameScreen.classList.contains("hidden")) return;
 
@@ -2749,6 +3214,7 @@ class ChessTFTApp {
     }
 
     handleHotkeyBuyXP() {
+        if (this.isSpectatorPOV) return;
         const gameScreen = document.getElementById("screen-game");
         if (!gameScreen || gameScreen.classList.contains("hidden")) return;
 
@@ -2773,6 +3239,7 @@ class ChessTFTApp {
     }
 
     handleHotkeySellPiece() {
+        if (this.isSpectatorPOV) return;
         const gameScreen = document.getElementById("screen-game");
         if (!gameScreen || gameScreen.classList.contains("hidden")) return;
 
@@ -2832,6 +3299,7 @@ class ChessTFTApp {
     }
 
     handleHotkeyDeployOrRecall() {
+        if (this.isSpectatorPOV) return;
         const gameScreen = document.getElementById("screen-game");
         if (!gameScreen || gameScreen.classList.contains("hidden")) return;
 
@@ -2941,6 +3409,7 @@ class ChessTFTApp {
     }
 
     toggleLockShop() {
+        if (this.isSpectatorPOV) return;
         const gameScreen = document.getElementById("screen-game");
         if (!gameScreen || gameScreen.classList.contains("hidden")) return;
 
@@ -3399,6 +3868,7 @@ class ChessTFTApp {
     // Render 8-Player Lobby & Scouting Buttons
     renderLeaderboard() {
         const listEl = document.getElementById("leaderboard-list");
+        if (!listEl) return;
         listEl.innerHTML = "";
 
         const all = [...this.tft.getAllParticipants()].sort((a, b) => b.hp - a.hp);
@@ -3406,9 +3876,11 @@ class ChessTFTApp {
 
         for (const part of all) {
             const row = document.createElement("div");
-            const isScouted = this.tft.scoutingPlayerId === part.id;
-            const isCurrentOpp = this.tft.phase === "combat" && this.tft.currentOpponent && this.tft.currentOpponent.id === part.id;
-            const isPotentialOpp = this.tft.phase === "prep" && part.id !== "player" && !part.eliminated &&
+            const isScouted = this.isSpectatorPOV
+                ? (this.spectatorPovTargetId === part.id)
+                : (this.tft.scoutingPlayerId === part.id);
+            const isCurrentOpp = (!this.isSpectatorPOV) && this.tft.phase === "combat" && this.tft.currentOpponent && this.tft.currentOpponent.id === part.id;
+            const isPotentialOpp = (!this.isSpectatorPOV) && this.tft.phase === "prep" && part.id !== "player" && !part.eliminated &&
                 potentialOpps.some(o => o.id === part.id);
 
             row.className = `leader-row ${part.id === "player" ? "leader-self" : ""} ${isScouted ? "leader-scouted" : ""} ${part.eliminated ? "leader-dead" : ""} ${isCurrentOpp ? "leader-current-opp" : ""}`;
@@ -3417,10 +3889,48 @@ class ChessTFTApp {
             const nonKingCount = this.tft.getNonKingCount(part);
 
             let oppBadge = "";
-            if (isCurrentOpp) {
+            if (this.isSpectatorPOV && isScouted) {
+                oppBadge = `<span class="opponent-scout-badge" style="background:#ef4444; color:#fff;" title="Đang xem góc nhìn của kỳ thủ này">👁️ ĐANG XEM</span>`;
+            } else if (isCurrentOpp) {
                 oppBadge = `<span class="opponent-scout-badge" title="⚔️ Đang trực tiếp giao tranh!">⚔️ Đấu thủ</span>`;
             } else if (isPotentialOpp) {
                 oppBadge = `<span class="opponent-scout-badge" title="⚔️ Đối thủ tiềm năng có thể gặp vòng tới! Bấm để soi bài!">⚔️</span>`;
+            }
+
+            // Extract all items owned by this participant (on board + bench)
+            const allItems = [];
+            if (part.items && Array.isArray(part.items)) allItems.push(...part.items);
+            if (part.board && Array.isArray(part.board)) {
+                for (const u of part.board) {
+                    if (u.items && Array.isArray(u.items)) allItems.push(...u.items);
+                }
+            }
+            if (part.bench && Array.isArray(part.bench)) {
+                for (const u of part.bench) {
+                    if (u && u.items && Array.isArray(u.items)) allItems.push(...u.items);
+                }
+            }
+
+            // Augments badges (visible for both spectator & opponent scouting)
+            const augsHtml = (part.augments || []).map(augId => {
+                const def = (window.CHESS_TFT_DATA.AUGMENTS || []).find(a => a.id === augId);
+                if (!def) return "";
+                return `<span class="lb-aug-badge" title="[Lõi] ${def.name}: ${def.desc}">${def.icon} ${def.name}</span>`;
+            }).join("");
+
+            // Item badges
+            const itemCounts = {};
+            for (const itId of allItems) itemCounts[itId] = (itemCounts[itId] || 0) + 1;
+            const itemsHtml = Object.keys(itemCounts).slice(0, 5).map(itId => {
+                const def = window.CHESS_TFT_DATA.ITEMS[itId];
+                if (!def) return "";
+                const count = itemCounts[itId];
+                return `<span class="lb-item-badge" title="[Trang bị] ${def.name}: ${def.desc}">${def.icon}${count > 1 ? `x${count}` : ""}</span>`;
+            }).join("");
+
+            let badgesCluster = "";
+            if (augsHtml || itemsHtml) {
+                badgesCluster = `<div class="lb-badges-cluster">${augsHtml}${itemsHtml}</div>`;
             }
 
             row.innerHTML = `
@@ -3432,12 +3942,17 @@ class ChessTFTApp {
                     </div>
                     <span class="leader-hp-num">${part.hp} HP</span>
                 </div>
+                ${badgesCluster}
                 <div class="leader-hp-bar">
                     <div class="leader-hp-fill" style="width:${hpPercent}%; background:${part.hp > 50 ? "#22c55e" : (part.hp > 25 ? "#f59e0b" : "#ef4444")}"></div>
                 </div>
             `;
 
             row.addEventListener("click", () => {
+                if (this.isSpectatorPOV) {
+                    this.setSpectatorMode("pov", part.id);
+                    return;
+                }
                 if (this.tft.phase !== "prep") {
                     this.showToast("Đang trong trận Cờ Chớp, không thể chuyển màn hình soi bài!", "warn");
                     return;
@@ -3455,9 +3970,9 @@ class ChessTFTApp {
         const container = document.getElementById("synergy-list");
         container.innerHTML = "";
 
-        const viewedParticipant = this.tft.phase === "prep"
+        const viewedParticipant = this.getViewedParticipant ? this.getViewedParticipant() : (this.tft.phase === "prep"
             ? this.tft.getParticipantById(this.tft.scoutingPlayerId)
-            : this.tft.player;
+            : this.tft.player);
 
         const synergies = this.tft.calculateSynergies(viewedParticipant);
         const entries = Object.values(synergies).sort((a, b) => (b.activeTier > 0 ? 1 : 0) - (a.activeTier > 0 ? 1 : 0) || b.count - a.count);
@@ -3630,6 +4145,11 @@ class ChessTFTApp {
         boardEl.style.gridTemplateRows = `repeat(${cfg.rows}, 1fr)`;
         boardEl.innerHTML = "";
 
+        if (this.isSpectatorPOV) {
+            this.renderSpectatorPOVBoard(boardEl, cfg);
+            return;
+        }
+
         if (this.tft.phase === "prep") {
             const viewed = this.tft.getParticipantById(this.tft.scoutingPlayerId);
             const isScoutingOther = viewed.id !== "player";
@@ -3747,7 +4267,11 @@ class ChessTFTApp {
 
                 cell.addEventListener("click", () => {
                     if (isScoutingOther) {
-                        this.showToast("Bạn đang Soi Bài đối thủ! Bấm 'Về Sân Nhà' để xếp quân của mình.", "info");
+                        if (this.isSpectatorPOV) {
+                            this.showToast(`Bạn đang ở Chế Độ Khán Giả theo dõi ${viewedParticipant.name}!`, "info");
+                        } else {
+                            this.showToast("Bạn đang Soi Bài đối thủ! Bấm 'Về Sân Nhà' để xếp quân của mình.", "info");
+                        }
                         return;
                     }
                     this.handlePrepBoardClick(r, c, unit);
@@ -3949,9 +4473,15 @@ class ChessTFTApp {
         const benchEl = document.getElementById("bench-grid");
         benchEl.innerHTML = "";
 
+        const viewed = this.getViewedParticipant ? this.getViewedParticipant() : (this.tft.phase === "prep"
+            ? this.tft.getParticipantById(this.tft.scoutingPlayerId)
+            : this.tft.player);
+        const isSelf = (!this.isSpectatorPOV) && (viewed === this.tft.player || viewed.id === "player");
+        const benchList = viewed?.bench || [];
+
         for (let i = 0; i < 8; i++) {
             const slotEl = document.createElement("div");
-            const unit = this.tft.player.bench[i];
+            const unit = benchList[i];
             slotEl.className = `bench-slot ${unit && this.selectedPrepUnitUid === unit.uid ? "bench-selected" : ""}`;
 
             if (unit) {
@@ -3966,7 +4496,7 @@ class ChessTFTApp {
                     icon: def.icon,
                     badge: def.badge,
                     stars: unit.stars,
-                    side: "player",
+                    side: isSelf ? "player" : "enemy",
                     hp: maxHp,
                     maxHp: maxHp,
                     items: unit.items || [],
@@ -4001,6 +4531,13 @@ class ChessTFTApp {
             });
 
             slotEl.addEventListener("click", () => {
+                if (!isSelf) {
+                    if (this.isSpectatorPOV) {
+                        this.showToast(`Bạn đang ở Chế Độ Khán Giả theo dõi ${viewed?.name || "Kỳ thủ"}!`, "info");
+                    }
+                    return;
+                }
+
                 // Equip item onto bench unit
                 if (this.selectedItemIndex !== null && unit) {
                     const res = this.tft.equipItem(this.selectedItemIndex, unit.uid);
@@ -4040,6 +4577,12 @@ class ChessTFTApp {
     renderShop() {
         const shopEl = document.getElementById("shop-cards");
         shopEl.innerHTML = "";
+
+        if (this.isSpectatorPOV) {
+            const viewed = this.getViewedParticipant();
+            shopEl.innerHTML = `<div style="display:flex; align-items:center; justify-content:center; width:100%; height:100%; color:#94a3b8; font-weight:700; font-size:0.95rem; letter-spacing:0.5px;">🔴 CHẾ ĐỘ KHÁN GIẢ: Đang theo dõi kỳ thủ ${viewed?.name || ""} (Cấp ${viewed?.level || 1} • ${viewed?.gold || 0} 🪙)</div>`;
+            return;
+        }
 
         const isLocked = !!this.tft.shopLocked;
         shopEl.classList.toggle("shop-locked", isLocked);
@@ -4196,40 +4739,46 @@ class ChessTFTApp {
         }
 
         // 2. Compact TFT Item Inventory (Nhỏ gọn chuẩn TFT)
+        const viewed = this.getViewedParticipant();
+        const isSelf = (viewed === this.tft.player) && !this.isSpectatorPOV;
+        const viewedItems = viewed?.items || [];
         const itemContainer = document.getElementById("item-inventory");
         itemContainer.innerHTML = "";
-        if (this.tft.player.items.length === 0) {
-            itemContainer.innerHTML = `<div class="empty-hint" style="font-size:0.75rem;">Kho đồ trống (Nhận ở Đi Chợ & Chọn Lõi).</div>`;
+        if (viewedItems.length === 0) {
+            itemContainer.innerHTML = `<div class="empty-hint" style="font-size:0.75rem;">${isSelf ? "Kho đồ trống (Nhận ở Đi Chợ & Chọn Lõi)." : `Kho đồ của ${viewed?.name || "Kỳ thủ"} đang trống.`}</div>`;
         } else {
             const grid = document.createElement("div");
             grid.className = "item-inventory-tft-grid";
-            this.tft.player.items.forEach((itemId, idx) => {
+            viewedItems.forEach((itemId, idx) => {
                 const it = window.CHESS_TFT_DATA.ITEMS[itemId];
                 if (!it) return;
                 const slot = document.createElement("div");
-                slot.className = `inv-slot-compact ${this.selectedItemIndex === idx ? "selected" : ""}`;
+                slot.className = `inv-slot-compact ${isSelf && this.selectedItemIndex === idx ? "selected" : ""}`;
                 slot.innerHTML = `<span>${it.icon}</span>`;
                 slot.title = `${it.name}: ${it.desc}`;
 
-                slot.addEventListener("click", () => {
-                    this.selectedItemIndex = this.selectedItemIndex === idx ? null : idx;
-                    if (this.selectedItemIndex !== null) {
-                        this.showToast(`Đã chọn ${it.name} — Bấm vào 1 quân cờ trên bàn hoặc hàng chờ để trang bị!`, "info");
-                    }
-                    this.renderRightPanel();
-                });
+                if (isSelf) {
+                    slot.addEventListener("click", () => {
+                        this.selectedItemIndex = this.selectedItemIndex === idx ? null : idx;
+                        if (this.selectedItemIndex !== null) {
+                            this.showToast(`Đã chọn ${it.name} — Bấm vào 1 quân cờ trên bàn hoặc hàng chờ để trang bị!`, "info");
+                        }
+                        this.renderRightPanel();
+                    });
+                }
                 grid.appendChild(slot);
             });
             itemContainer.appendChild(grid);
         }
 
         // 3. Augments Owned
+        const viewedAugs = viewed?.augments || [];
         const augContainer = document.getElementById("augment-list");
         augContainer.innerHTML = "";
-        if (this.tft.player.augments.length === 0) {
-            augContainer.innerHTML = `<div class="empty-hint">Chưa có Lõi (Mở ở vòng 1-2, 2-2, 3-2).</div>`;
+        if (viewedAugs.length === 0) {
+            augContainer.innerHTML = `<div class="empty-hint">${isSelf ? "Chưa có Lõi (Mở ở vòng 1-2, 2-2, 3-2)." : `${viewed?.name || "Kỳ thủ"} chưa chọn Lõi.`}</div>`;
         } else {
-            for (const augId of this.tft.player.augments) {
+            for (const augId of viewedAugs) {
                 const aug = window.CHESS_TFT_DATA.AUGMENTS.find(a => a.id === augId);
                 if (!aug) continue;
                 const d = document.createElement("div");

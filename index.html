@@ -348,6 +348,16 @@
 
                     <div id="waiting-spectators-list" class="waiting-spectators-bar hidden"></div>
 
+                    <!-- ROLE SWITCHER BUTTONS (ĐỔI GIỮA ĐÁNH VÀ XEM) -->
+                    <div class="waiting-role-switcher" style="display:flex; gap:10px; margin: 10px 0;">
+                        <button id="btn-switch-to-spectator" class="btn-game btn-game-cyan" style="flex:1; padding:8px 12px; font-size:0.8rem; font-weight:800;">
+                            👁️ Chuyển Sang Khán Giả
+                        </button>
+                        <button id="btn-switch-to-player" class="btn-game btn-game-gold" style="flex:1; padding:8px 12px; font-size:0.8rem; font-weight:800;">
+                            ⚔️ Chuyển Vào Ghế Thi Đấu
+                        </button>
+                    </div>
+
                     <div class="waiting-room-settings">
                         <label class="checkbox-label">
                             <input type="checkbox" id="chk-fill-bots" checked />
@@ -355,8 +365,13 @@
                         </label>
                     </div>
 
-                    <div class="panel-section-title">👥 Người Chơi Trong Phòng (<span id="waiting-player-count">1</span>/8)</div>
+                    <div class="panel-section-title">👥 Ghế Thi Đấu 8 Kỳ Thủ (<span id="waiting-player-count">1</span>/8)</div>
                     <div id="waiting-players-grid" class="waiting-players-grid"></div>
+
+                    <div class="panel-section-title" style="margin-top:14px; display:flex; justify-content:space-between; align-items:center;">
+                        <span>👁️ Hàng Ghế Khán Giả / Trọng Tài (<span id="waiting-spectator-count">0</span>)</span>
+                    </div>
+                    <div id="waiting-spectators-grid" class="waiting-spectators-grid"></div>
 
                     <div style="text-align:center; margin-top:12px;">
                         <button id="btn-host-start-match" class="btn-combat-go" style="width:100%; padding:12px;">⚔️ BẮT ĐẦU TRẬN ĐẤU (CHỦ PHÒNG)</button>
@@ -401,6 +416,25 @@
                 <button id="btn-back-lobby" class="btn-game btn-game-gold" style="margin:0; padding:3px 10px; font-size:0.74rem; font-weight:800;">⬅️ Quay Về Sảnh</button>
             </div>
         </header>
+
+        <!-- SPECTATOR POV CONTROL BAR (HIỆN KHI XEM GÓC NHÌN 1 KỲ THỦ) -->
+        <div id="spec-pov-control-bar" class="spec-pov-control-bar hidden">
+            <div class="spec-pov-info-cluster">
+                <span class="spec-live-pill">🔴 LIVE SPECTATOR</span>
+                <button id="btn-spec-prev-player" class="btn-secondary btn-pov-nav" title="Xem kỳ thủ trước">⬅️ Trước</button>
+                <div id="spec-pov-current-badge" class="pov-current-badge">
+                    <span id="spec-pov-target-av">👑</span>
+                    <strong id="spec-pov-target-name">Đang Xem: ---</strong>
+                    <span id="spec-pov-target-stats" class="badge-pill" style="background:rgba(56,189,248,0.2); color:#38bdf8;">❤️ 100 • Lv.3 • 🪙 6</span>
+                </div>
+                <button id="btn-spec-next-player" class="btn-secondary btn-pov-nav" title="Xem kỳ thủ tiếp theo">Sau ➡️</button>
+            </div>
+            <div class="spec-pov-mode-switch">
+                <button id="btn-spec-switch-to-multi" class="btn-game btn-game-cyan" style="padding:6px 14px; font-size:0.78rem; font-weight:800;">
+                    📺 Đổi Sang 4 Bàn Đấu (2x2)
+                </button>
+            </div>
+        </div>
 
         <!-- TFT STAGE ROUND PROGRESSION TRACKER BAR -->
         <div id="stage-round-tracker" class="stage-round-tracker"></div>
@@ -618,6 +652,7 @@
             </div>
 
             <div class="player-stats-bar" style="gap: 6px;">
+                <button id="btn-spec-switch-to-pov" class="btn-game btn-game-gold" style="padding:4px 12px; font-size:0.75rem; font-weight:800;">👤 Xem POV 1 Kỳ Thủ</button>
                 <span style="font-size:0.78rem; color:#94a3b8; font-weight:700;">Tốc độ:</span>
                 <button class="btn-secondary spec-speed-btn" data-speed="0.5">🐢 0.5x</button>
                 <button class="btn-secondary spec-speed-btn active" data-speed="1">▶️ 1x</button>

@@ -1827,6 +1827,168 @@ button {
     color: #38bdf8;
 }
 
+/* WAITING SPECTATORS GRID */
+.waiting-spectators-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+    margin-top: 6px;
+    margin-bottom: 12px;
+}
+
+.waiting-spec-card {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.82rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+}
+
+.waiting-spec-card:hover {
+    border-color: #38bdf8;
+    transform: translateY(-1px);
+}
+
+.waiting-spec-card.self-spec {
+    border-color: #38bdf8;
+    background: rgba(8, 47, 73, 0.4);
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+.waiting-spec-av {
+    font-size: 1.4rem;
+}
+
+.waiting-spec-name {
+    font-weight: 800;
+    color: #f1f5f9;
+}
+
+.waiting-spec-sub {
+    font-size: 0.68rem;
+    color: #38bdf8;
+}
+
+/* SPECTATOR POV BAR (IN-GAME SCREEN) */
+.spec-pov-control-bar {
+    background: linear-gradient(90deg, rgba(8, 47, 73, 0.95), rgba(15, 23, 42, 0.98), rgba(8, 47, 73, 0.95));
+    border-bottom: 2px solid #38bdf8;
+    padding: 8px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    z-index: 100;
+}
+
+.spec-pov-info-cluster {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.spec-live-pill {
+    background: #ef4444;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 900;
+    padding: 3px 8px;
+    border-radius: 12px;
+    letter-spacing: 0.5px;
+    animation: live-blink 1.5s infinite;
+}
+
+@keyframes live-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+}
+
+.pov-current-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    border-radius: 20px;
+    padding: 4px 14px;
+}
+
+.btn-pov-nav {
+    padding: 4px 10px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid #475569;
+}
+.btn-pov-nav:hover {
+    background: #334155;
+    border-color: #38bdf8;
+}
+
+/* LEADERBOARD AUGMENTS & ITEMS PILLS */
+.lb-badges-cluster {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 3px;
+    flex-wrap: wrap;
+}
+
+.lb-aug-badge {
+    background: rgba(168, 85, 247, 0.2);
+    border: 1px solid #c084fc;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 0.74rem;
+    cursor: help;
+    display: inline-flex;
+    align-items: center;
+    transition: transform 0.15s;
+}
+.lb-aug-badge:hover {
+    transform: scale(1.15);
+    border-color: #e9d5ff;
+}
+
+.lb-item-badge {
+    background: rgba(251, 191, 36, 0.18);
+    border: 1px solid #fbbf24;
+    border-radius: 4px;
+    padding: 1px 4px;
+    font-size: 0.72rem;
+    cursor: help;
+    display: inline-flex;
+    align-items: center;
+    transition: transform 0.15s;
+}
+.lb-item-badge:hover {
+    transform: scale(1.15);
+    border-color: #fef08a;
+}
+
+.btn-pov-card {
+    background: rgba(56, 189, 248, 0.2);
+    border: 1px solid #38bdf8;
+    color: #38bdf8;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    cursor: pointer;
+    margin-left: 6px;
+    transition: all 0.15s;
+}
+.btn-pov-card:hover {
+    background: #38bdf8;
+    color: #0f172a;
+}
+
 /* CODEX ENCYCLOPEDIA TABS & CARDS */
 .codex-tabs {
     display: flex;
