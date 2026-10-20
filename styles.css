@@ -481,6 +481,72 @@ body {
     z-index: 7;
 }
 
+/* ========================================================================
+   HOVER MOVE & ATTACK PREVIEW (TƯƠNG TÁC RÊ CHUỘT XEM NƯỚC ĐI TỨC THÌ)
+   ======================================================================== */
+.cell-preview-move {
+    position: relative;
+    background: rgba(56, 189, 248, 0.22) !important;
+    box-shadow: inset 0 0 0 2px #38bdf8 !important;
+}
+
+.cell-preview-move::after {
+    content: "";
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #38bdf8;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.8), inset 0 0 3px #bae6fd;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 6;
+    animation: pulse-preview-move 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse-preview-move {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.85; }
+    50% { transform: translate(-50%, -50%) scale(1.22); opacity: 1; }
+}
+
+.cell-preview-attack {
+    position: relative;
+    background: rgba(245, 158, 11, 0.26) !important;
+    box-shadow: inset 0 0 0 2px #f59e0b !important;
+}
+
+.cell-preview-attack::after {
+    content: "";
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fde047 30%, #f59e0b 70%);
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.9);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 6;
+    animation: pulse-preview-attack 1s ease-in-out infinite;
+}
+
+@keyframes pulse-preview-attack {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
+    50% { transform: translate(-50%, -50%) scale(1.25); opacity: 1; }
+}
+
+.cell-preview-attack::before {
+    content: "🎯";
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 0.72rem;
+    z-index: 7;
+}
+
 /* Custom Terrains */
 .terrain-river {
     background: linear-gradient(135deg, #0369a1, #0284c7) !important;
@@ -5633,19 +5699,25 @@ button {
         height: calc(100vh - 66px) !important;
         max-height: calc(100vh - 66px) !important;
         padding: 0 8px 4px !important;
-        gap: 8px !important;
-        grid-template-columns: 215px 1fr 245px !important;
+        gap: 10px !important;
+        grid-template-columns: 215px 1fr 255px !important;
     }
     .center-stage {
-        gap: 3px !important;
+        gap: 4px !important;
         justify-content: space-between !important;
         height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        width: 100% !important;
     }
     .map-info-bar {
         padding: 2px 8px !important;
         font-size: 0.7rem !important;
         margin-bottom: 0 !important;
         min-height: 24px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
     .board-wrapper {
         padding: 0 !important;
@@ -5653,14 +5725,16 @@ button {
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
+        width: 100% !important;
     }
     .chess-board {
-        width: min(440px, 44vh) !important;
-        height: min(400px, 40vh) !important;
-        max-height: 400px !important;
+        width: min(520px, 54vh) !important;
+        height: min(440px, 45vh) !important;
+        max-height: 440px !important;
+        margin: 0 auto !important;
     }
     .board-unit-watermark {
-        font-size: 3.8rem !important;
+        font-size: 4.2rem !important;
     }
     .bench-container {
         padding: 2px 6px !important;
@@ -6146,12 +6220,13 @@ button {
 .custom-clocks-box {
     flex: 0 0 auto !important;
     padding: 4px 6px !important;
+    transition: all 0.2s ease;
 }
 
 .custom-inspect-box {
     flex: 0 0 auto !important;
-    max-height: 85px !important;
-    overflow: hidden !important;
+    max-height: 110px !important;
+    overflow-y: auto !important;
     padding: 4px 6px !important;
 }
 

@@ -36,6 +36,7 @@ class SoundFX {
                     title: "assets/audio/expedition33_lumiere.webm",
                     lobby: "assets/audio/expedition33_lumiere.webm",
                     prep: "assets/audio/expedition33_yellow_forest.webm",
+                    prep_alt: "assets/audio/expedition33_prep.webm",
                     carousel: "assets/audio/expedition33_monoco.webm",
                     armory: "assets/audio/expedition33_monoco.webm",
                     combat_early: "assets/audio/expedition33_beneath_the_blue_tree.webm",
@@ -46,6 +47,7 @@ class SoundFX {
                     title: "Lumière (Expedition 33)",
                     lobby: "Lumière (Expedition 33)",
                     prep: "Yellow Forest - Number the Hours",
+                    prep_alt: "Camp Preparation - Tactical Briefing",
                     carousel: "Monoco - Vòng Đi Chợ",
                     armory: "Monoco - Kho Tiếp Tế",
                     combat_early: "Spring Meadows - Beneath the Blue Tree",
@@ -401,7 +403,7 @@ class ChessTFTApp {
 
         // Auto countdown timers (Anti-stalling / Chống câu giờ)
         this.prepTimer = null;
-        this.prepSecondsLeft = 30;
+        this.prepSecondsLeft = 40; // 40s chuẩn bị (+10s theo feedback)
         this.augmentTimer = null;
         this.augmentSecondsLeft = 15;
         this.carouselTimer = null;
@@ -521,8 +523,10 @@ class ChessTFTApp {
 
     playPrepBgm() {
         if (!this.sfx) return;
-        // Giai đoạn chuẩn bị (Shop / Bench / Xếp quân cờ): Yellow Forest - Number the Hours
-        this.sfx.playBgm("prep");
+        // Giai đoạn chuẩn bị (Shop / Bench / Xếp quân cờ): Xoay tua bản nhạc Yellow Forest & Camp Preparation
+        const stage = this.tft?.stage || 1;
+        const trackKey = (stage % 2 === 0) ? "prep_alt" : "prep";
+        this.sfx.playBgm(trackKey);
     }
 
     cycleScoutingPlayer(direction = 1) {
@@ -2074,6 +2078,10 @@ class ChessTFTApp {
                 }
                 break;
             }
+            case "target_dummy": {
+                // Dummy stands still, no moves
+                break;
+            }
             default: {
                 for (const [dr, dc] of allDirs) {
                     const nr = 2 + dr, nc = 2 + dc;
@@ -2084,6 +2092,53 @@ class ChessTFTApp {
         }
 
         return grid;
+    }
+
+    highlightPieceMovementPreview(pieceId, centerR = null, centerC = null) {
+        this.clearMovementPreview();
+        const boardEl = document.getElementById("chess-board");
+        if (!boardEl) return;
+
+        const cfg = this.tft ? this.tft.getStageConfig() : { rows: 6, cols: 5, deployRows: 2 };
+        const totalRows = cfg.rows;
+        const totalCols = cfg.cols;
+
+        // Default position for bench previews: center of player's front deploy row
+        const r0 = Number.isInteger(centerR) ? centerR : (totalRows - cfg.deployRows);
+        const c0 = Number.isInteger(centerC) ? centerC : Math.floor(totalCols / 2);
+
+        const grid = this.getPieceMovementGrid(pieceId);
+        // grid is 5x5, center is (2,2)
+        for (let dr = -2; dr <= 2; dr++) {
+            for (let dc = -2; dc <= 2; dc++) {
+                if (dr === 0 && dc === 0) continue;
+                const type = grid[dr + 2][dc + 2];
+                if (!type) continue;
+
+                const tr = r0 + dr;
+                const tc = c0 + dc;
+                if (tr >= 0 && tr < totalRows && tc >= 0 && tc < totalCols) {
+                    const cellIdx = tr * totalCols + tc;
+                    const cellEl = boardEl.children[cellIdx];
+                    if (cellEl) {
+                        if (type === "attack" || type === "pawn-atk" || type === "cannon") {
+                            cellEl.classList.add("cell-preview-attack");
+                        } else {
+                            cellEl.classList.add("cell-preview-move");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    clearMovementPreview() {
+        const boardEl = document.getElementById("chess-board");
+        if (!boardEl) return;
+        const activeMoves = boardEl.querySelectorAll(".cell-preview-move, .cell-preview-attack");
+        activeMoves.forEach(el => {
+            el.classList.remove("cell-preview-move", "cell-preview-attack");
+        });
     }
 
     startNewGameSession(roomData = null) {
@@ -5324,12 +5379,15 @@ class ChessTFTApp {
                         if (unit) {
                             this.hoveredUnit = { type: "board", unit, r, c, uid: unit.uid };
                             cell.classList.add("cell-hover-target");
+                            this.highlightPieceMovementPreview(unit.id, r, c);
                         } else {
                             this.hoveredUnit = null;
+                            this.clearMovementPreview();
                         }
                     });
                     cell.addEventListener("mouseleave", () => {
                         cell.classList.remove("cell-hover-target");
+                        this.clearMovementPreview();
                         if (this.hoveredUnit && this.hoveredUnit.uid === (unit && unit.uid)) {
                             this.hoveredUnit = null;
                         }
@@ -5665,13 +5723,16 @@ class ChessTFTApp {
                 if (unit) {
                     this.hoveredUnit = { type: "bench", unit, slotIndex: i, uid: unit.uid };
                     slotEl.classList.add("bench-hover-target");
+                    this.highlightPieceMovementPreview(unit.id);
                 } else {
                     this.hoveredBenchSlot = i;
                     this.hoveredUnit = null;
+                    this.clearMovementPreview();
                 }
             });
             slotEl.addEventListener("mouseleave", () => {
                 slotEl.classList.remove("bench-hover-target");
+                this.clearMovementPreview();
                 if (this.hoveredUnit && this.hoveredUnit.uid === (unit && unit.uid)) {
                     this.hoveredUnit = null;
                 }
@@ -5888,13 +5949,19 @@ class ChessTFTApp {
     }
 
     renderRightPanel() {
-        // 1. Blitz Clocks
+        // 1. Blitz Clocks - Chỉ hiển thị khi Giao Tranh (Combat Phase) để tiết kiệm không gian!
+        const clocksWrap = document.querySelector(".custom-clocks-box");
+        const isCombat = this.tft.phase === "combat" && this.chess && !this.chess.gameOver;
+        if (clocksWrap) {
+            clocksWrap.style.display = isCombat ? "block" : "none";
+        }
+
         document.getElementById("clock-player").textContent = `${this.playerClock.toFixed(1)}s`;
         document.getElementById("clock-enemy").textContent = `${this.enemyClock.toFixed(1)}s`;
 
         const pClockBox = document.getElementById("clock-box-player");
         const eClockBox = document.getElementById("clock-box-enemy");
-        if (this.tft.phase === "combat" && this.chess && !this.chess.gameOver) {
+        if (isCombat) {
             pClockBox.classList.toggle("clock-active", this.chess.turn === "player");
             eClockBox.classList.toggle("clock-active", this.chess.turn === "enemy");
         } else {
@@ -6653,7 +6720,7 @@ class ChessTFTApp {
             return;
         }
 
-        this.prepSecondsLeft = 30; // 30s chuẩn thời gian chuẩn bị TFT
+        this.prepSecondsLeft = 40; // 40s (tăng thêm 10s theo yêu cầu) chuẩn bị TFT
         const badge = document.getElementById("prep-timer-badge");
         if (badge) {
             badge.classList.remove("hidden");

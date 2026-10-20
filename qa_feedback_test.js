@@ -93,12 +93,27 @@ const fs = require('fs');
             }
         }
 
-        // 5. Verify Leaderboard has NO item/augment badges
-        const badgesCount = await page.$$eval(".custom-leaderboard-list .lb-badges-cluster", els => els.length);
-        console.log(`-> Số lượng cụm đồ/lõi trên thanh máu BXH: ${badgesCount} (Mong muốn: 0)`);
+        // 6. Test Hover Piece Movement Preview & Prep Duration
+        console.log("-> Kiểm tra thời gian chuẩn bị và rê chuột xem trước nước đi...");
+        const prepTimerText = await page.$eval("#prep-timer-badge", el => el.textContent.trim());
+        console.log(`-> Badge đếm ngược: ${prepTimerText}`);
 
-        await page.screenshot({ path: path.join(screenshotDir, "test_final_hud.png") });
-        console.log("📸 Đã chụp test_final_hud.png");
+        // Buy a piece into bench or place it, then hover
+        const shopCard = await page.$(".shop-card");
+        if (shopCard) {
+            await shopCard.click();
+            await page.waitForTimeout(400);
+        }
+
+        const benchSlotWithPiece = await page.$(".bench-slot:has(.chess-piece)");
+        if (benchSlotWithPiece) {
+            await benchSlotWithPiece.hover();
+            await page.waitForTimeout(300);
+            const previewCellsCount = await page.$$eval("#chess-board .cell-preview-move, #chess-board .cell-preview-attack", els => els.length);
+            console.log(`-> Số ô xem trước nước đi khi rê chuột lên hàng chờ: ${previewCellsCount} (Mong muốn: > 0)`);
+            await page.screenshot({ path: path.join(screenshotDir, "test_hover_preview.png") });
+            console.log("📸 Đã chụp test_hover_preview.png");
+        }
 
         console.log("✅ All functional tests executed successfully!");
 
