@@ -240,7 +240,8 @@ class ChessTFTApp {
         this.showScreen("auth");
     }
 
-    showScreen(screenName) {
+    showScreen(screenName, pushToHistory = true) {
+        this.currentScreen = screenName;
         document.getElementById("screen-auth").classList.toggle("hidden", screenName !== "auth");
         document.getElementById("screen-lobby").classList.toggle("hidden", screenName !== "lobby");
         document.getElementById("screen-game").classList.toggle("hidden", screenName !== "game");
@@ -256,6 +257,10 @@ class ChessTFTApp {
             } else {
                 this.sfx.playBgm("lobby");
             }
+        }
+
+        if (pushToHistory && window.history && window.history.pushState) {
+            window.history.pushState({ screen: screenName, tab: this.currentLobbyTab || "play" }, "");
         }
     }
 
@@ -544,8 +549,9 @@ class ChessTFTApp {
             this.showScreen("auth");
         });
 
-        // Chess.com Sidebar Tab Switcher
-        const switchLobbyTab = (tabName) => {
+        // Chess.com / Royal Arena Sidebar Tab Switcher
+        const switchLobbyTab = (tabName, pushToHistory = true) => {
+            this.currentLobbyTab = tabName;
             document.querySelectorAll(".cc-nav-link").forEach(l => l.classList.remove("active"));
             document.querySelectorAll(".cc-tab-view").forEach(v => v.classList.add("hidden"));
             if (tabName === "play") {
@@ -564,13 +570,85 @@ class ChessTFTApp {
                     this.fetchOpenRoomsViaPhp();
                 }
             }
+            if (pushToHistory && window.history && window.history.pushState) {
+                window.history.pushState({ screen: "lobby", tab: tabName }, "");
+            }
         };
+        this.switchLobbyTab = switchLobbyTab;
 
         document.getElementById("nav-item-play")?.addEventListener("click", () => switchLobbyTab("play"));
         document.getElementById("nav-item-codex")?.addEventListener("click", () => switchLobbyTab("codex"));
         document.getElementById("nav-item-rooms")?.addEventListener("click", () => switchLobbyTab("rooms"));
         document.getElementById("nav-item-tutorial")?.addEventListener("click", () => this.startTutorialSession());
         document.getElementById("btn-quick-friends")?.addEventListener("click", () => switchLobbyTab("rooms"));
+
+        // Nút quay về sảnh từ Codex & Phòng Riêng
+        document.getElementById("btn-back-from-codex")?.addEventListener("click", () => switchLobbyTab("play"));
+        document.getElementById("btn-back-from-rooms")?.addEventListener("click", () => switchLobbyTab("play"));
+
+        // XỬ LÝ NÚT QUAY VỀ TRÌNH DUYỆT (BROWSER BACK BUTTON / POPSTATE):
+        // Ngăn chặn hoàn toàn việc bấm quay về bị thoát / văng khỏi trang web!
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState({ screen: "lobby", tab: "play" }, "");
+        }
+
+        window.addEventListener("popstate", (e) => {
+            // 1. Nếu có modal nào đang mở (Cẩm nang tướng, luật, admin, đầu hàng...) -> Đóng modal trước
+            const openModals = [
+                "modal-piece-guide",
+                "modal-rules",
+                "modal-admin-db",
+                "modal-surrender",
+                "modal-stage-armory",
+                "modal-game-over",
+                "modal-tutorial-complete"
+            ];
+            for (const mId of openModals) {
+                const modalEl = document.getElementById(mId);
+                if (modalEl && !modalEl.classList.contains("hidden")) {
+                    modalEl.classList.add("hidden");
+                    if (window.history && window.history.pushState) {
+                        window.history.pushState({ screen: this.currentScreen || "lobby", tab: this.currentLobbyTab || "play" }, "");
+                    }
+                    return;
+                }
+            }
+
+            // 2. Nếu đang trong ván đấu (#screen-game) -> Quay về sảnh
+            if (this.currentScreen === "game") {
+                document.getElementById("btn-back-lobby")?.click();
+                return;
+            }
+
+            // 3. Nếu đang trong chế độ Spectator (#screen-spectator) -> Quay về sảnh
+            if (this.currentScreen === "spectator") {
+                document.getElementById("btn-spec-back-lobby")?.click();
+                return;
+            }
+
+            // 4. Nếu đang ở sảnh nhưng ở tab Codex hoặc Rooms -> Quay về tab Play chính
+            if (this.currentScreen === "lobby" && this.currentLobbyTab && this.currentLobbyTab !== "play") {
+                switchLobbyTab("play", false);
+                if (window.history && window.history.pushState) {
+                    window.history.pushState({ screen: "lobby", tab: "play" }, "");
+                }
+                return;
+            }
+
+            // Giữ lại state để không bao giờ bị văng khỏi trang web khi bấm Back liên tục
+            if (window.history && window.history.pushState) {
+                window.history.pushState({ screen: "lobby", tab: "play" }, "");
+            }
+        });
+
+        // Cảnh báo người chơi khi lỡ tắt tab lúc ván cờ đang diễn ra
+        window.addEventListener("beforeunload", (e) => {
+            if (this.currentScreen === "game" && this.tft && !this.tft.isGameOver) {
+                e.preventDefault();
+                e.returnValue = "Ván cờ đang diễn ra! Bạn có chắc chắn muốn rời khỏi trang không?";
+                return e.returnValue;
+            }
+        });
 
         // Hero Mode Tabs (Ranked / Solo / Tutorial / Custom)
         this.activeHeroMode = "ranked";
