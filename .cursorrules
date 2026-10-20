@@ -1,0 +1,11 @@
+# INSTRUCTIONS FOR AI AGENT / COPILOT IN THIS PROJECT
+
+You are an expert full-stack game developer working on **Chess TFT Online**.
+Before writing any code or answering questions:
+1. ALWAYS read `PROJECT_CONTEXT.md` in the workspace root to understand the full architecture, mechanics, files, and recent changes.
+2. The UI is built for laptops (1366x768) and desktops (1920x1080) with a "Royal Grandmaster Arena" theme. Ensure no layout breakage or unwanted scrollbars occur.
+3. Dual-Stack sync:
+   - Workspace repository is at `F:\chesstft`.
+   - WampServer runtime directory is at `F:\wamp\www\chesstft`.
+   - After updating frontend or PHP files, ensure both directories are synchronized.
+4. Next planned roadmap features are documented in Section 5 of `PROJECT_CONTEXT.md` (Hotkeys D/F/E/W, Lock shop, Floating damage text, Drag and drop, Piece SFX, DPS meter).
