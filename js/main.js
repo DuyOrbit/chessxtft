@@ -3989,13 +3989,32 @@ class ChessTFTApp {
             this.startEliminatedSpectatorSession();
         });
 
-        document.getElementById("btn-sell-selected").addEventListener("click", () => {
-            if (!this.selectedPrepUnitUid) return;
+        const sellUnitAction = () => {
+            if (!this.selectedPrepUnitUid) {
+                this.showToast("Hãy chọn 1 quân cờ trên bàn hoặc hàng chờ để bán!", "info");
+                return;
+            }
             const res = this.tft.sellUnit(this.selectedPrepUnitUid);
             if (res.ok) {
                 this.selectedPrepUnitUid = null;
                 this.sfx.move();
                 this.showToast(`Đã bán ${res.name} (+${res.refund} Vàng)`, "info");
+                this.renderAll();
+                this.syncMyStateToRoom();
+            } else {
+                this.showToast(res.msg, "warn");
+            }
+        };
+
+        document.getElementById("btn-sell-selected")?.addEventListener("click", sellUnitAction);
+        document.getElementById("btn-sell-hud-direct")?.addEventListener("click", sellUnitAction);
+
+        document.getElementById("btn-unequip-selected")?.addEventListener("click", () => {
+            if (!this.selectedPrepUnitUid) return;
+            const res = this.tft.unequipItems(this.selectedPrepUnitUid);
+            if (res.ok) {
+                this.sfx.move();
+                this.showToast(`Đã gỡ ${res.count} trang bị từ ${res.unitName} về kho đồ!`, "success");
                 this.renderAll();
                 this.syncMyStateToRoom();
             } else {
@@ -4487,21 +4506,21 @@ class ChessTFTApp {
                 }
             }
 
-            // Augments badges (visible for both spectator & opponent scouting)
+            // Augments badges (compact)
             const augsHtml = (part.augments || []).map(augId => {
                 const def = (window.CHESS_TFT_DATA.AUGMENTS || []).find(a => a.id === augId);
                 if (!def) return "";
                 return `<span class="lb-aug-badge" title="[Lõi] ${def.name}: ${def.desc}">${def.icon} ${def.name}</span>`;
             }).join("");
 
-            // Item badges
+            // Item badges (compact icons only, no bulky text, hooking up tooltip on hover)
             const itemCounts = {};
             for (const itId of allItems) itemCounts[itId] = (itemCounts[itId] || 0) + 1;
-            const itemsHtml = Object.keys(itemCounts).slice(0, 5).map(itId => {
+            const itemsHtml = Object.keys(itemCounts).slice(0, 4).map(itId => {
                 const def = window.CHESS_TFT_DATA.ITEMS[itId];
                 if (!def) return "";
                 const count = itemCounts[itId];
-                return `<span class="lb-item-badge" title="[Trang bị] ${def.name}: ${def.desc}">${def.icon}${count > 1 ? `x${count}` : ""}</span>`;
+                return `<span class="lb-item-badge" data-item-id="${itId}" title="${def.name}: ${def.desc}">${def.icon}${count > 1 ? `<sup>${count}</sup>` : ""}</span>`;
             }).join("");
 
             let badgesCluster = "";
@@ -4537,6 +4556,22 @@ class ChessTFTApp {
                 this.tft.scoutingPlayerId = part.id;
                 this.selectedPrepUnitUid = null;
                 this.renderAll();
+            });
+
+            row.querySelectorAll("[data-item-id]").forEach(el => {
+                const itemId = el.getAttribute("data-item-id");
+                el.addEventListener("mouseenter", (e) => {
+                    e.stopPropagation();
+                    this.showItemTooltip(itemId, e);
+                });
+                el.addEventListener("mousemove", (e) => {
+                    e.stopPropagation();
+                    this.moveItemTooltip(e);
+                });
+                el.addEventListener("mouseleave", (e) => {
+                    e.stopPropagation();
+                    this.hideItemTooltip();
+                });
             });
 
             listEl.appendChild(row);
@@ -4707,6 +4742,53 @@ class ChessTFTApp {
         document.querySelectorAll(".trait-hover-highlight").forEach(el => {
             el.classList.remove("trait-hover-highlight");
         });
+    }
+
+    showItemTooltip(itemId, evt) {
+        const item = window.CHESS_TFT_DATA.ITEMS[itemId];
+        if (!item) return;
+
+        const tipEl = document.getElementById("item-tooltip");
+        if (!tipEl) return;
+
+        tipEl.innerHTML = `
+            <div class="item-tip-header">
+                <div class="item-tip-icon">${item.icon}</div>
+                <div>
+                    <div class="item-tip-name">${item.name}</div>
+                    <div class="item-tip-tag">Trang Bị Cờ Chớp TFT</div>
+                </div>
+            </div>
+            <div class="item-tip-desc">${item.desc}</div>
+            <div class="item-tip-instruction">💡 Click trang bị rồi click vào quân cờ để lắp đồ. Hoặc chọn quân rồi bấm "Gỡ Đồ" để thu hồi.</div>
+        `;
+        tipEl.classList.remove("hidden");
+        this.moveItemTooltip(evt);
+    }
+
+    moveItemTooltip(evt) {
+        const tipEl = document.getElementById("item-tooltip");
+        if (!tipEl || tipEl.classList.contains("hidden")) return;
+
+        const pad = 16;
+        let x = evt.clientX + pad;
+        let y = evt.clientY + pad;
+
+        const rect = tipEl.getBoundingClientRect();
+        if (x + rect.width > window.innerWidth - 12) {
+            x = Math.max(12, evt.clientX - rect.width - pad);
+        }
+        if (y + rect.height > window.innerHeight - 12) {
+            y = Math.max(12, window.innerHeight - rect.height - 12);
+        }
+
+        tipEl.style.left = `${x}px`;
+        tipEl.style.top = `${y}px`;
+    }
+
+    hideItemTooltip() {
+        const tipEl = document.getElementById("item-tooltip");
+        if (tipEl) tipEl.classList.add("hidden");
     }
 
     // ========================================================================
@@ -5087,7 +5169,7 @@ class ChessTFTApp {
             itemsHtml = `<div class="piece-items">` +
                 piece.items.map(id => {
                     const it = window.CHESS_TFT_DATA.ITEMS[id];
-                    return it ? `<span class="piece-mini-item" title="${it.name}: ${it.desc}">${it.icon}</span>` : "";
+                    return it ? `<span class="piece-mini-item" data-item-id="${id}" title="${it.name}: ${it.desc}">${it.icon}</span>` : "";
                 }).join("") +
                 `</div>`;
         }
@@ -5107,6 +5189,23 @@ class ChessTFTApp {
             </div>
             ${itemsHtml}
         `;
+
+        wrapper.querySelectorAll("[data-item-id]").forEach(el => {
+            const itemId = el.getAttribute("data-item-id");
+            el.addEventListener("mouseenter", (e) => {
+                e.stopPropagation();
+                this.showItemTooltip(itemId, e);
+            });
+            el.addEventListener("mousemove", (e) => {
+                e.stopPropagation();
+                this.moveItemTooltip(e);
+            });
+            el.addEventListener("mouseleave", (e) => {
+                e.stopPropagation();
+                this.hideItemTooltip();
+            });
+        });
+
         return wrapper;
     }
 
@@ -5409,6 +5508,11 @@ class ChessTFTApp {
                         this.renderRightPanel();
                     });
                 }
+
+                slot.addEventListener("mouseenter", (e) => this.showItemTooltip(itemId, e));
+                slot.addEventListener("mousemove", (e) => this.moveItemTooltip(e));
+                slot.addEventListener("mouseleave", () => this.hideItemTooltip());
+
                 grid.appendChild(slot);
             });
             itemContainer.appendChild(grid);
@@ -5452,6 +5556,9 @@ class ChessTFTApp {
     renderSelectedUnitInspector() {
         const box = document.getElementById("selected-unit-box");
         const sellBtn = document.getElementById("btn-sell-selected");
+        const unequipBtn = document.getElementById("btn-unequip-selected");
+        const directSellBtn = document.getElementById("btn-sell-hud-direct");
+        const hudSellLabel = document.getElementById("hud-sell-label");
 
         let unit = null;
         if (this.tft.phase === "prep" && this.selectedPrepUnitUid) {
@@ -5463,13 +5570,30 @@ class ChessTFTApp {
 
         if (!unit) {
             box.innerHTML = `<div class="empty-hint">Bấm vào 1 quân cờ để xem chi tiết bước đi, Lớp Máu hoặc Bán quân.</div>`;
-            sellBtn.classList.add("hidden");
+            sellBtn?.classList.add("hidden");
+            unequipBtn?.classList.add("hidden");
+            if (directSellBtn) {
+                directSellBtn.style.opacity = "0.5";
+                if (hudSellLabel) hudSellLabel.textContent = "💰 BÁN TƯỚNG (E)";
+            }
             return;
         }
 
         const def = window.CHESS_TFT_DATA.PIECES[unit.id];
         const starIdx = Math.min(2, (unit.stars || 1) - 1);
         const hpDisplay = unit.hp !== undefined ? `${unit.hp}/${unit.maxHp}` : `${def.baseHp[starIdx]}`;
+
+        // Render equipped items tags inside inspector
+        let itemsHtml = "";
+        if (unit.items && unit.items.length > 0) {
+            itemsHtml = `<div class="insp-items-row" style="margin-top:4px; display:flex; gap:4px; align-items:center;">
+                <span style="font-size:0.7rem; color:#fbbf24; font-weight:700;">Đồ mang:</span>
+                ${unit.items.map(itId => {
+                    const it = window.CHESS_TFT_DATA.ITEMS[itId];
+                    return it ? `<span class="lb-item-badge" style="cursor:help;" data-item-id="${itId}" title="${it.name}: ${it.desc}">${it.icon} ${it.name}</span>` : "";
+                }).join("")}
+            </div>`;
+        }
 
         box.innerHTML = `
             <div class="insp-head">
@@ -5479,15 +5603,43 @@ class ChessTFTApp {
                     <div class="insp-meta">🛡️ Lớp Máu: <strong>${hpDisplay}</strong> • 🎯 Tầm: <strong>${def.range[starIdx]}</strong></div>
                 </div>
             </div>
+            ${itemsHtml}
             <div class="insp-desc">${def.desc}</div>
         `;
 
+        // Wire mouseenter/mouseleave on items inside inspector
+        box.querySelectorAll("[data-item-id]").forEach(el => {
+            const itemId = el.getAttribute("data-item-id");
+            el.addEventListener("mouseenter", (e) => this.showItemTooltip(itemId, e));
+            el.addEventListener("mousemove", (e) => this.moveItemTooltip(e));
+            el.addEventListener("mouseleave", () => this.hideItemTooltip());
+        });
+
         if (this.tft.phase === "prep" && !def.isKing) {
             const refund = this.tft.getUnitSellValue(unit);
-            sellBtn.innerHTML = `💰 Bán quân (+${refund} 🪙) <span class="hud-keybind-badge" style="margin-left:4px;">E</span>`;
+            sellBtn.innerHTML = `💰 Bán (+${refund} 🪙)`;
             sellBtn.classList.remove("hidden");
+            if (directSellBtn) {
+                directSellBtn.style.opacity = "1";
+                if (hudSellLabel) hudSellLabel.textContent = `💰 BÁN (+${refund}🪙)`;
+            }
+
+            // Unequip button
+            if (unequipBtn) {
+                if (unit.items && unit.items.length > 0) {
+                    unequipBtn.classList.remove("hidden");
+                    unequipBtn.innerHTML = `📦 Gỡ Đồ (${unit.items.length})`;
+                } else {
+                    unequipBtn.classList.add("hidden");
+                }
+            }
         } else {
             sellBtn.classList.add("hidden");
+            unequipBtn?.classList.add("hidden");
+            if (directSellBtn) {
+                directSellBtn.style.opacity = "0.5";
+                if (hudSellLabel) hudSellLabel.textContent = "💰 BÁN TƯỚNG (E)";
+            }
         }
     }
 

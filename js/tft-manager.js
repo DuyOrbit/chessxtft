@@ -536,6 +536,30 @@ class TFTGameManager {
         };
     }
 
+    // Unequip all items from a unit back to player inventory (during Prep Phase)
+    unequipItems(targetUid) {
+        if (this.phase !== "prep") {
+            return { ok: false, msg: "Chỉ được gỡ trang bị trong giai đoạn Chuẩn Bị!" };
+        }
+        let unit = this.player.board.find(u => u.uid === targetUid);
+        if (!unit) unit = this.player.bench.find(u => u && u.uid === targetUid);
+        if (!unit) return { ok: false, msg: "Không tìm thấy quân cờ!" };
+
+        if (!unit.items || unit.items.length === 0) {
+            return { ok: false, msg: "Quân cờ này không mang trang bị nào!" };
+        }
+
+        const count = unit.items.length;
+        this.player.items.push(...unit.items);
+        unit.items = [];
+
+        return {
+            ok: true,
+            count,
+            unitName: window.CHESS_TFT_DATA.PIECES[unit.id]?.name || "Quân cờ"
+        };
+    }
+
     // Move unit between Bench <-> Board or reposition on Board during Prep Phase
     movePlayerUnitToBoard(uid, targetR, targetC) {
         if (this.phase !== "prep") return { ok: false, msg: "Chỉ được xếp đội hình trong giai đoạn Chuẩn Bị!" };

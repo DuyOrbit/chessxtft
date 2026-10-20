@@ -584,6 +584,14 @@
                                 </div>
                                 <span id="reroll-cost-label" class="reroll-btn-cost">2 🪙</span>
                             </button>
+
+                            <!-- NÚT BÁN TƯỚNG TRỰC TIẾP TRÊN HUD -->
+                            <button id="btn-sell-hud-direct" class="btn-danger hud-btn-full" title="Bán quân cờ đang chọn hoặc kéo/trỏ chuột vào để bán (Phím tắt: E)" style="margin-top:2px;">
+                                <div class="hud-btn-main">
+                                    <span id="hud-sell-label" style="font-weight:800; font-size:0.7rem;">💰 BÁN TƯỚNG</span>
+                                    <span class="hud-keybind-badge" style="background:#ef4444; color:#fff;">E</span>
+                                </div>
+                            </button>
                         </div>
 
                         <!-- 5 THẺ BÀI QUÂN CỜ THEO SƠ ĐỒ -->
@@ -627,7 +635,10 @@
                         <span>🔍 QUÂN ĐANG CHỌN</span>
                     </div>
                     <div id="selected-unit-box"></div>
-                    <button id="btn-sell-selected" class="btn-danger hidden">💰 Bán Quân</button>
+                    <div class="inspect-action-btns" style="display:flex; gap:6px; margin-top:6px;">
+                        <button id="btn-unequip-selected" class="btn-secondary hidden" style="flex:1; font-size:0.72rem; padding:4px 6px;">📦 Gỡ Đồ</button>
+                        <button id="btn-sell-selected" class="btn-danger hidden" style="flex:1; font-size:0.72rem; padding:4px 6px;">💰 Bán Quân</button>
+                    </div>
                 </div>
             </aside>
         </main>
@@ -922,6 +933,9 @@
 
     <!-- FLOATING SYNERGY TOOLTIP (TFT STYLE) -->
     <div id="synergy-tooltip" class="synergy-tooltip hidden"></div>
+
+    <!-- FLOATING ITEM TOOLTIP (HIỂN THỊ CHỨC NĂNG TRANG BỊ & NÚT GỠ ĐỒ) -->
+    <div id="item-tooltip" class="item-tooltip hidden"></div>
 
     <div id="toast-container" class="toast-container"></div>
 
