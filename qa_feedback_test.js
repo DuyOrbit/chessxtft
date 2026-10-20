@@ -115,6 +115,24 @@ const fs = require('fs');
             console.log("📸 Đã chụp test_hover_preview.png");
         }
 
+        // 7. Test Hover Piece Range in Combat Phase
+        console.log("-> Bắt đầu giao tranh để kiểm tra rê chuột xem tầm đánh trong trận...");
+        const enterCombatBtn = await page.$("#btn-start-combat");
+        if (enterCombatBtn) {
+            await enterCombatBtn.click();
+            await page.waitForTimeout(1500);
+
+            const combatPiece = await page.$("#chess-board .chess-piece");
+            if (combatPiece) {
+                await combatPiece.hover();
+                await page.waitForTimeout(400);
+                const combatPreviewCells = await page.$$eval("#chess-board .cell-preview-move, #chess-board .cell-preview-attack", els => els.length);
+                console.log(`-> Số ô tầm đánh/nước đi khi rê chuột lên quân cờ TRONG TRẬN: ${combatPreviewCells} (Mong muốn: > 0)`);
+                await page.screenshot({ path: path.join(screenshotDir, "test_combat_hover_preview.png") });
+                console.log("📸 Đã chụp test_combat_hover_preview.png");
+            }
+        }
+
         console.log("✅ All functional tests executed successfully!");
 
     } catch (err) {

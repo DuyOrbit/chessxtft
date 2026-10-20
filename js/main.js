@@ -2118,8 +2118,11 @@ class ChessTFTApp {
                 const tr = r0 + dr;
                 const tc = c0 + dc;
                 if (tr >= 0 && tr < totalRows && tc >= 0 && tc < totalCols) {
-                    const cellIdx = tr * totalCols + tc;
-                    const cellEl = boardEl.children[cellIdx];
+                    let cellEl = boardEl.querySelector(`.board-cell[data-row='${tr}'][data-col='${tc}']`);
+                    if (!cellEl) {
+                        const cellIdx = tr * totalCols + tc;
+                        cellEl = boardEl.children[cellIdx];
+                    }
                     if (cellEl) {
                         if (type === "attack" || type === "pawn-atk" || type === "cannon") {
                             cellEl.classList.add("cell-preview-attack");
@@ -2130,6 +2133,28 @@ class ChessTFTApp {
                 }
             }
         }
+    }
+
+    highlightCombatPieceHover(r, c) {
+        this.clearMovementPreview();
+        if (!this.chess) return;
+        const boardEl = document.getElementById("chess-board");
+        if (!boardEl) return;
+
+        // Use real engine actions for the hovered piece (both player and enemy)
+        const actions = this.chess.getPieceActions(r, c, true);
+        if (!actions || actions.length === 0) return;
+
+        actions.forEach(act => {
+            const cellEl = boardEl.querySelector(`.board-cell[data-row='${act.toR}'][data-col='${act.toC}']`);
+            if (cellEl) {
+                if (act.type === "ranged" || act.type === "melee" || act.type === "pawn-capture" || act.type === "cannon-fire") {
+                    cellEl.classList.add("cell-preview-attack");
+                } else {
+                    cellEl.classList.add("cell-preview-move");
+                }
+            }
+        });
     }
 
     clearMovementPreview() {
@@ -5549,7 +5574,23 @@ class ChessTFTApp {
                     cell.appendChild(pieceEl);
                 }
 
+                cell.addEventListener("mouseenter", () => {
+                    // If no piece is currently selected, hovering over any combat piece (player or enemy) previews its attack/move range
+                    if (!this.selectedCombatSquare && piece) {
+                        cell.classList.add("cell-hover-target");
+                        this.highlightCombatPieceHover(r, c);
+                    }
+                });
+
+                cell.addEventListener("mouseleave", () => {
+                    cell.classList.remove("cell-hover-target");
+                    if (!this.selectedCombatSquare) {
+                        this.clearMovementPreview();
+                    }
+                });
+
                 cell.addEventListener("click", () => {
+                    this.clearMovementPreview();
                     this.handleCombatBoardClick(r, c, piece, matchedAction);
                 });
 
