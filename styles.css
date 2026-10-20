@@ -4315,6 +4315,632 @@ button {
     font-weight: 600;
 }
 
+/* ============================================================================
+   CHESS.COM STYLE DESKTOP & LAPTOP LAYOUT
+   ============================================================================ */
+.cc-layout-screen {
+    display: flex !important;
+    flex-direction: row !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    overflow: hidden !important;
+    background: #302e2b !important;
+    color: #f1f1f1 !important;
+}
+
+/* LEFT SIDEBAR (CHESS.COM ICONIC NAV) */
+.cc-sidebar {
+    width: 175px !important;
+    min-width: 175px !important;
+    height: 100vh !important;
+    background: #21201d !important;
+    border-right: 1px solid #363431 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    padding: 12px 10px !important;
+    z-index: 100 !important;
+    user-select: none !important;
+}
+
+.cc-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px 14px;
+    border-bottom: 1px solid #2d2b27;
+}
+
+.cc-brand-icon {
+    font-size: 1.6rem;
+    line-height: 1;
+}
+
+.cc-brand-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 900;
+    color: #ffffff;
+    letter-spacing: 0.5px;
+}
+
+.cc-brand-green {
+    color: #81b64c;
+}
+
+.cc-nav-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 10px;
+    flex: 1;
+}
+
+.cc-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: #c3c2c1;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.12s ease;
+    width: 100%;
+}
+
+.cc-nav-link:hover {
+    background: #2d2b27;
+    color: #ffffff;
+}
+
+.cc-nav-link.active {
+    background: #363431;
+    color: #ffffff;
+    box-shadow: inset 3px 0 0 #81b64c;
+}
+
+.cc-nav-icon {
+    font-size: 1.15rem;
+    line-height: 1;
+    width: 20px;
+    text-align: center;
+}
+
+.cc-sidebar-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-top: 1px solid #2d2b27;
+    padding-top: 10px;
+}
+
+.cc-audio-btn {
+    background: #2a2926;
+    border: 1px solid #3d3b37;
+    color: #989795;
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.12s ease;
+}
+
+.cc-audio-btn:hover {
+    background: #363431;
+    color: #fff;
+}
+
+.cc-user-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: #262421;
+    border: 1px solid #363431;
+    border-radius: 6px;
+}
+
+.cc-user-avatar {
+    font-size: 1.3rem;
+    line-height: 1;
+}
+
+.cc-user-meta {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.cc-user-name {
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: #fff;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.cc-user-elo {
+    font-size: 0.68rem;
+    color: #81b64c;
+    font-weight: 700;
+}
+
+.cc-logout-btn {
+    background: transparent;
+    border: 1px solid #3d3b37;
+    border-radius: 6px;
+    color: #989795;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 4px;
+    cursor: pointer;
+    transition: all 0.12s ease;
+}
+
+.cc-logout-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    border-color: #ef4444;
+}
+
+/* MAIN CONTENT AREA */
+.cc-main-content {
+    flex: 1 !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
+    padding: 10px 16px 16px !important;
+    background: #302e2b !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+}
+
+/* TOP STATUS BAR */
+.cc-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #262421;
+    border: 1px solid #363431;
+    border-radius: 8px;
+    padding: 6px 12px;
+}
+
+.cc-topbar-left, .cc-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cc-record-tag {
+    font-size: 0.74rem;
+    color: #989795;
+    font-weight: 700;
+}
+
+.cc-stat-chip {
+    background: #1e1e1d;
+    border: 1px solid #3d3b37;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 0.74rem;
+    font-weight: 800;
+    color: #f1f1f1;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.cc-stat-chip.streak-chip {
+    color: #fbbf24;
+    border-color: rgba(251, 191, 36, 0.3);
+}
+
+/* HERO ROW: QUICK PLAY + 3 FEATURE CARDS (COMPACT FOR LAPTOPS) */
+.cc-hero-row {
+    display: grid !important;
+    grid-template-columns: 330px 1fr !important;
+    gap: 12px !important;
+    min-height: 250px !important;
+}
+
+/* QUICK PLAY BOX */
+.cc-quickplay-card {
+    background: #262421;
+    border: 1px solid #363431;
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.cc-time-tabs {
+    display: flex;
+    gap: 4px;
+    background: #1e1e1d;
+    padding: 3px;
+    border-radius: 6px;
+    border: 1px solid #363431;
+}
+
+.cc-time-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: #989795;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 5px 2px;
+    cursor: pointer;
+    transition: all 0.12s ease;
+}
+
+.cc-time-tab:hover {
+    color: #fff;
+}
+
+.cc-time-tab.active {
+    background: #363431;
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+
+/* GIANT CHESS.COM GREEN BUTTON */
+.cc-cta-wrap {
+    margin: 8px 0;
+    text-align: center;
+}
+
+.cc-btn-green-giant {
+    width: 100% !important;
+    background: #81b64c !important;
+    color: #ffffff !important;
+    font-size: 1.15rem !important;
+    font-weight: 900 !important;
+    padding: 13px !important;
+    border-radius: 8px !important;
+    border: none !important;
+    box-shadow: 0 4px 0 #537133 !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    letter-spacing: 0.5px !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) !important;
+    transition: all 0.1s ease !important;
+}
+
+.cc-btn-green-giant:hover {
+    background: #a3d160 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 5px 0 #537133 !important;
+}
+
+.cc-btn-green-giant:active {
+    transform: translateY(3px) !important;
+    box-shadow: 0 1px 0 #537133 !important;
+}
+
+.cc-mode-desc {
+    font-size: 0.72rem;
+    color: #989795;
+    margin: 6px 0 0 0;
+    line-height: 1.35;
+}
+
+/* QUICK ACTIONS ROW */
+.cc-quick-actions-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+}
+
+.cc-action-item {
+    background: #302e2b;
+    border: 1px solid #3d3b37;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #c3c2c1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.12s ease;
+}
+
+.cc-action-item:hover {
+    background: #3d3b37;
+    color: #ffffff;
+    border-color: #81b64c;
+}
+
+/* 3 FEATURE CARDS (CHESS.COM MINI BOARD PREVIEW) */
+.cc-feature-cards-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 10px !important;
+}
+
+.cc-feature-card {
+    background: #262421;
+    border: 1px solid #363431;
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.15s ease;
+}
+
+.cc-feature-card:hover {
+    transform: translateY(-2px);
+    border-color: #81b64c;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.cc-board-preview {
+    height: 120px;
+    background: #1e1e1d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+}
+
+/* CHESS.COM CHECKERBOARD (GREEN & CREAM SQUARES) */
+.mini-board-chesscom {
+    width: 104px;
+    height: 104px;
+    border-radius: 4px;
+    border: 2px solid #4a4742;
+    position: relative;
+    background-size: 26px 26px;
+    background-position: 0 0, 13px 13px;
+    background-image: 
+        linear-gradient(45deg, #86a666 25%, transparent 25%), 
+        linear-gradient(-45deg, #86a666 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, #86a666 75%), 
+        linear-gradient(-45deg, transparent 75%, #86a666 75%);
+    background-color: #eeeed2;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+}
+
+.mini-cell-piece, .mini-cell-target {
+    font-size: 1.5rem;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+    animation: gentleBob 2s ease-in-out infinite alternate;
+}
+
+.mini-cell-target {
+    animation-delay: 1s;
+}
+
+@keyframes gentleBob {
+    from { transform: translateY(0); }
+    to { transform: translateY(-4px); }
+}
+
+.cc-feature-body {
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 6px;
+    background: #262421;
+}
+
+.cc-feature-tag {
+    font-size: 0.62rem;
+    font-weight: 800;
+    color: #81b64c;
+    letter-spacing: 0.5px;
+}
+
+.cc-feature-title {
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin-top: 1px;
+}
+
+.cc-feature-btn {
+    width: 100%;
+    background: #363431;
+    border: 1px solid #4a4742;
+    color: #ffffff;
+    font-weight: 800;
+    padding: 6px;
+    border-radius: 6px;
+    font-size: 0.74rem;
+    cursor: pointer;
+    transition: all 0.12s ease;
+}
+
+.cc-feature-card:hover .cc-feature-btn {
+    background: #81b64c;
+    border-color: #81b64c;
+    color: #000;
+}
+
+/* ADMIN SPECTATOR BAR IN HUB */
+.cc-admin-spectator-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(8, 145, 178, 0.15);
+    border: 1px solid #0891b2;
+    border-radius: 8px;
+    padding: 8px 14px;
+    margin-top: 6px;
+}
+
+.admin-spec-icon {
+    font-size: 1.5rem;
+}
+
+.admin-spec-info {
+    flex: 1;
+    font-size: 0.75rem;
+    color: #cbd5e1;
+}
+
+.admin-spec-info strong {
+    color: #38bdf8;
+    margin-right: 6px;
+}
+
+/* ROOMS & CODEX IN CHESS.COM TABS */
+.cc-room-box {
+    background: #262421;
+    border: 1px solid #363431;
+    border-radius: 10px;
+    padding: 14px;
+}
+
+.cc-sub {
+    font-size: 0.75rem;
+    color: #989795;
+    margin: 4px 0 10px;
+}
+
+/* ============================================================================
+   INTERACTIVE TUTORIAL COACH OVERLAY & STYLES
+   ============================================================================ */
+.tutorial-coach-bar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: linear-gradient(90deg, #1c2718 0%, #263320 100%);
+    border: 2px solid #81b64c;
+    border-radius: 10px;
+    padding: 8px 16px;
+    margin: 4px 14px;
+    box-shadow: 0 0 20px rgba(129, 182, 76, 0.35);
+    animation: coachPulse 1.8s ease-in-out infinite alternate;
+    z-index: 90;
+}
+
+@keyframes coachPulse {
+    from { box-shadow: 0 0 12px rgba(129, 182, 76, 0.25); }
+    to { box-shadow: 0 0 22px rgba(129, 182, 76, 0.5); }
+}
+
+.coach-icon {
+    font-size: 2.2rem;
+    line-height: 1;
+}
+
+.coach-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.coach-headline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.coach-title {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #a3d160;
+}
+
+.coach-step-pill {
+    background: rgba(129, 182, 76, 0.2);
+    border: 1px solid #81b64c;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: #81b64c;
+}
+
+.coach-body-text {
+    font-size: 0.8rem;
+    color: #f1f1f1;
+    line-height: 1.35;
+}
+
+.coach-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.coach-btn-action {
+    background: #81b64c;
+    border: 1px solid #81b64c;
+    border-radius: 6px;
+    color: #000;
+    font-weight: 800;
+    font-size: 0.78rem;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: all 0.12s ease;
+}
+
+.coach-btn-action:hover {
+    background: #a3d160;
+    box-shadow: 0 0 10px rgba(129, 182, 76, 0.4);
+}
+
+.coach-btn-dismiss {
+    background: transparent;
+    border: 1px solid #4a4742;
+    border-radius: 6px;
+    color: #989795;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 5px 8px;
+    cursor: pointer;
+}
+
+.coach-btn-dismiss:hover {
+    color: #fff;
+    border-color: #989795;
+}
+
+/* TUTORIAL HIGHLIGHT PULSE FOR BOARD & SHOP */
+.tutorial-highlight-target {
+    outline: 3px solid #81b64c !important;
+    box-shadow: 0 0 25px rgba(129, 182, 76, 0.8) !important;
+    animation: tutorialGlow 0.8s ease-in-out infinite alternate !important;
+}
+
+@keyframes tutorialGlow {
+    from { outline-color: #81b64c; box-shadow: 0 0 15px rgba(129, 182, 76, 0.5); }
+    to { outline-color: #a3d160; box-shadow: 0 0 30px rgba(163, 209, 96, 0.9); }
+}
+
+@media (max-width: 900px) {
+    .cc-hero-row {
+        grid-template-columns: 1fr !important;
+    }
+    .cc-sidebar {
+        width: 140px !important;
+        min-width: 140px !important;
+    }
+}
+
+
 
 
 

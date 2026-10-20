@@ -544,6 +544,100 @@ class ChessTFTApp {
             this.showScreen("auth");
         });
 
+        // Chess.com Sidebar Tab Switcher
+        const switchLobbyTab = (tabName) => {
+            document.querySelectorAll(".cc-nav-link").forEach(l => l.classList.remove("active"));
+            document.querySelectorAll(".cc-tab-view").forEach(v => v.classList.add("hidden"));
+            if (tabName === "play") {
+                document.getElementById("nav-item-play")?.classList.add("active");
+                document.getElementById("view-hub-play")?.classList.remove("hidden");
+            } else if (tabName === "codex") {
+                document.getElementById("nav-item-codex")?.classList.add("active");
+                document.getElementById("view-hub-codex")?.classList.remove("hidden");
+                this.renderCodex();
+            } else if (tabName === "rooms") {
+                document.getElementById("nav-item-rooms")?.classList.add("active");
+                document.getElementById("view-hub-rooms")?.classList.remove("hidden");
+                if (this.socket && this.socket.connected) {
+                    this.socket.emit("rooms:refresh");
+                } else {
+                    this.fetchOpenRoomsViaPhp();
+                }
+            }
+        };
+
+        document.getElementById("nav-item-play")?.addEventListener("click", () => switchLobbyTab("play"));
+        document.getElementById("nav-item-codex")?.addEventListener("click", () => switchLobbyTab("codex"));
+        document.getElementById("nav-item-rooms")?.addEventListener("click", () => switchLobbyTab("rooms"));
+        document.getElementById("nav-item-tutorial")?.addEventListener("click", () => this.startTutorialSession());
+        document.getElementById("btn-quick-friends")?.addEventListener("click", () => switchLobbyTab("rooms"));
+
+        // Hero Mode Tabs (Ranked / Solo / Tutorial / Custom)
+        this.activeHeroMode = "ranked";
+        const heroBtnLabel = document.getElementById("hero-btn-label");
+        const heroModeDesc = document.getElementById("hero-mode-desc");
+
+        document.querySelectorAll(".cc-time-tab").forEach(tab => {
+            tab.addEventListener("click", () => {
+                document.querySelectorAll(".cc-time-tab").forEach(t => t.classList.remove("active"));
+                tab.classList.add("active");
+                const mode = tab.getAttribute("data-mode");
+                this.activeHeroMode = mode;
+                if (mode === "ranked") {
+                    if (heroBtnLabel) heroBtnLabel.textContent = "BẮT ĐẦU VÁN CỜ (RANK)";
+                    if (heroModeDesc) heroModeDesc.textContent = "Tự động ghép cùng kỳ thủ online thật. Ghế trống tự động thêm 7 Bot AI sau 4s!";
+                } else if (mode === "solo") {
+                    if (heroBtnLabel) heroBtnLabel.textContent = "ĐẤU VỚI BOT NGAY";
+                    if (heroModeDesc) heroModeDesc.textContent = "Luyện tập offline cùng 7 Bot AI thông minh (Magnus, Kasparov...). Không sợ mất điểm ELO!";
+                } else if (mode === "tutorial") {
+                    if (heroBtnLabel) heroBtnLabel.textContent = "BẮT ĐẦU HƯỚNG DẪN";
+                    if (heroModeDesc) heroModeDesc.textContent = "Khóa huấn luyện tương tác từng bước cùng Huấn Luyện Viên Bot. Nắm vững luật cờ và tộc hệ!";
+                } else if (mode === "custom") {
+                    if (heroBtnLabel) heroBtnLabel.textContent = "PHÒNG CHƠI BẠN BÈ";
+                    if (heroModeDesc) heroModeDesc.textContent = "Tạo phòng riêng hoặc nhập mã để mời bạn bè cùng so tài cờ chớp!";
+                }
+            });
+        });
+
+        // Giant Chess.com Green Button
+        document.getElementById("btn-hero-play-main")?.addEventListener("click", () => {
+            if (this.activeHeroMode === "ranked") {
+                this.startMatchmaking();
+            } else if (this.activeHeroMode === "solo") {
+                document.getElementById("btn-quick-solo")?.click();
+            } else if (this.activeHeroMode === "tutorial") {
+                this.startTutorialSession();
+            } else if (this.activeHeroMode === "custom") {
+                switchLobbyTab("rooms");
+            }
+        });
+
+        // Feature cards click handlers
+        document.getElementById("btn-start-tutorial")?.addEventListener("click", () => this.startTutorialSession());
+        document.getElementById("btn-quick-tutorial")?.addEventListener("click", () => this.startTutorialSession());
+        document.getElementById("btn-play-bot-feature")?.addEventListener("click", () => document.getElementById("btn-quick-solo")?.click());
+        document.getElementById("btn-play-rank-feature")?.addEventListener("click", () => this.startMatchmaking());
+
+        // Tutorial buttons
+        document.getElementById("btn-tutorial-next-step")?.addEventListener("click", () => {
+            this.advanceTutorialStep(4);
+        });
+        document.getElementById("btn-tutorial-skip")?.addEventListener("click", () => {
+            this.isTutorialMode = false;
+            document.querySelectorAll(".tutorial-highlight-target").forEach(el => el.classList.remove("tutorial-highlight-target"));
+            document.getElementById("tutorial-coach-overlay")?.classList.add("hidden");
+            this.showToast("Đã bỏ qua hướng dẫn tân thủ.", "info");
+        });
+        document.getElementById("btn-tutorial-go-rank")?.addEventListener("click", () => {
+            document.getElementById("modal-tutorial-complete")?.classList.add("hidden");
+            this.showScreen("lobby");
+            this.startMatchmaking();
+        });
+        document.getElementById("btn-tutorial-go-lobby")?.addEventListener("click", () => {
+            document.getElementById("modal-tutorial-complete")?.classList.add("hidden");
+            this.showScreen("lobby");
+        });
+
         // Ranked Auto-Matchmaking (Người auto matching nhau)
         const btnRankedMatch = document.getElementById("btn-start-matchmaking");
         if (btnRankedMatch) {
@@ -1469,6 +1563,122 @@ class ChessTFTApp {
         this.syncMyStateToRoom();
         this.startPrepCountdown();
         this.showToast("⚔️ Trận đấu bắt đầu! Hãy mua quân, xếp đội hình và chuẩn bị giao tranh!", "success");
+    }
+
+    // ========================================================================
+    // INTERACTIVE TUTORIAL WITH COACH BOT (CHẾ ĐỘ HƯỚNG DẪN TỪNG BƯỚC)
+    // ========================================================================
+    startTutorialSession() {
+        this.isTutorialMode = true;
+        this.tutorialStep = 1;
+        this.isRankedMode = false;
+
+        const coachBot = {
+            id: "bot_coach_martin",
+            name: "Bot Martin (Huấn Luyện Viên)",
+            avatar: "🎓",
+            isBot: true,
+            hp: 60,
+            maxHp: 60,
+            level: 3,
+            gold: 6,
+            elo: 250,
+            board: [],
+            bench: []
+        };
+
+        const tutorialRoom = {
+            code: "TUTORIAL",
+            timeMode: "relaxed",
+            fillBots: false,
+            players: [
+                { id: this.currentUser ? this.currentUser.id : "guest", name: "Bạn (Học Viên)", avatar: "👑" },
+                coachBot
+            ]
+        };
+
+        this.startNewGameSession(tutorialRoom);
+        this.tft.bots = [coachBot];
+        this.tft.player.gold = 10;
+        this.renderAll();
+
+        const overlay = document.getElementById("tutorial-coach-overlay");
+        if (overlay) overlay.classList.remove("hidden");
+        this.renderTutorialStep(1);
+    }
+
+    renderTutorialStep(step) {
+        this.tutorialStep = step;
+        const ind = document.getElementById("tutorial-step-indicator");
+        const text = document.getElementById("tutorial-coach-text");
+        const nextBtn = document.getElementById("btn-tutorial-next-step");
+
+        document.querySelectorAll(".tutorial-highlight-target").forEach(el => el.classList.remove("tutorial-highlight-target"));
+
+        if (step === 1) {
+            if (ind) ind.textContent = "BƯỚC 1 / 4: MUA QUÂN";
+            if (text) text.textContent = "Chào bạn đến với Chess TFT! Mỗi lượt bạn sẽ nhận Vàng (🪙). Ở hàng dưới cùng là Cửa Hàng. Hãy bấm mua 1 quân cờ để đưa vào Hàng Chờ (Bench)!";
+            if (nextBtn) nextBtn.style.display = "none";
+            document.getElementById("shop-cards")?.classList.add("tutorial-highlight-target");
+        } else if (step === 2) {
+            if (ind) ind.textContent = "BƯỚC 2 / 4: XẾP ĐỘI HÌNH";
+            if (text) text.textContent = "Rất tốt! Quân cờ đã vào Hàng Chờ. Hãy bấm vào quân đó rồi bấm vào 1 ô trên nửa sân của bạn để xếp đội hình. Quân Đỡ Đòn xếp hàng trước, Quân Bắn Xa xếp hàng sau!";
+            if (nextBtn) nextBtn.style.display = "none";
+            document.querySelector(".tft-player-bench")?.classList.add("tutorial-highlight-target");
+        } else if (step === 3) {
+            if (ind) ind.textContent = "BƯỚC 3 / 4: TỘC / HỆ";
+            if (text) text.textContent = "Nhìn sang Bảng Tộc / Hệ bên trái! Khi có đủ quân cùng Tộc (Thiết Giáp, Kỵ Binh, Băng Quốc...), hiệu ứng buff sẽ kích hoạt. Tôi vừa tặng bạn 1 quân cùng Tộc vào Hàng Chờ, hãy xếp lên sân để kích hoạt Tộc!";
+            if (nextBtn) {
+                nextBtn.style.display = "inline-block";
+                nextBtn.textContent = "Tiếp Theo ➔";
+            }
+            // Tặng 1 quân cùng Tộc vào Bench để kích hoạt
+            const emptyBench = this.tft.player.bench.findIndex(b => b === null);
+            if (emptyBench !== -1) {
+                const boughtPieceId = this.tft.player.board.find(u => u.id !== "king")?.id || "shield_pawn";
+                const matchingDef = window.CHESS_TFT_DATA.PIECES[boughtPieceId];
+                const matchingTrait = (matchingDef && matchingDef.traits && matchingDef.traits[0]) || "guardian";
+                const partnerPiece = Object.values(window.CHESS_TFT_DATA.PIECES).find(p => p.id !== boughtPieceId && p.traits.includes(matchingTrait)) || window.CHESS_TFT_DATA.PIECES["frost_knight"];
+                this.tft.player.bench[emptyBench] = {
+                    uid: this.tft.nextUid("unit"),
+                    id: partnerPiece.id,
+                    stars: 1,
+                    items: []
+                };
+                this.renderAll();
+                this.showToast(`🎁 Martin đã tặng bạn 1 quân [${partnerPiece.name}] để ghép Tộc!`, "success");
+            }
+            document.getElementById("synergy-list")?.classList.add("tutorial-highlight-target");
+        } else if (step === 4) {
+            if (ind) ind.textContent = "BƯỚC 4 / 4: GIAO TRANH";
+            if (text) text.textContent = "Quân cờ có nhiều Lớp Máu (thanh xanh dưới chân). Mất Vua hoặc bị Chiếu Hết là THUA NGAY! Giờ hãy bấm nút '⚔️ VÀO TRẬN' để chiến đấu thử cùng tôi!";
+            if (nextBtn) nextBtn.style.display = "none";
+            document.getElementById("btn-start-combat")?.classList.add("tutorial-highlight-target");
+        }
+    }
+
+    advanceTutorialStep(step) {
+        if (!this.isTutorialMode) return;
+        this.sfx.starUp();
+        this.renderTutorialStep(step);
+    }
+
+    finishTutorialSession() {
+        this.isTutorialMode = false;
+        document.querySelectorAll(".tutorial-highlight-target").forEach(el => el.classList.remove("tutorial-highlight-target"));
+        document.getElementById("tutorial-coach-overlay")?.classList.add("hidden");
+        const modal = document.getElementById("modal-tutorial-complete");
+        if (modal) modal.classList.remove("hidden");
+        this.sfx.victory();
+
+        if (this.currentUser) {
+            if (!this.currentUser.stats) this.currentUser.stats = {};
+            this.currentUser.stats.elo = (this.currentUser.stats.elo || 1000) + 100;
+            if (!this.currentUser.customModifiers) this.currentUser.customModifiers = {};
+            this.currentUser.customModifiers.startingGold = (this.currentUser.customModifiers.startingGold || 6) + 20;
+            localStorage.setItem("chesstft_user", JSON.stringify(this.currentUser));
+            this.updateUserProfileUI(this.currentUser);
+        }
     }
 
     // ========================================================================
@@ -3098,6 +3308,9 @@ class ChessTFTApp {
             if (res.ok) {
                 this.selectedPrepUnitUid = null;
                 this.sfx.move();
+                if (this.isTutorialMode && this.tutorialStep === 2) {
+                    this.advanceTutorialStep(3);
+                }
                 this.renderAll();
             } else {
                 this.showToast(res.msg, "warn");
@@ -3422,6 +3635,9 @@ class ChessTFTApp {
                     } else {
                         this.sfx.move();
                     }
+                    if (this.isTutorialMode && this.tutorialStep === 1) {
+                        this.advanceTutorialStep(2);
+                    }
                     this.renderAll();
                 } else {
                     this.showToast(res.msg, "warn");
@@ -3736,6 +3952,14 @@ class ChessTFTApp {
 
         this.tft.resolveRoundResults(res, this.chess.goldEarnedPlayer);
         this.renderAll();
+
+        // Nếu là Tutorial Mode thì hoàn thành khóa huấn luyện sau khi thắng ván đấu đầu tiên
+        if (this.isTutorialMode) {
+            setTimeout(() => {
+                this.finishTutorialSession();
+            }, 600);
+            return;
+        }
 
         // Kiểm tra xem trận đấu có người chơi thật khác hay không
         const isMulti = this.isMultiplayerWithOtherHumans();

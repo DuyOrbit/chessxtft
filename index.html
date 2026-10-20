@@ -68,175 +68,236 @@
     </div>
 
     <!-- ====================================================================
-         SCREEN 2: SẢNH CHỜ CHÍNH (MAIN LOBBY / GAME HUB & CODEX)
+         SCREEN 2: SẢNH CHỜ CHÍNH (CHESS.COM STYLE LOBBY HUB)
          ==================================================================== -->
-    <div id="screen-lobby" class="screen-container hidden">
-        <!-- GAMING HUD LOBBY HEADER -->
-        <header class="top-bar gaming-header">
-            <div class="brand-wrap">
-                <div class="game-brand-crest">♟️</div>
-                <div class="game-brand-text">
-                    <span class="brand-title">CHESS TFT</span>
-                    <span class="brand-subtag">TACTICAL BLITZ ARENA</span>
-                </div>
-                <span id="lobby-online-status" class="badge-pill online-pulse">🟢 Máy Chủ Sẵn Sàng</span>
+    <div id="screen-lobby" class="screen-container cc-layout-screen hidden">
+        <!-- LEFT SLIM SIDEBAR (CHESS.COM STYLE) -->
+        <aside class="cc-sidebar">
+            <div class="cc-brand">
+                <span class="cc-brand-icon">♟️</span>
+                <div class="cc-brand-title">Chess<span class="cc-brand-green">.tft</span></div>
             </div>
 
-            <!-- GAMING PROFILE HUD CARD -->
-            <div class="player-hud-bar">
-                <div class="player-hud-profile">
-                    <div class="player-avatar-crest">
-                        <span id="lobby-user-avatar" class="crest-emoji">👑</span>
-                    </div>
-                    <div class="player-hud-info">
-                        <div class="player-name-line">
-                            <span id="lobby-user-name" class="player-hud-name">Kỳ Thủ</span>
-                            <span id="lobby-user-role-badge" class="badge-role-tag">VIP</span>
-                        </div>
-                        <div class="player-rank-line">
-                            <span id="lobby-user-rank-tier" class="rank-tier-text">💎 Cao Thủ (ELO: 1500)</span>
-                            <span id="lobby-user-record" class="rank-record-text">Top 1: 6/12</span>
-                        </div>
+            <!-- SIDEBAR NAV LINKS -->
+            <nav class="cc-nav-menu">
+                <button id="nav-item-play" class="cc-nav-link active" title="Chơi Cờ">
+                    <span class="cc-nav-icon">♟️</span>
+                    <span class="cc-nav-label">Chơi</span>
+                </button>
+                <button id="nav-item-tutorial" class="cc-nav-link" title="Hướng Dẫn Tân Thủ">
+                    <span class="cc-nav-icon">🎓</span>
+                    <span class="cc-nav-label">Hướng Dẫn</span>
+                </button>
+                <button id="nav-item-codex" class="cc-nav-link" title="Cẩm Nang Quân Cờ & Tộc Hệ">
+                    <span class="cc-nav-icon">📖</span>
+                    <span class="cc-nav-label">Cẩm Nang</span>
+                </button>
+                <button id="nav-item-rooms" class="cc-nav-link" title="Phòng Chơi Bạn Bè">
+                    <span class="cc-nav-icon">👥</span>
+                    <span class="cc-nav-label">Tạo Phòng</span>
+                </button>
+                <button id="btn-open-spectator-top" class="cc-nav-link cc-nav-admin hidden" title="Quan Sát 4 Bàn Đấu">
+                    <span class="cc-nav-icon">📺</span>
+                    <span class="cc-nav-label">4 Bàn Đấu</span>
+                </button>
+                <button id="btn-open-admin" class="cc-nav-link cc-nav-admin hidden" title="Quản Trị Database">
+                    <span class="cc-nav-icon">🛠️</span>
+                    <span class="cc-nav-label">Quản Trị DB</span>
+                </button>
+            </nav>
+
+            <!-- SIDEBAR FOOTER (USER & AUDIO) -->
+            <div class="cc-sidebar-footer">
+                <button id="btn-toggle-bgm" class="cc-audio-btn" title="Bật/Tắt Nhạc Nền">
+                    <span>🎵 Nhạc BẬT</span>
+                </button>
+                <div class="cc-user-pill">
+                    <div id="lobby-user-avatar" class="cc-user-avatar">👑</div>
+                    <div class="cc-user-meta">
+                        <div id="lobby-user-name" class="cc-user-name">Kỳ Thủ</div>
+                        <div id="lobby-user-rank-tier" class="cc-user-elo">1000 ELO</div>
                     </div>
                 </div>
+                <button id="btn-logout" class="cc-logout-btn" title="Đăng Xuất">🚪 Đăng Xuất</button>
+            </div>
+        </aside>
 
-                <!-- RESOURCE HUD ORBS -->
-                <div class="player-hud-resources">
-                    <div class="hud-res-item res-hp" title="Máu khởi đầu trận đấu">
-                        <span class="hud-res-icon">❤️</span>
-                        <span id="lobby-hp-val" class="hud-res-val">100 HP</span>
-                    </div>
-                    <div class="hud-res-item res-gold" title="Vàng khởi đầu trận đấu">
-                        <span class="hud-res-icon">🪙</span>
-                        <span id="lobby-gold-val" class="hud-res-val">6 Vàng</span>
-                    </div>
+        <!-- MAIN CONTENT AREA (FIT LAPTOP SCREEN WITHOUT SCROLLING!) -->
+        <main class="cc-main-content">
+            <!-- TOP STATS BAR -->
+            <div class="cc-topbar">
+                <div class="cc-topbar-left">
+                    <span id="lobby-user-role-badge" class="badge-role-tag">VIP</span>
+                    <span id="lobby-user-record" class="cc-record-tag">Top 1: 0/0</span>
+                    <span id="lobby-online-status" class="badge-pill online-pulse">🟢 Máy Chủ Sẵn Sàng</span>
                 </div>
-
-                <!-- HIDDEN LEGACY SPANS FOR FALLBACK -->
-                <span id="lobby-user-badge" class="hidden"></span>
-                <span id="lobby-user-elo" class="hidden"></span>
-                <span id="lobby-user-perks" class="hidden"></span>
-
-                <div class="lobby-header-actions">
-                    <button id="btn-toggle-bgm" class="btn-game btn-audio-pill" title="Bật/Tắt Nhạc Nền">🎵 Nhạc: BẬT</button>
-                    <button id="btn-open-guide-lobby" class="btn-game btn-game-gold" style="font-weight:bold;">♟️ Hướng Dẫn Tướng</button>
-                    <button id="btn-open-spectator-top" class="btn-game btn-game-cyan hidden">👁️ 4 Bàn Đấu</button>
-                    <button id="btn-open-admin" class="btn-game btn-game-gold hidden">🛠️ Quản Trị DB</button>
-                    <button id="btn-logout" class="btn-game btn-game-dim">🚪 Đăng Xuất</button>
+                <div class="cc-topbar-right">
+                    <span class="cc-stat-chip"><span class="chip-icon">❤️</span> <span id="lobby-hp-val">100 HP</span></span>
+                    <span class="cc-stat-chip"><span class="chip-icon">🪙</span> <span id="lobby-gold-val">6 Vàng</span></span>
+                    <span id="lobby-user-streak" class="cc-stat-chip streak-chip">🔥 0 Ngày Chuỗi Thắng</span>
+                    <button id="btn-open-guide-lobby" class="btn-game btn-game-gold" style="padding:4px 12px; font-size:0.75rem; font-weight:bold;">♟️ Hướng Dẫn Tướng</button>
                 </div>
             </div>
-        </header>
 
-        <!-- LOBBY 2-COLUMN BODY: LEFT = ROOMS & MATCHMAKING | RIGHT = CODEX WIKI -->
-        <div class="lobby-grid">
-            <!-- LEFT: MATCHMAKING & ROOMS -->
-            <div class="lobby-panel">
-                <div class="panel-section-title">
-                    <span>⚔️ CHẾ ĐỘ CHƠI & PHÒNG GHÉP TRẬN</span>
-                </div>
+            <!-- HIDDEN LEGACY SPANS FOR FALLBACK -->
+            <span id="lobby-user-badge" class="hidden"></span>
+            <span id="lobby-user-elo" class="hidden"></span>
+            <span id="lobby-user-perks" class="hidden"></span>
 
-                <!-- GAME MODE 1: RANKED AUTO-MATCHMAKING (NGƯỜI AUTO MATCH NHAU) -->
-                <div class="game-mode-banner mode-ranked-match">
-                    <div class="mode-banner-art">
-                        <div class="mode-art-icon">🏆</div>
-                    </div>
-                    <div class="mode-banner-content">
-                        <div class="mode-tag-row">
-                            <span class="mode-badge-ranked">🔥 ĐẤU XẾP HẠNG RANK</span>
-                            <span class="mode-badge-multi">🌐 AUTO MATCHING ONLINE</span>
+            <!-- TAB 1: MAIN PLAY HUB (CHESS.COM HERO + 3 FEATURE CARDS) -->
+            <div id="view-hub-play" class="cc-tab-view active">
+                <div class="cc-hero-row">
+                    <!-- HERO QUICK PLAY BOX (GIỐNG HÌNH 3 CHESS.COM) -->
+                    <div class="cc-quickplay-card">
+                        <div class="cc-time-tabs">
+                            <button class="cc-time-tab active" data-mode="ranked">🏆 Đấu Rank</button>
+                            <button class="cc-time-tab" data-mode="solo">🤖 Luyện Bot</button>
+                            <button class="cc-time-tab" data-mode="tutorial">🎓 Hướng Dẫn</button>
+                            <button class="cc-time-tab" data-mode="custom">👥 Bạn Bè</button>
                         </div>
-                        <h3 class="mode-title">Ghép Trận Xếp Hạng (Rank Matchmaking)</h3>
-                        <p class="mode-desc">Hệ thống tự động tìm và ghép cặp với người chơi thật online. Ghế trống tự động thêm Bot AI sau 4s để vào trận nhanh nhất!</p>
-                        <div class="mode-cta-wrap">
-                            <button id="btn-start-matchmaking" class="btn-play-hero btn-play-gold">
-                                <span class="play-btn-shine"></span>
-                                <span class="play-btn-text">🏆 TÌM TRẬN XẾP HẠNG</span>
+
+                        <!-- GIANT CHESS.COM GREEN CTA BUTTON (CỰC NỔI BẬT) -->
+                        <div class="cc-cta-wrap">
+                            <button id="btn-hero-play-main" class="cc-btn-green-giant">
+                                <span class="cc-play-icon">▶️</span>
+                                <span id="hero-btn-label" class="cc-btn-label">BẮT ĐẦU VÁN CỜ</span>
+                            </button>
+                            <p id="hero-mode-desc" class="cc-mode-desc">Tự động ghép cùng kỳ thủ online thật. Ghế trống tự động thêm 7 Bot AI sau 4s!</p>
+                        </div>
+
+                        <!-- QUICK ACTIONS BELOW -->
+                        <div class="cc-quick-actions-row">
+                            <button id="btn-start-matchmaking" class="cc-action-item">
+                                <span class="action-icon">🎯</span>
+                                <span>Chơi Trực Tuyến</span>
+                            </button>
+                            <button id="btn-quick-solo" class="cc-action-item">
+                                <span class="action-icon">🤖</span>
+                                <span>Đấu Với Bot</span>
+                            </button>
+                            <button id="btn-quick-tutorial" class="cc-action-item">
+                                <span class="action-icon">🎓</span>
+                                <span>Học Cách Chơi</span>
+                            </button>
+                            <button id="btn-quick-friends" class="cc-action-item">
+                                <span class="action-icon">👥</span>
+                                <span>Phòng Bạn Bè</span>
                             </button>
                         </div>
                     </div>
-                </div>
 
-                <!-- GAME MODE 2: SOLO VS 7 BOTS (LUYỆN TẬP / TEST BÀI) -->
-                <div class="game-mode-banner mode-solo">
-                    <div class="mode-banner-art">
-                        <div class="mode-art-icon">🤖</div>
-                    </div>
-                    <div class="mode-banner-content">
-                        <div class="mode-tag-row">
-                            <span class="mode-badge-ai">🤖 LUYỆN TẬP OFFLINE</span>
-                            <span class="mode-badge-split">1 BẠN + 7 BOT AI</span>
-                        </div>
-                        <h3 class="mode-title">Đấu Luyện Tập Với 7 Bot AI</h3>
-                        <p class="mode-desc">Thử nghiệm bài, test tộc hệ mới và rèn luyện cờ chớp cùng 7 Kỳ Thủ AI thông minh (Magnus, Kasparov...). Không sợ mất điểm ELO!</p>
-                        <div class="mode-cta-wrap">
-                            <button id="btn-quick-solo" class="btn-play-hero">
-                                <span class="play-btn-shine"></span>
-                                <span class="play-btn-text">🤖 ĐẤU VỚI BOT NGAY</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- GAME MODE 2: ADMIN 8-BOT TOURNAMENT -->
-                <div id="admin-spectator-card" class="game-mode-banner mode-spectator">
-                    <div class="mode-banner-art">
-                        <div class="mode-art-icon">👁️</div>
-                    </div>
-                    <div class="mode-banner-content">
-                        <div class="mode-tag-row">
-                            <span class="mode-badge-admin">👑 CHẾ ĐỘ QUẢN TRỊ GM</span>
-                            <span class="mode-badge-split">4 MÀN HÌNH CHIA ĐÔI</span>
-                        </div>
-                        <h3 class="mode-title">Quan Sát 8 Bot Đánh Nhau (2x2 Grid)</h3>
-                        <p class="mode-desc">Theo dõi giải đấu 8 Bot AI tự động nâng sao, ghép đồ và so tài đồng thời trên 4 bàn cờ với tốc độ 4x!</p>
-                        <div class="mode-cta-wrap">
-                            <button id="btn-start-spectator-8bots" class="btn-play-hero btn-play-cyan">
-                                <span class="play-btn-shine"></span>
-                                <span class="play-btn-text">📺 XEM 4 BÀN ĐẤU</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- GAME MODE 3: MULTIPLAYER CUSTOM ROOM -->
-                <div id="lobby-room-controls" class="game-mode-banner mode-custom">
-                    <div class="mode-banner-art">
-                        <div class="mode-art-icon">👥</div>
-                    </div>
-                    <div class="mode-banner-content" style="width:100%;">
-                        <div class="mode-tag-row">
-                            <span class="mode-badge-multi">🌐 NHIỀU NGƯỜI CHƠI</span>
-                            <span class="mode-badge-friends">TỐI ĐA 8 NGƯỜI</span>
-                        </div>
-                        <h3 class="mode-title">Tạo Phòng & Ghép Trận Bạn Bè</h3>
-                        <p class="mode-desc">Tạo phòng riêng hoặc nhập mã để so tài cùng bạn bè. Ghế trống sẽ được tự động lấp đầy bằng Bot AI!</p>
-
-                        <div class="room-create-row" style="margin-top:8px;">
-                            <div class="form-group" style="flex:1;">
-                                <label style="font-size:0.75rem; color:#94a3b8; font-weight:700;">⏱️ Thời Gian Cờ Chớp:</label>
-                                <select id="select-room-timemode" class="lobby-select">
-                                    <option value="standard" selected>⏱️ Tiêu Chuẩn (45s/60s/75s + 3s/nước) — Cân bằng</option>
-                                    <option value="relaxed">☕ Thư Thả (70s/95s/120s + 4s/nước) — Tập chơi</option>
-                                    <option value="blitz">⚡ Siêu Chớp (28s/38s/48s + 2s/nước) — Căng não</option>
-                                </select>
+                    <!-- 3 FEATURE CARDS WITH MINI BOARD PREVIEW (GIỐNG HÌNH 3 CHESS.COM) -->
+                    <div class="cc-feature-cards-grid">
+                        <!-- CARD 1: TUTORIAL LESSONS -->
+                        <div class="cc-feature-card card-tutorial" id="card-feature-tutorial">
+                            <div class="cc-board-preview">
+                                <div class="mini-board-chesscom mini-pattern-1">
+                                    <div class="mini-cell-piece">🎓</div>
+                                    <div class="mini-cell-target">♟️</div>
+                                </div>
                             </div>
-                            <button id="btn-create-room" class="btn-game btn-game-gold" style="height:40px; align-self:flex-end;">➕ Tạo Phòng Mới</button>
+                            <div class="cc-feature-body">
+                                <div class="cc-feature-head">
+                                    <span class="cc-feature-tag">🎓 BÀI HỌC TÂN THỦ</span>
+                                    <div class="cc-feature-title">Huấn Luyện Viên Bot</div>
+                                </div>
+                                <button id="btn-start-tutorial" class="cc-feature-btn">Học Cách Chơi</button>
+                            </div>
                         </div>
 
-                        <div class="room-join-row" style="margin-top:8px;">
-                            <input type="text" id="input-room-code" class="lobby-input" placeholder="NHẬP MÃ PHÒNG (VD: TFT888)..." maxlength="8" />
-                            <button id="btn-join-code" class="btn-game btn-game-cyan">🔑 Vào Phòng</button>
+                        <!-- CARD 2: PLAY VS BOT -->
+                        <div class="cc-feature-card card-bot" id="card-feature-bot">
+                            <div class="cc-board-preview">
+                                <div class="mini-board-chesscom mini-pattern-2">
+                                    <div class="mini-cell-piece">🤖</div>
+                                    <div class="mini-cell-target">⚔️</div>
+                                </div>
+                            </div>
+                            <div class="cc-feature-body">
+                                <div class="cc-feature-head">
+                                    <span class="cc-feature-tag">🤖 LUYỆN TẬP 7 BOT</span>
+                                    <div class="cc-feature-title">Bot AI (Magnus...)</div>
+                                </div>
+                                <button id="btn-play-bot-feature" class="cc-feature-btn">Chơi Với Bot</button>
+                            </div>
                         </div>
 
-                        <div class="panel-section-title" style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
-                            <span>🌐 Danh Sách Phòng Đang Mở:</span>
-                            <button id="btn-refresh-rooms" class="btn-secondary" style="padding:2px 8px; font-size:0.7rem;">🔄 Làm mới</button>
+                        <!-- CARD 3: RANKED MATCH -->
+                        <div class="cc-feature-card card-rank" id="card-feature-rank">
+                            <div class="cc-board-preview">
+                                <div class="mini-board-chesscom mini-pattern-3">
+                                    <div class="mini-cell-piece">🏆</div>
+                                    <div class="mini-cell-target">👑</div>
+                                </div>
+                            </div>
+                            <div class="cc-feature-body">
+                                <div class="cc-feature-head">
+                                    <span class="cc-feature-tag">🔥 ĐẤU RANK ONLINE</span>
+                                    <div class="cc-feature-title">Xếp Hạng Kỳ Thủ</div>
+                                </div>
+                                <button id="btn-play-rank-feature" class="cc-feature-btn">Tìm Trận Rank</button>
+                            </div>
                         </div>
-                        <div id="open-rooms-list" class="open-rooms-list"></div>
                     </div>
                 </div>
 
-                <!-- ACTIVE WAITING ROOM VIEW (SHOWN WHEN INSIDE A ROOM) -->
+                <!-- ADMIN 4-SCREEN CARD (SHOWN ONLY IF ADMIN) -->
+                <div id="admin-spectator-card" class="cc-admin-spectator-bar hidden">
+                    <span class="admin-spec-icon">📺</span>
+                    <div class="admin-spec-info">
+                        <strong>CHẾ ĐỘ QUẢN TRỊ (GM SPECTATOR):</strong>
+                        <span>Theo dõi giải đấu 8 Bot AI trên 4 bàn cờ chia đôi cùng lúc với tốc độ 4x.</span>
+                    </div>
+                    <button id="btn-start-spectator-8bots" class="btn-game btn-game-cyan" style="padding:6px 16px; font-weight:700;">📺 XEM 4 BÀN ĐẤU</button>
+                </div>
+            </div>
+
+            <!-- TAB 2: CODEX WIKI VIEW -->
+            <div id="view-hub-codex" class="cc-tab-view hidden">
+                <div class="panel-section-title" style="margin-bottom:8px;">
+                    <span>📚 CẨM NANG & TỪ ĐIỂN QUÂN CỜ (CODEX)</span>
+                </div>
+                <div class="codex-tabs">
+                    <button class="codex-tab active" data-tab="pieces">♟️ Quân Cờ (15)</button>
+                    <button class="codex-tab" data-tab="synergies">✨ Tộc / Hệ (8)</button>
+                    <button class="codex-tab" data-tab="items">🎒 Trang Bị & Bản Đồ</button>
+                    <button class="codex-tab" data-tab="rules">📖 Luật Chơi & Trừ Máu</button>
+                </div>
+                <div id="codex-content" class="codex-content"></div>
+            </div>
+
+            <!-- TAB 3: CUSTOM ROOMS VIEW -->
+            <div id="view-hub-rooms" class="cc-tab-view hidden">
+                <div id="lobby-room-controls" class="cc-room-box">
+                    <div class="panel-section-title">
+                        <span>👥 TẠO PHÒNG & GHÉP TRẬN BẠN BÈ</span>
+                    </div>
+                    <p class="cc-sub">Tạo phòng riêng hoặc nhập mã để so tài cùng bạn bè. Ghế trống tự động thêm Bot AI!</p>
+                    <div class="room-create-row" style="margin-top:10px;">
+                        <div class="form-group" style="flex:1;">
+                            <label style="font-size:0.75rem; color:#989795; font-weight:700;">⏱️ Thời Gian Cờ Chớp:</label>
+                            <select id="select-room-timemode" class="lobby-select">
+                                <option value="standard" selected>⏱️ Tiêu Chuẩn (45s/60s/75s + 3s/nước) — Cân bằng</option>
+                                <option value="relaxed">☕ Thư Thả (70s/95s/120s + 4s/nước) — Tập chơi</option>
+                                <option value="blitz">⚡ Siêu Chớp (28s/38s/48s + 2s/nước) — Căng não</option>
+                            </select>
+                        </div>
+                        <button id="btn-create-room" class="btn-game btn-game-gold" style="height:38px; align-self:flex-end;">➕ Tạo Phòng Mới</button>
+                    </div>
+
+                    <div class="room-join-row" style="margin-top:10px;">
+                        <input type="text" id="input-room-code" class="lobby-input" placeholder="NHẬP MÃ PHÒNG (VD: TFT888)..." maxlength="8" />
+                        <button id="btn-join-code" class="btn-game btn-game-cyan">🔑 Vào Phòng</button>
+                    </div>
+
+                    <div class="panel-section-title" style="margin-top:14px; display:flex; justify-content:space-between; align-items:center;">
+                        <span>🌐 Danh Sách Phòng Đang Mở:</span>
+                        <button id="btn-refresh-rooms" class="btn-secondary" style="padding:2px 8px; font-size:0.7rem;">🔄 Làm mới</button>
+                    </div>
+                    <div id="open-rooms-list" class="open-rooms-list"></div>
+                </div>
+
+                <!-- WAITING ROOM (SHOWN WHEN IN ROOM) -->
                 <div id="lobby-waiting-room" class="lobby-action-box hidden">
                     <div class="waiting-room-header">
                         <div>
@@ -262,23 +323,7 @@
                     </div>
                 </div>
             </div>
-
-            <!-- RIGHT: CODEX / GAME GUIDE & PIECE ENCYCLOPEDIA -->
-            <div class="lobby-panel">
-                <div class="panel-section-title">
-                    <span>📚 Cẩm Nang Cách Chơi & Từ Điển Quân Cờ (Codex)</span>
-                </div>
-
-                <div class="codex-tabs">
-                    <button class="codex-tab active" data-tab="pieces">♟️ Quân Cờ (15)</button>
-                    <button class="codex-tab" data-tab="synergies">✨ Tộc / Hệ (8)</button>
-                    <button class="codex-tab" data-tab="items">🎒 Trang Bị & Bản Đồ</button>
-                    <button class="codex-tab" data-tab="rules">📖 Luật Chơi & Trừ Máu</button>
-                </div>
-
-                <div id="codex-content" class="codex-content"></div>
-            </div>
-        </div>
+        </main>
     </div>
 
     <!-- ====================================================================
@@ -329,6 +374,24 @@
             </div>
             <div class="sync-scout-pill" title="Mẹo: Bấm vào kỳ thủ ở bảng xếp hạng bên phải để soi bàn trực tiếp">
                 <span>👁️ Bạn có thể bấm soi bài đối thủ ở cột bên phải</span>
+            </div>
+        </div>
+
+        <!-- TUTORIAL COACH DIALOGUE BOX (HUẤN LUYỆN VIÊN TÂN THỦ) -->
+        <div id="tutorial-coach-overlay" class="tutorial-coach-bar hidden">
+            <div class="coach-icon">🎓</div>
+            <div class="coach-content">
+                <div class="coach-headline">
+                    <span class="coach-title">Huấn Luyện Viên Martin</span>
+                    <span id="tutorial-step-indicator" class="coach-step-pill">BƯỚC 1 / 4</span>
+                </div>
+                <div id="tutorial-coach-text" class="coach-body-text">
+                    Chào mừng bạn đến với Chess TFT! Hãy bấm mua 1 quân cờ trong Cửa Hàng bên dưới để đưa vào Hàng Chờ (Bench).
+                </div>
+            </div>
+            <div class="coach-actions">
+                <button id="btn-tutorial-next-step" class="coach-btn-action">Tiếp Theo ➔</button>
+                <button id="btn-tutorial-skip" class="coach-btn-dismiss" title="Kết thúc hướng dẫn">Bỏ Qua</button>
             </div>
         </div>
 
@@ -600,6 +663,23 @@
             <div id="round-match-logs"></div>
             <div style="text-align:center; margin-top:16px;">
                 <button id="btn-next-round" class="btn-combat-go">Tiếp Tục Sang Vòng Sau ➡️</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: TUTORIAL COMPLETE (TỐT NGHIỆP KHÓA HUẤN LUYỆN) -->
+    <div id="modal-tutorial-complete" class="modal-overlay hidden">
+        <div class="modal-card modal-card-tutorial" style="text-align:center; max-width:480px; background:#262421; border:2px solid #81b64c; box-shadow: 0 10px 40px rgba(129, 182, 76, 0.4);">
+            <div style="font-size:3.5rem; margin-bottom:8px;">🎓🏆</div>
+            <h2 class="modal-title" style="color:#81b64c; font-size:1.45rem;">XUẤT SẮC! BẠN ĐÃ TỐT NGHIỆP!</h2>
+            <p class="modal-sub" style="color:#c3c2c1; font-size:0.85rem; margin:8px 0 16px;">Bạn đã nắm vững toàn bộ cơ chế cốt lõi: Mua quân, Bố trí đội hình, Kích hoạt Tộc/Hệ và Giao tranh Cờ Chớp!</p>
+            <div style="background:#1e1e1d; border:1px solid #3d3b37; border-radius:10px; padding:12px; margin:14px 0;">
+                <div style="font-size:0.75rem; color:#989795; font-weight:700;">PHẦN THƯỞNG TÂN THỦ:</div>
+                <div style="font-size:1.15rem; color:#fbbf24; font-weight:800; margin-top:4px;">+100 ELO Khởi Điểm & +20 Vàng Danh Dự</div>
+            </div>
+            <div style="display:flex; gap:10px; justify-content:center; margin-top:14px;">
+                <button id="btn-tutorial-go-rank" class="btn-primary" style="background:#81b64c; border-color:#81b64c; padding:10px 18px; font-weight:800; color:#fff;">🏆 Vào Đấu Rank Ngay</button>
+                <button id="btn-tutorial-go-lobby" class="btn-secondary" style="padding:10px 18px; background:#363431; color:#fff;">🏠 Về Sảnh Chờ</button>
             </div>
         </div>
     </div>
