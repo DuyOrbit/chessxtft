@@ -85,13 +85,24 @@ f:\chesstft\
      - Nhật ký chiến đấu ghi lại chi tiết diễn biến thắng/thua/hết giờ/chiếu hết của cả 4 bàn cờ.
      - Nút `🏠 Về Sảnh` tự động rời phòng sạch sẽ và hoàn trả giao diện chuẩn.
 
+7. **Chế Độ Phòng Tập & Thử Nghiệm Sức Mạnh Tướng (Sandbox / God Mode Arena 🎯)**:
+   - Thêm nút và thẻ **Phòng Tập** tại Sảnh Chờ Lobby (thẻ thứ 4 trong bộ Feature Cards và dải phím nhanh).
+   - Bảng Điều Khiển Thần Thánh (**God Mode Toolkit**) hỗ trợ:
+     - **Triệu Hồi Tướng & Sao Tùy Ý**: Mọi quân cờ từ 0-5 vàng có thể nhận ngay 1⭐, 2⭐ hoặc 3⭐ thẳng vào Hàng Chờ / Sàn Đấu.
+     - **Kho Trang Bị & Lõi Công Nghệ**: Bấm là nhận ngay bất kỳ trang bị nào vào kho hoặc kích hoạt trực tiếp Lõi (Augment).
+     - **Tùy Chỉnh Đội Hình Địch**: Sinh sẵn Hình Nhân Tập Đánh (**Target Dummy** 50 HP bia đỡ đạn tĩnh), Đội hình Full Thiết Giáp trâu bò, 6 Sát Thủ hoặc Boss Đại Thừa Tướng 3⭐.
+     - **Chế Độ Bia Tập Đánh**: Tùy chọn Bật/Tắt AI đánh trả (cho Địch đứng yên làm bia thử nghiệm skill/nước đi).
+     - **Cheat Thần Thánh**: +999 Vàng, Max Cấp 8, Hồi Đầy 100 HP (Khóa HP bất tử khi test), Thăng cấp 3⭐ quân đang chọn, Reset sàn đấu khôi phục trạng thái chuẩn bị.
+     - **Thời gian chuẩn bị vô hạn (`♾️ VÔ HẠN`)**: Không lo hết giờ đếm ngược khi đang dàn trận thử nghiệm.
+8. **Biểu Đồ Sát Thương Thời Gian Thực (Combat DPS Meter 📊)**:
+   - Theo dõi tổng lượng sát thương và biểu đồ % sát thương của từng quân cờ (cả phe ta và phe địch) trong giao tranh.
+   - Nút bật/tắt `📊 DPS` ngay trên thanh Top Header.
+
 ---
 
 ## 🚀 5. Roadmap Nâng Cao Trải Nghiệm Người Dùng (UX) Đang Chờ Triển Khai
-1. **Hiệu Ứng Số Sát Thương Bay (Floating Damage Numbers & Hit Flash)**: Chém nảy số `-25`, `-50 💥` và nháy đỏ viền tướng.
-2. **Kéo Thả Trực Quan (Drag & Drop)**: Hỗ trợ song song cả kéo-thả lẫn click-to-move.
-3. **Âm Thanh Riêng Cho Từng Quân Cờ (Piece SFX)**: Tiếng vó ngựa, tiếng tên bắn, tiếng sét ma thuật.
-4. **Combat DPS Meter**: Biểu đồ thống kê sát thương chi tiết sau mỗi hiệp.
+1. **Kéo Thả Trực Quan (Drag & Drop)**: Hỗ trợ song song cả kéo-thả lẫn click-to-move.
+2. **Âm Thanh Riêng Cho Từng Quân Cờ (Piece SFX)**: Tiếng vó ngựa, tiếng tên bắn, tiếng sét ma thuật.
 
 ---
 

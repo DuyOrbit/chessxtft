@@ -163,6 +163,7 @@
                         <div class="cc-time-tabs">
                             <button class="cc-time-tab active" data-mode="ranked">🏆 Đấu Xếp Hạng</button>
                             <button class="cc-time-tab" data-mode="solo">🤖 Luyện Bot AI</button>
+                            <button class="cc-time-tab" data-mode="sandbox">🎯 Phòng Tập (Sandbox)</button>
                             <button class="cc-time-tab" data-mode="tutorial">🎓 Tân Thủ</button>
                             <button class="cc-time-tab" data-mode="custom">👥 Bạn Bè</button>
                         </div>
@@ -189,6 +190,10 @@
                             <button id="btn-quick-solo" class="cc-action-item">
                                 <span class="action-icon">🤖</span>
                                 <span>Đấu Với Bot</span>
+                            </button>
+                            <button id="btn-quick-sandbox" class="cc-action-item" style="border-color: rgba(56, 189, 248, 0.4); background: rgba(56, 189, 248, 0.08);">
+                                <span class="action-icon">🛠️</span>
+                                <span style="color:#38bdf8; font-weight:700;">Phòng Tập</span>
                             </button>
                             <button id="btn-quick-tutorial" class="cc-action-item">
                                 <span class="action-icon">🎓</span>
@@ -257,6 +262,25 @@
                                     <div class="cc-feature-title">Xếp Hạng Bảng Vàng</div>
                                 </div>
                                 <button id="btn-play-rank-feature" class="cc-feature-btn btn-feature-gold">Tìm Trận Rank</button>
+                            </div>
+                        </div>
+
+                        <!-- CARD 4: SANDBOX PRACTICE ARENA -->
+                        <div class="cc-feature-card card-sandbox" id="card-feature-sandbox">
+                            <div class="cc-board-preview preview-sandbox">
+                                <div class="tactical-board-frame">
+                                    <div class="tactical-glyph-cell glyph-target">🎯</div>
+                                    <div class="tactical-rune-path" style="background:rgba(56,189,248,0.4);"></div>
+                                    <div class="tactical-glyph-cell glyph-tools">🛠️</div>
+                                </div>
+                                <span class="preview-corner-badge" style="background:rgba(56,189,248,0.25); color:#38bdf8; border-color:#38bdf8;">VÔ HẠN TEST</span>
+                            </div>
+                            <div class="cc-feature-body">
+                                <div class="cc-feature-head">
+                                    <span class="cc-feature-tag" style="color:#38bdf8;">🛠️ PHÒNG TẬP GOD MODE</span>
+                                    <div class="cc-feature-title">Đấu Trường Sandbox</div>
+                                </div>
+                                <button id="btn-play-sandbox-feature" class="cc-feature-btn btn-feature-cyan" style="background:linear-gradient(135deg, #0284c7 0%, #38bdf8 100%); color:#04060c; font-weight:800;">Vào Phòng Tập</button>
                             </div>
                         </div>
                     </div>
@@ -414,7 +438,9 @@
                 <button id="btn-close-rules" class="hidden"></button>
                 <span id="fortune-chest-badge" class="stat-chip stat-fortune hidden">🎰 0đ</span>
                 <button id="btn-toggle-bgm-game" class="btn-audio-pill" title="Bật/Tắt Nhạc Nền">🎵 Nhạc</button>
+                <button id="btn-toggle-dps-meter" class="btn-audio-pill" title="Mở Biểu Đồ Sát Thương DPS">📊 DPS</button>
                 <button id="btn-piece-guide-modal" class="btn-primary" style="padding:4px 10px; font-size:0.75rem;">♟️ Tra Tướng</button>
+                <button id="btn-sandbox-panel-toggle" class="btn-game btn-game-cyan hidden" style="margin:0; padding:4px 10px; font-size:0.74rem; font-weight:800; border-color:#38bdf8;">🛠️ PHÒNG TẬP</button>
                 <button id="btn-surrender-game" class="btn-danger" style="margin:0; padding:4px 8px; font-size:0.74rem;">🏳️ Đầu Hàng</button>
                 <button id="btn-back-lobby" class="btn-game btn-game-gold" style="margin:0; padding:3px 8px; font-size:0.74rem;">⬅️ Sảnh</button>
             </div>
@@ -646,8 +672,159 @@
                         <button id="btn-sell-selected" class="btn-danger hidden" style="flex:1; font-size:0.72rem; padding:4px 6px;">💰 Bán Quân</button>
                     </div>
                 </div>
+
+                <!-- COMBAT DPS METER (THỐNG KÊ SÁT THƯƠNG THỜI GIAN THỰC) -->
+                <div id="panel-dps-meter" class="panel-box-wrap custom-dps-box hidden">
+                    <div class="panel-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+                        <span>📊 SÁT THƯƠNG (DPS)</span>
+                        <span id="dps-total-label" class="text-muted" style="font-size:0.68rem; color:#38bdf8;">0 dmg</span>
+                    </div>
+                    <div id="dps-meter-list" class="dps-meter-list">
+                        <div class="empty-hint" style="font-size:0.75rem; padding:6px 0;">Chưa bắt đầu giao tranh...</div>
+                    </div>
+                </div>
             </aside>
         </main>
+    </div>
+
+    <!-- ====================================================================
+         SANDBOX GOD MODE CONTROL PANEL MODAL (BẢNG ĐIỀU KHIỂN PHÒNG TẬP)
+         ==================================================================== -->
+    <div id="modal-sandbox-control" class="modal-overlay hidden">
+        <div class="modal-card sandbox-modal-card">
+            <div class="sandbox-modal-header">
+                <div class="sandbox-header-title">
+                    <span class="sandbox-icon-big">🛠️</span>
+                    <div>
+                        <h2>BẢNG ĐIỀU KHIỂN PHÒNG TẬP (GOD MODE TOOLKIT)</h2>
+                        <p class="sandbox-sub-desc">Thử nghiệm mọi tướng 1⭐-3⭐, trang bị, tài nguyên vô hạn và tạo hình nhân Dummy đo sát thương!</p>
+                    </div>
+                </div>
+                <button id="btn-close-sandbox-modal" class="guide-close-btn" title="Đóng bảng">✕</button>
+            </div>
+
+            <!-- SANDBOX TABS -->
+            <div class="sandbox-tabs-nav">
+                <button class="sandbox-tab-btn active" data-tab="champions">♟️ Tướng & Sao</button>
+                <button class="sandbox-tab-btn" data-tab="items">🎒 Trang Bị & Lõi</button>
+                <button class="sandbox-tab-btn" data-tab="enemy">🤖 Đội Hình Địch</button>
+                <button class="sandbox-tab-btn" data-tab="cheats">⚡ Thần Thánh (God Mode)</button>
+            </div>
+
+            <div class="sandbox-tab-content-area">
+                <!-- TAB 1: CHAMPION SPAWNER -->
+                <div id="sandbox-view-champions" class="sandbox-view-pane active">
+                    <div class="sandbox-section-intro">
+                        <span>Chọn số sao muốn nhận, sau đó bấm vào quân cờ để đưa ngay vào Hàng Chờ (Bench):</span>
+                        <div class="sandbox-star-picker">
+                            <label><input type="radio" name="sandbox-star-val" value="1" checked /> <span>1⭐</span></label>
+                            <label><input type="radio" name="sandbox-star-val" value="2" /> <span style="color:#60a5fa;">2⭐⭐</span></label>
+                            <label><input type="radio" name="sandbox-star-val" value="3" /> <span style="color:#f59e0b; font-weight:800;">3⭐⭐⭐ (MAX)</span></label>
+                        </div>
+                    </div>
+                    <div id="sandbox-champion-grid" class="sandbox-champion-grid"></div>
+                </div>
+
+                <!-- TAB 2: ITEM & AUGMENT SPAWNER -->
+                <div id="sandbox-view-items" class="sandbox-view-pane hidden">
+                    <div class="sandbox-section-intro">
+                        <span>Bấm vào trang bị để nhận ngay vào Kho Đồ (tối đa 10 món):</span>
+                    </div>
+                    <div id="sandbox-items-grid" class="sandbox-items-grid"></div>
+
+                    <div class="sandbox-section-intro" style="margin-top:14px;">
+                        <span>Kích hoạt Lõi Công Nghệ (Augment) trực tiếp cho bạn:</span>
+                    </div>
+                    <div id="sandbox-augments-grid" class="sandbox-augments-grid"></div>
+                </div>
+
+                <!-- TAB 3: ENEMY CONTROLLER -->
+                <div id="sandbox-view-enemy" class="sandbox-view-pane hidden">
+                    <div class="sandbox-section-intro">
+                        <span>Tùy chỉnh đối thủ để thử nghiệm sát thương và khắc chế:</span>
+                    </div>
+                    <div class="sandbox-enemy-presets">
+                        <button id="btn-enemy-preset-dummy" class="btn-game btn-game-cyan">🎯 Thêm Hình Nhân Tập Đánh (50 HP Dummy)</button>
+                        <button id="btn-enemy-preset-vanguard" class="btn-game btn-game-gold">🛡️ Đội Hình Full Thiết Giáp (Trâu Bò)</button>
+                        <button id="btn-enemy-preset-assassin" class="btn-game btn-game-amber">🗡️ Đội Hình 6 Sát Thủ (Sốc Dame)</button>
+                        <button id="btn-enemy-preset-boss" class="btn-game btn-danger">👑 Đại Thừa Tướng 3⭐ (Boss Siêu Cấp)</button>
+                        <button id="btn-enemy-clear-all" class="btn-secondary">🧹 Xóa Sạch Đội Hình Địch</button>
+                    </div>
+
+                    <div style="margin-top:12px; display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" id="chk-enemy-ai-active" checked />
+                        <label for="chk-enemy-ai-active" style="font-size:0.82rem; cursor:pointer; color:#f1f5f9;">
+                            🤖 <strong>Cho phép Địch đánh trả</strong> (Nếu bỏ chọn, Địch sẽ đứng yên làm bia đỡ đạn cho bạn test skill)
+                        </label>
+                    </div>
+                </div>
+
+                <!-- TAB 4: GOD CHEATS -->
+                <div id="sandbox-view-cheats" class="sandbox-view-pane hidden">
+                    <div class="sandbox-cheat-grid">
+                        <div class="sandbox-cheat-card">
+                            <span class="cheat-card-icon">🪙</span>
+                            <div class="cheat-card-body">
+                                <strong>Vàng Vô Hạn</strong>
+                                <span>Thêm 999 Vàng để thoải mái roll và thử nghiệm.</span>
+                            </div>
+                            <button id="btn-cheat-add-gold" class="btn-game btn-game-gold">+999 Vàng</button>
+                        </div>
+
+                        <div class="sandbox-cheat-card">
+                            <span class="cheat-card-icon">⬆️</span>
+                            <div class="cheat-card-body">
+                                <strong>Thăng Cấp Tối Đa</strong>
+                                <span>Lên ngay Cấp 8 (Mở tối đa 8 vị trí quân trên sàn đấu).</span>
+                            </div>
+                            <button id="btn-cheat-max-level" class="btn-game btn-game-cyan">Max Cấp 8</button>
+                        </div>
+
+                        <div class="sandbox-cheat-card">
+                            <span class="cheat-card-icon">❤️</span>
+                            <div class="cheat-card-body">
+                                <strong>Hồi Đầy Máu (100 HP)</strong>
+                                <span>Hồi phục 100 HP không sợ bị trừ máu thua trận.</span>
+                            </div>
+                            <button id="btn-cheat-heal-hp" class="btn-game btn-game-cyan">Hồi 100 HP</button>
+                        </div>
+
+                        <div class="sandbox-cheat-card">
+                            <span class="cheat-card-icon">⭐</span>
+                            <div class="cheat-card-body">
+                                <strong>Nâng 3⭐ Quân Đang Chọn</strong>
+                                <span>Bấm chọn 1 quân trên sàn/hàng chờ rồi bấm nút này để lên 3 sao ngay.</span>
+                            </div>
+                            <button id="btn-cheat-upgrade-selected" class="btn-game btn-game-gold">Lên 3⭐</button>
+                        </div>
+
+                        <div class="sandbox-cheat-card">
+                            <span class="cheat-card-icon">🔄</span>
+                            <div class="cheat-card-body">
+                                <strong>Làm Mới Sàn Đấu</strong>
+                                <span>Hồi sinh tất cả quân về trạng thái ban đầu để giao tranh lại.</span>
+                            </div>
+                            <button id="btn-cheat-reset-board" class="btn-game btn-game-amber">Reset Sàn Đấu</button>
+                        </div>
+
+                        <div class="sandbox-cheat-card">
+                            <span class="cheat-card-icon">⚔️</span>
+                            <div class="cheat-card-body">
+                                <strong>Vào Trận Giao Tranh Ngay</strong>
+                                <span>Bỏ qua thời gian chờ chuẩn bị và giao tranh lập tức.</span>
+                            </div>
+                            <button id="btn-cheat-start-combat" class="btn-combat-go" style="padding:6px 12px; font-size:0.75rem;">Giao Tranh Ngay</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sandbox-modal-footer">
+                <button id="btn-footer-close-sandbox" class="btn-game btn-game-cyan" style="padding:8px 24px; font-weight:800;">
+                    Đã Xong — Quay Lại Sàn Đấu
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- ====================================================================

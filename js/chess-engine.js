@@ -22,6 +22,7 @@ class BlitzChessEngine {
         this.result = null; // { winner, reason, reasonLabel, playerPiecesLeft, enemyPiecesLeft }
         this.goldEarnedPlayer = 0;
         this.lastAction = null; // For visual highlights & animations
+        this.damageStats = {}; // { pieceUid: { name, icon, side, stars, totalDamage, hits, kills } }
     }
 
     inBounds(r, c) {
@@ -604,6 +605,27 @@ class BlitzChessEngine {
                 isKill: target.hp <= 0
             };
             this.lastCombatHit = combatHit;
+
+            // Track damage stats for DPS meter & Sandbox test
+            const aUid = attacker.uid || `${attacker.side}_${attacker.id}`;
+            if (!this.damageStats[aUid]) {
+                this.damageStats[aUid] = {
+                    uid: aUid,
+                    id: attacker.id,
+                    name: attacker.name,
+                    icon: attacker.icon,
+                    side: attacker.side,
+                    stars: attacker.stars || 1,
+                    totalDamage: 0,
+                    hits: 0,
+                    kills: 0
+                };
+            }
+            this.damageStats[aUid].totalDamage += damageValue;
+            this.damageStats[aUid].hits += 1;
+            if (target.hp <= 0) {
+                this.damageStats[aUid].kills += 1;
+            }
 
             // Balance Patch 1.1: Ranged attack requires 1 turn Reload before shooting ranged again!
             if (action.type === "ranged") {

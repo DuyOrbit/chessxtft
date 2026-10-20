@@ -630,6 +630,26 @@ window.CHESS_TFT_DATA = {
                 moveRule: "Di chuyển 1 ô mọi hướng.",
                 attackRule: "Tấn công cận chiến uy lực."
             }
+        },
+        target_dummy: {
+            id: "target_dummy",
+            name: "Hình Nhân Tập Đánh",
+            icon: "🎯",
+            enemyIcon: "🎯",
+            cost: 0,
+            isKing: false,
+            traits: ["vanguard"],
+            moveType: "none",
+            attackType: "melee",
+            baseHp: [10, 25, 50],
+            range: [1, 1, 1],
+            desc: "Hình nhân bia đỡ đạn tĩnh dùng trong Phòng Tập, có lượng máu khổng lồ (10-50 máu) để thử nghiệm sát thương và tộc hệ.",
+            guide: {
+                role: "Hình Nhân Đo Sát Thương",
+                recommendedPos: "Tùy ý",
+                moveRule: "Đứng yên, không di chuyển.",
+                attackRule: "Không tấn công."
+            }
         }
     },
 
