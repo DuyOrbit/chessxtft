@@ -3925,9 +3925,9 @@ class ChessTFTApp {
         this.sfx.move();
 
         if (this.tft.shopLocked) {
-            this.showToast("🔒 Đã KHÓA Cửa Hàng [X]! Các quân cờ sẽ được giữ nguyên cho vòng sau.", "info");
+            this.showToast("🔒 Đã KHÓA Cửa Hàng [Space]! Các quân cờ sẽ được giữ nguyên cho vòng sau.", "info");
         } else {
-            this.showToast("🔓 Đã MỞ KHÓA Cửa Hàng [X]! Sẽ tự động làm mới ở vòng sau.", "info");
+            this.showToast("🔓 Đã MỞ KHÓA Cửa Hàng [Space]! Sẽ tự động làm mới ở vòng sau.", "info");
         }
 
         this.renderShop();
@@ -4111,13 +4111,16 @@ class ChessTFTApp {
                     this.cycleScoutingPlayer(1);
                     return;
                 }
-            } else if (e.key === " " || e.key === "Spacebar") {
+            } else if (e.key === " " || e.key === "Spacebar" || e.code === "Space") {
                 if (this.tft && this.tft.scoutingPlayerId && this.tft.scoutingPlayerId !== "player") {
                     e.preventDefault();
                     this.tft.scoutingPlayerId = "player";
                     this.renderAll();
                     return;
                 }
+                e.preventDefault();
+                this.toggleLockShop();
+                return;
             }
 
             if (k === "d") {
@@ -4748,18 +4751,36 @@ class ChessTFTApp {
 
         if (this.tft.phase === "prep") {
             scoutBanner.classList.add("hidden");
-            const mapDef = this.tft.currentMap || window.CHESS_TFT_DATA.MAPS[0];
-            mapInfoBar.innerHTML = `
-                <span class="map-active-pill" style="background:${mapDef.themeColor}">🗺️ Bản Đồ Vòng Tới: ${mapDef.name}</span>
-                <span class="map-desc-text">${mapDef.desc}</span>
-            `;
+            if (this.tft.stage === 1) {
+                const pveEncounters = window.CHESS_TFT_DATA.PVE_ENCOUNTERS || {};
+                const pveDef = pveEncounters[this.tft.roundInStage] || pveEncounters[1];
+                mapInfoBar.innerHTML = `
+                    <span class="map-active-pill" style="background:#7c3aed">👾 Vòng ${this.tft.stage}-${this.tft.roundInStage}: ${pveDef?.name || "Quái Khởi Đầu"}</span>
+                    <span class="map-desc-text">Đánh bại quái khởi đầu PVE để thu thập Mảnh Trang Bị & Vàng định hình đội hình!</span>
+                `;
+            } else {
+                const mapDef = this.tft.currentMap || window.CHESS_TFT_DATA.MAPS[0];
+                mapInfoBar.innerHTML = `
+                    <span class="map-active-pill" style="background:${mapDef.themeColor}">🗺️ Bản Đồ Vòng Tới: ${mapDef.name}</span>
+                    <span class="map-desc-text">${mapDef.desc}</span>
+                `;
+            }
             this.renderPrepBoardCells(boardEl, cfg, this.tft.player, false);
         } else if (this.tft.phase === "combat" && this.chess) {
             scoutBanner.classList.add("hidden");
-            mapInfoBar.innerHTML = `
-                <span class="map-active-pill" style="background:${this.tft.currentMap.themeColor}">🗺️ ${this.tft.currentMap.name}</span>
-                <span class="map-desc-text">${this.tft.currentMap.desc}</span>
-            `;
+            if (this.tft.stage === 1) {
+                const pveEncounters = window.CHESS_TFT_DATA.PVE_ENCOUNTERS || {};
+                const pveDef = pveEncounters[this.tft.roundInStage] || pveEncounters[1];
+                mapInfoBar.innerHTML = `
+                    <span class="map-active-pill" style="background:#7c3aed">👾 Giao Tranh PVE: ${pveDef?.name || "Tượng Quái Đá"}</span>
+                    <span class="map-desc-text">${pveDef?.desc || "Tiêu diệt quái rơi ra mảnh trang bị và vàng khởi đầu."}</span>
+                `;
+            } else {
+                mapInfoBar.innerHTML = `
+                    <span class="map-active-pill" style="background:${this.tft.currentMap.themeColor}">🗺️ ${this.tft.currentMap.name}</span>
+                    <span class="map-desc-text">${this.tft.currentMap.desc}</span>
+                `;
+            }
             this.renderCombatBoardCells(boardEl, cfg);
         }
     }
@@ -4934,6 +4955,8 @@ class ChessTFTApp {
                 const isLight = (r + c) % 2 === 0;
                 const terr = eng.getTerrain(r, c);
                 cell.className = `board-cell ${isLight ? "cell-light" : "cell-dark"}`;
+                cell.setAttribute("data-row", r);
+                cell.setAttribute("data-col", c);
 
                 if (terr) {
                     cell.classList.add(`terrain-${terr}`);
@@ -4989,6 +5012,45 @@ class ChessTFTApp {
                 boardEl.appendChild(cell);
             }
         }
+    }
+
+    triggerCombatHitFx(hit) {
+        if (!hit) return;
+        const boardEl = document.getElementById("chess-board");
+        if (!boardEl) return;
+
+        const cell = boardEl.querySelector(`.board-cell[data-row='${hit.targetR}'][data-col='${hit.targetC}']`);
+        if (!cell) return;
+
+        // 1. Hiệu ứng trúng đòn chớp nhẹ viền đỏ (Hit Flash) trong 0.2s
+        const pieceEl = cell.querySelector(".chess-piece");
+        if (pieceEl) {
+            pieceEl.classList.remove("hit-flash");
+            void pieceEl.offsetWidth; // Reflow to restart animation
+            pieceEl.classList.add("hit-flash");
+            setTimeout(() => {
+                pieceEl.classList.remove("hit-flash");
+            }, 250);
+        } else {
+            cell.classList.remove("cell-hit-flash");
+            void cell.offsetWidth;
+            cell.classList.add("cell-hit-flash");
+            setTimeout(() => {
+                cell.classList.remove("cell-hit-flash");
+            }, 250);
+        }
+
+        // 2. Hiệu ứng số sát thương nảy lên (-25 ❤️ hoặc -50 💥) bay lên rồi mờ dần (@keyframes floatDamage)
+        const dmgBadge = document.createElement("div");
+        dmgBadge.className = `floating-damage ${hit.isCrit ? "damage-crit" : "damage-normal"}`;
+        dmgBadge.textContent = hit.damageText || (hit.isCrit ? "-50 💥" : "-25 ❤️");
+        cell.appendChild(dmgBadge);
+
+        setTimeout(() => {
+            if (dmgBadge.parentNode) {
+                dmgBadge.parentNode.removeChild(dmgBadge);
+            }
+        }, 900);
     }
 
     createPieceDOM(piece) {
@@ -5173,17 +5235,16 @@ class ChessTFTApp {
         if (lockBtn) {
             lockBtn.classList.toggle("is-locked", isLocked);
             lockBtn.title = isLocked
-                ? "Cửa hàng đang KHÓA (Giữ nguyên thẻ bài cho vòng sau). Bấm hoặc nhấn [X] để Mở Khóa."
-                : "Khóa Cửa Hàng: Giữ nguyên 5 quân cờ này sang vòng sau (Phím tắt: X).";
+                ? "Cửa hàng đang KHÓA (Giữ nguyên thẻ bài cho vòng sau). Bấm hoặc nhấn [Space] để Mở Khóa."
+                : "Khóa Cửa Hàng: Giữ nguyên 5 quân cờ này sang vòng sau (Phím tắt: Space / X).";
 
             const lockIcon = document.getElementById("btn-lock-icon");
             if (lockIcon) {
                 lockIcon.textContent = isLocked ? "🔒" : "🔓";
-            } else {
-                lockBtn.innerHTML = `
-                    <span id="btn-lock-icon">${isLocked ? "🔒" : "🔓"}</span>
-                    <span class="hud-keybind-badge lock-keybind">X</span>
-                `;
+            }
+            const lockLabel = document.getElementById("btn-lock-label");
+            if (lockLabel) {
+                lockLabel.textContent = isLocked ? "Đã Khóa" : "Giữ bài";
             }
         }
 
@@ -5528,6 +5589,10 @@ class ChessTFTApp {
 
                 this.renderAll();
 
+                if (res.combatHit) {
+                    this.triggerCombatHitFx(res.combatHit);
+                }
+
                 if (res.gameOver || this.chess.gameOver) {
                     this.finishBlitzCombat();
                     return;
@@ -5582,6 +5647,10 @@ class ChessTFTApp {
                 else this.sfx.move();
 
                 this.renderAll();
+
+                if (res.combatHit) {
+                    this.triggerCombatHitFx(res.combatHit);
+                }
 
                 if (res.gameOver || this.chess.gameOver) {
                     this.finishBlitzCombat();
@@ -5687,6 +5756,17 @@ class ChessTFTApp {
             if (cash.pieces.length) details += `, Tướng 5🪙: [${cash.pieces.map(pid => window.CHESS_TFT_DATA.PIECES[pid]?.name || pid).join(", ")}]`;
             this.showToast(`🎰 NỔ HŨ THÀNH CÔNG (Chuỗi ${cash.streak} thua)! Mở rương nhận: ${details}`, "success");
             this.sfx.victory();
+        }
+
+        // PVE Creep Drops Toast
+        if (this.tft.lastPveDrops) {
+            const drops = this.tft.lastPveDrops;
+            let dropDesc = `+${drops.gold}🪙 Vàng`;
+            if (drops.itemNames && drops.itemNames.length > 0) {
+                dropDesc += ` & Mảnh trang bị [${drops.itemNames.join(" + ")}]`;
+            }
+            this.showToast(`🎁 CHIẾN LỢI PHẨM QUÁI PVE: ${dropDesc}!`, "success");
+            this.sfx.starUp();
         }
 
         modal.classList.remove("hidden");

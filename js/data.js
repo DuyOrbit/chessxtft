@@ -13,14 +13,14 @@ window.CHESS_TFT_DATA = {
     // 1b. TFT STAGE ROUND PROGRESSION FORMAT (TFT Style Stage-Round)
     STAGE_ROUNDS_FORMAT: {
         1: [
-            { round: 1, type: "combat", icon: "⚔️", label: "Vòng 1-1" },
-            { round: 2, type: "augment", icon: "🔮", label: "Lõi 1-2" },
-            { round: 3, type: "combat", icon: "⚔️", label: "Vòng 1-3" }
+            { round: 1, type: "pve", icon: "👾", label: "Quái 1-1" },
+            { round: 2, type: "pve", icon: "👾", label: "Quái 1-2" },
+            { round: 3, type: "pve", icon: "👾", label: "Quái 1-3" }
         ],
         2: [
-            { round: 1, type: "combat", icon: "⚔️", label: "Vòng 2-1" },
+            { round: 1, type: "augment", icon: "🔮", label: "Lõi 2-1" },
             { round: 2, type: "combat", icon: "⚔️", label: "Vòng 2-2" },
-            { round: 3, type: "augment", icon: "🔮", label: "Lõi 2-3" },
+            { round: 3, type: "combat", icon: "⚔️", label: "Vòng 2-3" },
             { round: 4, type: "carousel", icon: "🎁", label: "Đi Chợ 2-4" },
             { round: 5, type: "combat", icon: "⚔️", label: "Vòng 2-5" }
         ],
@@ -33,11 +33,53 @@ window.CHESS_TFT_DATA = {
         ],
         4: [
             { round: 1, type: "combat", icon: "⚔️", label: "Vòng 4-1" },
-            { round: 2, type: "combat", icon: "⚔️", label: "Vòng 4-2" },
+            { round: 2, type: "augment", icon: "🔮", label: "Lõi 4-2" },
             { round: 3, type: "combat", icon: "⚔️", label: "Vòng 4-3" },
             { round: 4, type: "carousel", icon: "👑", label: "Đi Chợ 4-4" },
             { round: 5, type: "combat", icon: "💀", label: "Quyết Đấu 4-5" }
         ]
+    },
+
+    // 1c. PVE CREEP ENCOUNTERS (STAGE 1 QUÁI KHỞI ĐẦU)
+    PVE_ENCOUNTERS: {
+        1: {
+            round: "1-1",
+            name: "Tượng Quái Đá (1-1)",
+            avatar: "🗿",
+            desc: "2 Tượng Lính Canh Quái Đá tĩnh canh giữ cổng thành",
+            dropGold: 2,
+            dropItems: ["iron_armor", "stun_hammer"],
+            units: [
+                { id: "stone_minion", r: 0, c: 1, stars: 1, name: "Quái Đá Lính 1" },
+                { id: "stone_golem", r: 0, c: 3, stars: 1, name: "Tượng Đá Trưởng" }
+            ]
+        },
+        2: {
+            round: "1-2",
+            name: "Đội Quái Đá Tuần Tra (1-2)",
+            avatar: "🪨",
+            desc: "3 Tượng Quái Đá phòng thủ vòng cung",
+            dropGold: 3,
+            dropItems: ["burn_cloak", "phase_boots", "sniper_scope"],
+            units: [
+                { id: "stone_minion", r: 0, c: 1, stars: 1, name: "Quái Đá Tiền Tuyến" },
+                { id: "stone_golem", r: 0, c: 2, stars: 1, name: "Quái Đá Hộ Vệ" },
+                { id: "stone_minion", r: 0, c: 3, stars: 1, name: "Quái Đá Yểm Trợ" }
+            ]
+        },
+        3: {
+            round: "1-3",
+            name: "Thủ Lĩnh Quái Cổ Đại (1-3)",
+            avatar: "👹",
+            desc: "Khổng Lồ Đá Tĩnh cùng 2 Hộ Vệ Quái Cổ Đại",
+            dropGold: 4,
+            dropItems: ["iron_armor", "stun_hammer", "burn_cloak", "sniper_scope", "phase_boots"],
+            units: [
+                { id: "stone_minion", r: 0, c: 1, stars: 1, name: "Quái Đá Cận Vệ 1" },
+                { id: "stone_golem", r: 0, c: 2, stars: 2, name: "Khổng Lồ Đá Cổ Đại" },
+                { id: "stone_minion", r: 0, c: 3, stars: 1, name: "Quái Đá Cận Vệ 2" }
+            ]
+        }
     },
 
     COMBAT_RULES: {
@@ -229,6 +271,51 @@ window.CHESS_TFT_DATA = {
                 attackRule: "Ăn chéo 1 ô phía trước (cận chiến).",
                 skillRule: "Sở hữu tới 2-5 Lớp Máu trâu bò. Kích hoạt Thiết Giáp nhận thêm Giáp ảo khởi đầu trận đấu.",
                 tips: "Quân 1 vàng cực kỳ hiệu quả đầu game. Đặt làm lá chắn hút sát thương cho Cung Thủ và Phù Thủy phía sau bắn tỉa."
+            }
+        },
+        stone_minion: {
+            id: "stone_minion",
+            name: "Tượng Quái Đá",
+            icon: "🗿",
+            enemyIcon: "🗿",
+            badge: "👾",
+            cost: 1,
+            traits: ["vanguard"],
+            moveType: "pawn",
+            attackType: "melee",
+            baseHp: [1, 2, 3],
+            range: [1, 1, 1],
+            desc: "Tượng quái đá lính canh ải PVE Stage 1. Rơi trang bị và vàng khi bị tiêu diệt.",
+            guide: {
+                role: "Quái Khởi Đầu PVE",
+                recommendedPos: "Hàng tiền tuyến",
+                moveRule: "Tiến lên 1 ô về phía trước.",
+                attackRule: "Ăn chéo 1 ô cận chiến.",
+                skillRule: "Khi bị hạ gục rơi ra Vàng hoặc Mảnh Trang Bị khởi đầu.",
+                tips: "Dàn cờ đánh bại quái để thu thập trang bị đầu trận."
+            }
+        },
+        stone_golem: {
+            id: "stone_golem",
+            name: "Khổng Lồ Đá Tĩnh",
+            icon: "🪨",
+            enemyIcon: "🪨",
+            badge: "👑",
+            cost: 2,
+            isKing: true,
+            traits: ["vanguard"],
+            moveType: "king",
+            attackType: "melee",
+            baseHp: [2, 3, 5],
+            range: [1, 1, 1],
+            desc: "Thủ lĩnh quái đá cổ đại ở các ải PVE. Hạ gục rơi ra trang bị quý và vàng.",
+            guide: {
+                role: "Thủ Lĩnh Quái PVE",
+                recommendedPos: "Trung tâm hàng phòng ngự",
+                moveRule: "Di chuyển 1 ô mọi hướng.",
+                attackRule: "Cận chiến 1 ô.",
+                skillRule: "Đóng vai trò Trùm Quái ải PVE. Tiêu diệt mang lại tài nguyên lớn.",
+                tips: "Tập trung hỏa lực hạ gục thủ lĩnh đá."
             }
         },
         mercenary: {
@@ -503,6 +590,46 @@ window.CHESS_TFT_DATA = {
                 skillRule: "Kích hoạt mốc 3 Đạo Tặc (Nổ Hũ lớn): Chuỗi thua càng dài rương càng phình to, khi giành 1 chiến thắng sẽ NỔ HŨ nhận trang bị và tướng 5 vàng!",
                 tips: "Carry xả sát thương chủ lực của đội hình Đạo Tặc. Cho mang trang bị tăng tầm đánh và tốc đánh."
             }
+        },
+        stone_minion: {
+            id: "stone_minion",
+            name: "Quái Đá Tiền Tuyến",
+            icon: "🗿",
+            enemyIcon: "🗿",
+            cost: 1,
+            isKing: false,
+            traits: ["vanguard"],
+            moveType: "king",
+            attackType: "melee",
+            baseHp: [1, 2, 3],
+            range: [1, 1, 1],
+            desc: "Lính canh đá tĩnh canh gác cửa thành. Di chuyển 1 ô mọi hướng và tấn công cận chiến.",
+            guide: {
+                role: "Quái PVE Khởi Đầu",
+                recommendedPos: "Tiền tuyến quái vật",
+                moveRule: "Di chuyển 1 ô mọi hướng.",
+                attackRule: "Tấn công cận chiến 1 ô."
+            }
+        },
+        stone_golem: {
+            id: "stone_golem",
+            name: "Thủ Lĩnh Quái Đá",
+            icon: "🪨",
+            enemyIcon: "🪨",
+            cost: 2,
+            isKing: true,
+            traits: ["vanguard"],
+            moveType: "king",
+            attackType: "melee",
+            baseHp: [2, 3, 5],
+            range: [1, 1, 1],
+            desc: "Thủ lĩnh quái đá cổ đại PVE. Tiêu diệt để mở rương phần thưởng Vàng và Mảnh Trang Bị khởi đầu!",
+            guide: {
+                role: "Thủ Lĩnh Quái PVE",
+                recommendedPos: "Trung tâm đội hình quái",
+                moveRule: "Di chuyển 1 ô mọi hướng.",
+                attackRule: "Tấn công cận chiến uy lực."
+            }
         }
     },
 
@@ -681,9 +808,9 @@ window.applyDatabaseConfigToRuntime = function(rules, entities) {
     if (entities) {
         if (entities.LEVEL_XP) window.CHESS_TFT_DATA.LEVEL_XP = entities.LEVEL_XP;
         if (entities.SHOP_ODDS) window.CHESS_TFT_DATA.SHOP_ODDS = entities.SHOP_ODDS;
-        if (entities.SYNERGIES) window.CHESS_TFT_DATA.SYNERGIES = entities.SYNERGIES;
-        if (entities.PIECES) window.CHESS_TFT_DATA.PIECES = entities.PIECES;
-        if (entities.ITEMS) window.CHESS_TFT_DATA.ITEMS = entities.ITEMS;
+        if (entities.SYNERGIES) window.CHESS_TFT_DATA.SYNERGIES = { ...window.CHESS_TFT_DATA.SYNERGIES, ...entities.SYNERGIES };
+        if (entities.PIECES) window.CHESS_TFT_DATA.PIECES = { ...window.CHESS_TFT_DATA.PIECES, ...entities.PIECES };
+        if (entities.ITEMS) window.CHESS_TFT_DATA.ITEMS = { ...window.CHESS_TFT_DATA.ITEMS, ...entities.ITEMS };
         if (entities.AUGMENTS) window.CHESS_TFT_DATA.AUGMENTS = entities.AUGMENTS;
         if (entities.BOT_NAMES) window.CHESS_TFT_DATA.BOT_NAMES = entities.BOT_NAMES;
     }

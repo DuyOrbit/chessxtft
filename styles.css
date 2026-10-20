@@ -3863,29 +3863,43 @@ button {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
-    background: #1e293b;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    color: #ffffff;
     border: 1px solid #475569;
     border-radius: 8px;
-    padding: 6px 10px;
-    min-width: 44px;
+    padding: 5px 9px;
+    min-width: 80px;
     cursor: pointer;
-    font-size: 1rem;
-    color: #ffffff;
     transition: all 0.15s ease;
 }
 
 .btn-tft-lock:hover {
     border-color: #38bdf8;
-    background: #334155;
+    background: #1e293b;
     transform: translateY(-1px);
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+.lock-btn-title {
+    font-size: 0.74rem;
+    font-weight: 800;
+}
+
+.lock-btn-cost {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    font-weight: 700;
 }
 
 .btn-tft-lock.is-locked {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.3) 0%, rgba(180, 83, 9, 0.4) 100%) !important;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(180, 83, 9, 0.35) 100%) !important;
     border-color: #f59e0b !important;
-    box-shadow: 0 0 12px rgba(245, 158, 11, 0.5), inset 0 0 8px rgba(245, 158, 11, 0.3) !important;
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.5), inset 0 0 8px rgba(245, 158, 11, 0.25) !important;
     animation: lockAmberPulse 1.8s infinite ease-in-out;
+}
+
+.btn-tft-lock.is-locked .lock-btn-cost {
+    color: #fef08a !important;
 }
 
 .btn-tft-lock.is-locked .lock-keybind {
@@ -5711,3 +5725,89 @@ button {
     border-radius: 6px;
     cursor: pointer;
 }
+
+/* ============================================================================
+   FLOATING DAMAGE NUMBERS & HIT FLASH FX (ROYAL GRANDMASTER ARENA)
+   ============================================================================ */
+.hit-flash {
+    animation: hitFlashRed 0.22s ease-out forwards !important;
+}
+
+.cell-hit-flash {
+    animation: cellHitFlashRed 0.22s ease-out forwards !important;
+}
+
+@keyframes hitFlashRed {
+    0% {
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.95), inset 0 0 14px rgba(239, 68, 68, 0.85);
+        border-color: #ef4444 !important;
+        filter: brightness(1.5) drop-shadow(0 0 10px #ef4444);
+        transform: scale(0.92);
+    }
+    40% {
+        box-shadow: 0 0 26px rgba(239, 68, 68, 1), inset 0 0 18px rgba(239, 68, 68, 0.9);
+        border-color: #ff3333 !important;
+        transform: scale(1.08);
+    }
+    100% {
+        box-shadow: none;
+        transform: scale(1);
+    }
+}
+
+@keyframes cellHitFlashRed {
+    0% {
+        background-color: rgba(239, 68, 68, 0.45) !important;
+        box-shadow: inset 0 0 16px rgba(239, 68, 68, 0.7);
+    }
+    100% {
+        background-color: transparent;
+        box-shadow: none;
+    }
+}
+
+.floating-damage {
+    position: absolute;
+    top: 35%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 1000;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 900;
+    white-space: nowrap;
+    user-select: none;
+    animation: floatDamage 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.damage-normal {
+    font-size: 1.35rem;
+    color: #f87171;
+    text-shadow: 0 0 8px rgba(239, 68, 68, 0.85), 0 2px 5px rgba(0, 0, 0, 0.95);
+}
+
+.damage-crit {
+    font-size: 1.65rem;
+    color: #fbbf24;
+    text-shadow: 0 0 14px rgba(245, 158, 11, 0.95), 0 0 22px rgba(239, 68, 68, 0.9), 0 2px 6px rgba(0, 0, 0, 0.95);
+}
+
+@keyframes floatDamage {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, 0) scale(0.5);
+    }
+    20% {
+        opacity: 1;
+        transform: translate(-50%, -18px) scale(1.3);
+    }
+    60% {
+        opacity: 1;
+        transform: translate(-50%, -38px) scale(1.05);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -58px) scale(0.8);
+    }
+}
+

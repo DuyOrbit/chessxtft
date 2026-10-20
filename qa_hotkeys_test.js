@@ -74,24 +74,36 @@ const fs = require('fs');
         await page.screenshot({ path: path.join(screenshotDir, "hotkeys_1_shop_ui.png") });
         console.log("  📸 Ảnh chụp 1: qa_screenshots/hotkeys_1_shop_ui.png");
 
-        // 2. Test Khóa Shop (Lock Shop) bằng phím X
-        console.log("\n[TEST 2] TEST TÍNH NĂNG KHÓA SHOP (PHÍM X & NÚT LOCK)");
+        // 2. Test Khóa Shop (Lock Shop) bằng phím Space và X
+        console.log("\n[TEST 2] TEST TÍNH NĂNG KHÓA SHOP (PHÍM SPACE / X & NÚT LOCK)");
         let isLockedBefore = await page.$eval("#btn-lock-shop", el => el.classList.contains("is-locked")).catch(() => false);
-        console.log("  -> Trạng thái trước khi bấm X: isLocked =", isLockedBefore);
+        console.log("  -> Trạng thái trước khi bấm: isLocked =", isLockedBefore);
 
-        console.log("  -> Nhấn phím 'x' để KHÓA CỬA HÀNG...");
-        await page.keyboard.press("x");
+        console.log("  -> Nhấn phím 'Space' để KHÓA CỬA HÀNG...");
+        await page.keyboard.press("Space");
         await page.waitForTimeout(400);
 
-        let isLockedAfter = await page.$eval("#btn-lock-shop", el => el.classList.contains("is-locked")).catch(() => false);
-        let lockIcon = await page.$eval("#btn-lock-icon", el => el.innerText.trim()).catch(() => "");
+        let isLockedAfterSpace = await page.$eval("#btn-lock-shop", el => el.classList.contains("is-locked")).catch(() => false);
+        let lockIconSpace = await page.$eval("#btn-lock-icon", el => el.innerText.trim()).catch(() => "");
         let shopCardsLocked = await page.$eval("#shop-cards", el => el.classList.contains("shop-locked")).catch(() => false);
         let lockedIconsCount = await page.$$eval(".shop-card-locked-icon", els => els.length);
 
-        console.log(`  -> Sau khi nhấn 'x': isLocked = ${isLockedAfter}, Icon = ${lockIcon}, shopCardsLocked = ${shopCardsLocked}, số thẻ có 🔒 = ${lockedIconsCount}`);
-        if (!isLockedAfter || lockIcon !== "🔒" || !shopCardsLocked) {
-            throw new Error("LỖI: Khóa shop không kích hoạt đúng trạng thái!");
+        console.log(`  -> Sau khi nhấn 'Space': isLocked = ${isLockedAfterSpace}, Icon = ${lockIconSpace}, shopCardsLocked = ${shopCardsLocked}, số thẻ có 🔒 = ${lockedIconsCount}`);
+        if (!isLockedAfterSpace || lockIconSpace !== "🔒" || !shopCardsLocked) {
+            throw new Error("LỖI: Khóa shop bằng phím Space không kích hoạt đúng trạng thái!");
         }
+
+        console.log("  -> Nhấn phím 'Space' lần 2 để MỞ KHÓA CỬA HÀNG...");
+        await page.keyboard.press("Space");
+        await page.waitForTimeout(400);
+        let isUnlockedAfterSpace = !(await page.$eval("#btn-lock-shop", el => el.classList.contains("is-locked")).catch(() => true));
+        console.log(`  -> Mở khóa thành công: ${isUnlockedAfterSpace}`);
+
+        console.log("  -> Nhấn phím 'x' để KHÓA lại...");
+        await page.keyboard.press("x");
+        await page.waitForTimeout(400);
+        let isLockedAfterX = await page.$eval("#btn-lock-shop", el => el.classList.contains("is-locked")).catch(() => false);
+        console.log(`  -> Khóa lại bằng 'x': ${isLockedAfterX}`);
 
         await page.screenshot({ path: path.join(screenshotDir, "hotkeys_2_locked_shop.png") });
         console.log("  📸 Ảnh chụp 2: qa_screenshots/hotkeys_2_locked_shop.png");

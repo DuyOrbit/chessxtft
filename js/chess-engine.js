@@ -572,6 +572,7 @@ class BlitzChessEngine {
         const events = [];
         let clockBonus = 0;
         let capturedKing = false;
+        let combatHit = null;
 
         if (action.type === "move") {
             this.board[action.fromR][action.fromC] = null;
@@ -582,6 +583,27 @@ class BlitzChessEngine {
         } else if (target) {
             const dmg = this.getAttackDamage(attacker, target);
             target.hp -= dmg;
+
+            const star = attacker.stars || 1;
+            const critChance = star >= 3 ? 0.6 : (star === 2 ? 0.4 : 0.25);
+            const isCrit = dmg >= 2 || Math.random() < critChance;
+            const damageValue = isCrit ? 50 : 25;
+            const damageText = isCrit ? `-${damageValue} 💥` : `-${damageValue} ❤️`;
+
+            combatHit = {
+                targetR: action.toR,
+                targetC: action.toC,
+                fromR: action.fromR,
+                fromC: action.fromC,
+                attackerId: attacker.id,
+                targetId: target.id,
+                targetSide: target.side,
+                dmg: dmg,
+                isCrit: isCrit,
+                damageText: damageText,
+                isKill: target.hp <= 0
+            };
+            this.lastCombatHit = combatHit;
 
             // Balance Patch 1.1: Ranged attack requires 1 turn Reload before shooting ranged again!
             if (action.type === "ranged") {
@@ -631,7 +653,7 @@ class BlitzChessEngine {
                     };
                     this.endMatch(side, "pieces_eliminated", `Quét Sạch Toàn Bộ Quân Lực (${oppSide === "player" ? "Bạn" : "Đối Thủ"} hết cờ trừ Vua)!`);
                     this.moveHistory.push({ turn: this.turnCount, side, text: events.join(" • ") });
-                    return { events, clockBonus, gameOver: true };
+                    return { events, clockBonus, gameOver: true, combatHit };
                 }
 
                 // Mercenary gold reward
@@ -746,7 +768,7 @@ class BlitzChessEngine {
         if (capturedKing || !this.findKing(oppSide)) {
             this.endMatch(side, "king_captured", "Ăn Trực Tiếp Vua (Đối phương quên đỡ chiếu!)");
             this.moveHistory.push({ turn: this.turnCount, side, text: events.join(" • ") });
-            return { events, clockBonus, gameOver: true };
+            return { events, clockBonus, gameOver: true, combatHit };
         }
 
         // 2. Process end-of-turn status effects for 'side' (Reload, Stun Immunity, Stun recovery & AoE Burn Explosion)
@@ -804,7 +826,7 @@ class BlitzChessEngine {
                         if (!this.findKing(side)) {
                             this.endMatch(oppSide, "checkmate", "Vua bị nổ tung bởi Thiêu Đốt!");
                             this.moveHistory.push({ turn: this.turnCount, side, text: events.join(" • ") });
-                            return { events, clockBonus, gameOver: true };
+                            return { events, clockBonus, gameOver: true, combatHit };
                         }
 
                         // Kiểm tra nếu thiêu đốt làm 1 trong 2 bên hết sạch cờ trợ chiến (chỉ còn Vua)
@@ -819,7 +841,7 @@ class BlitzChessEngine {
                                 this.endMatch("player", "pieces_eliminated", "Quét Sạch Quân Lực (Đối thủ hết cờ trừ Vua)!");
                             }
                             this.moveHistory.push({ turn: this.turnCount, side, text: events.join(" • ") });
-                            return { events, clockBonus, gameOver: true };
+                            return { events, clockBonus, gameOver: true, combatHit };
                         }
                     }
                 }
@@ -839,7 +861,7 @@ class BlitzChessEngine {
             events.push(`⚡ CHIẾU HẾT (CHECKMATE)! Không còn nước đi nào cứu được Vua!`);
             this.endMatch(side, "checkmate", "Chiếu Hết Tuyệt Đối (Checkmate)!");
             this.moveHistory.push({ turn: this.turnCount - 1, side, text: events.join(" • ") });
-            return { events, clockBonus, gameOver: true };
+            return { events, clockBonus, gameOver: true, combatHit };
         }
 
         // 4. Check if the new side has zero moves at all (Stalemate / All Frozen) or Max Turns reached
@@ -859,7 +881,7 @@ class BlitzChessEngine {
                     this.endMatch("draw", "draw", "Hòa Cờ (Hết nước đi & Bằng quân số)!");
                 }
                 this.moveHistory.push({ turn: this.turnCount - 1, side, text: events.join(" • ") });
-                return { events, clockBonus, gameOver: true };
+                return { events, clockBonus, gameOver: true, combatHit };
             } else {
                 // Skip stunned turn automatically after clearing stun and granting stun immunity
                 events.push(`❄️ Toàn bộ quân của ${oppSide === "player" ? "Bạn" : "Đối Thủ"} đang bị Choáng — Mất lượt & Nhận Kháng Choáng!`);
@@ -888,11 +910,11 @@ class BlitzChessEngine {
                 this.endMatch("draw", "draw", "Hòa Cờ (Hết số lượt giao tranh & Bằng quân số)!");
             }
             this.moveHistory.push({ turn: this.turnCount - 1, side, text: events.join(" • ") });
-            return { events, clockBonus, gameOver: true };
+            return { events, clockBonus, gameOver: true, combatHit };
         }
 
         this.moveHistory.push({ turn: this.turnCount - 1, side, text: events.join(" • ") });
-        return { events, clockBonus, gameOver: false };
+        return { events, clockBonus, gameOver: false, combatHit };
     }
 
     countSurvivingPieces(side) {

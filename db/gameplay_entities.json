@@ -306,6 +306,31 @@
       "baseHp": [3, 5, 9],
       "range": [8, 8, 8],
       "desc": "Kết hợp bước đi của cả XE + MÃ! Vừa càn quét đường thẳng vừa nhảy chữ L qua mọi địa hình."
+    },
+    "stone_minion": {
+      "id": "stone_minion",
+      "name": "Quái Đá Tiền Tuyến",
+      "icon": "🗿",
+      "cost": 1,
+      "traits": ["vanguard"],
+      "moveType": "king",
+      "attackType": "melee",
+      "baseHp": [1, 2, 3],
+      "range": [1, 1, 1],
+      "desc": "Lính canh đá tĩnh canh gác cửa thành. Di chuyển 1 ô mọi hướng và tấn công cận chiến."
+    },
+    "stone_golem": {
+      "id": "stone_golem",
+      "name": "Thủ Lĩnh Quái Đá",
+      "icon": "🪨",
+      "cost": 2,
+      "isKing": true,
+      "traits": ["vanguard"],
+      "moveType": "king",
+      "attackType": "melee",
+      "baseHp": [2, 3, 5],
+      "range": [1, 1, 1],
+      "desc": "Thủ lĩnh quái đá cổ đại PVE. Tiêu diệt để mở rương phần thưởng Vàng và Mảnh Trang Bị khởi đầu!"
     }
   },
   "ITEMS": {

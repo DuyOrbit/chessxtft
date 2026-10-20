@@ -183,6 +183,11 @@ class TFTGameManager {
         };
     }
 
+    getCurrentRoundDef() {
+        const fmt = (window.CHESS_TFT_DATA && window.CHESS_TFT_DATA.STAGE_ROUNDS_FORMAT && window.CHESS_TFT_DATA.STAGE_ROUNDS_FORMAT[this.stage]) || [];
+        return fmt.find(r => r.round === this.roundInStage) || { type: "combat", name: `Vòng ${this.stage}-${this.roundInStage}` };
+    }
+
     getMaxUnitsAllowed(participant) {
         let cap = participant.level; // Level 3 -> 3 units (+1 free King = 4 total on board)
         if (participant.augments.includes("aug_tactical_expansion")) {
@@ -717,7 +722,34 @@ class TFTGameManager {
     }
 
     // Generate 2-3 potential upcoming opponents for the Prep phase so player can scout them
+    // Generate 2-3 potential upcoming opponents for the Prep phase so player can scout them
     pickPotentialOpponents() {
+        if (this.stage === 1) {
+            const pveEncounters = window.CHESS_TFT_DATA.PVE_ENCOUNTERS || {};
+            const pveData = pveEncounters[this.roundInStage] || pveEncounters[1];
+            this.predictedOpponents = [{
+                id: `pve_${this.stage}_${this.roundInStage}`,
+                name: pveData.name,
+                avatar: pveData.avatar || "👾",
+                isPve: true,
+                level: 1,
+                hp: 100,
+                gold: 0,
+                augments: [],
+                items: [],
+                board: pveData.units.map(u => ({
+                    uid: `pve_${u.id}_${u.r}_${u.c}`,
+                    id: u.id,
+                    name: u.name,
+                    r: u.r,
+                    c: u.c,
+                    stars: u.stars || 1,
+                    items: []
+                }))
+            }];
+            return this.predictedOpponents;
+        }
+
         const aliveOthers = this.getAllParticipants().filter(p => !p.eliminated && p.id !== "player");
         if (aliveOthers.length === 0) {
             this.predictedOpponents = [];
@@ -747,6 +779,46 @@ class TFTGameManager {
 
     // Create 1v1 Pairings for the current round and set combat phase
     prepareCombatRound() {
+        // Stage 1: PVE Creep Encounter (Tượng Quái Đá Khởi Đầu)
+        if (this.stage === 1) {
+            const pveEncounters = window.CHESS_TFT_DATA.PVE_ENCOUNTERS || {};
+            const pveData = pveEncounters[this.roundInStage] || pveEncounters[1];
+            this.currentOpponent = {
+                id: `pve_${this.stage}_${this.roundInStage}`,
+                name: pveData.name,
+                avatar: pveData.avatar || "👾",
+                desc: pveData.desc,
+                isPve: true,
+                level: 1,
+                hp: 100,
+                gold: 0,
+                augments: [],
+                items: [],
+                board: pveData.units.map(u => ({
+                    uid: `pve_${u.id}_${u.r}_${u.c}`,
+                    id: u.id,
+                    name: u.name,
+                    r: u.r,
+                    c: u.c,
+                    stars: u.stars || 1,
+                    items: []
+                }))
+            };
+
+            this.currentPairings = [[this.player, this.currentOpponent]];
+            const aliveOthers = this.getAllParticipants().filter(p => !p.eliminated && p.id !== "player");
+            aliveOthers.forEach(b => {
+                this.currentPairings.push([b, { ...this.currentOpponent, id: `pve_${b.id}` }]);
+            });
+
+            if (!this.currentMap || !this.currentTerrain) {
+                this.pickRoundMap();
+            }
+            this.phase = "combat";
+            this.scoutingPlayerId = "player";
+            return;
+        }
+
         const alive = this.getAllParticipants().filter(p => !p.eliminated);
         const others = alive.filter(p => p.id !== "player");
 
@@ -791,6 +863,14 @@ class TFTGameManager {
 
     // Build mirrored enemy pieces for top of the board (flipped vertically & horizontally)
     getMirroredEnemyPieces(opponent, cfg) {
+        if (opponent && opponent.isPve) {
+            return opponent.board.map(u => ({
+                ...u,
+                r: u.r,
+                c: u.c,
+                items: [...(u.items || [])]
+            }));
+        }
         return opponent.board.map(u => ({
             ...u,
             r: (cfg.rows - 1) - u.r,
@@ -865,6 +945,57 @@ class TFTGameManager {
 
         // 1. Apply Player vs Current Opponent Result
         this.player.gold += goldFromMercenary;
+        this.lastPveDrops = null;
+
+        // Xử lý riêng cho Vòng Quái Khởi Đầu PVE (Stage 1)
+        if (opp && (opp.isPve || this.stage === 1)) {
+            const pveEncounters = window.CHESS_TFT_DATA.PVE_ENCOUNTERS || {};
+            const pveData = pveEncounters[this.roundInStage] || pveEncounters[1];
+            const dropGold = pveData.dropGold || (this.roundInStage + 1);
+            this.player.gold += dropGold;
+
+            // Rơi 1-2 mảnh trang bị khởi đầu định hình đội hình
+            const dropItems = pveData.dropItems || ["iron_armor", "stun_hammer", "burn_cloak", "sniper_scope", "phase_boots"];
+            const itemKey1 = dropItems[Math.floor(Math.random() * dropItems.length)];
+            this.player.items.push(itemKey1);
+
+            let itemKey2 = null;
+            if (this.roundInStage === 3) {
+                // Round 1-3 rơi 2 trang bị
+                const remaining = dropItems.filter(k => k !== itemKey1);
+                itemKey2 = (remaining.length > 0 ? remaining : dropItems)[Math.floor(Math.random() * dropItems.length)];
+                this.player.items.push(itemKey2);
+            }
+
+            const itemDef1 = window.CHESS_TFT_DATA.ITEMS[itemKey1];
+            const itemDef2 = itemKey2 ? window.CHESS_TFT_DATA.ITEMS[itemKey2] : null;
+            const itemNames = [itemDef1 ? `${itemDef1.name} ${itemDef1.icon}` : itemKey1];
+            if (itemDef2) itemNames.push(`${itemDef2.name} ${itemDef2.icon}`);
+
+            this.lastPveDrops = {
+                gold: dropGold,
+                items: itemKey2 ? [itemKey1, itemKey2] : [itemKey1],
+                itemNames
+            };
+
+            this.roundMatchLogs.push({
+                isPlayerMatch: true,
+                isPve: true,
+                summary: `🎁 Dọn Sạch ${opp.name}: Rơi ra +${dropGold}🪙 Vàng & Trang Bị [${itemNames.join(" + ")}]!`
+            });
+
+            // Các Bot cũng hạ gục quái để nhận vàng và trang bị chuẩn TFT
+            this.bots.forEach(b => {
+                if (!b.eliminated) {
+                    b.gold = (b.gold || 0) + dropGold;
+                    if (!b.items) b.items = [];
+                    const botItem = dropItems[Math.floor(Math.random() * dropItems.length)];
+                    b.items.push(botItem);
+                }
+            });
+
+            return;
+        }
 
         // Xử lý Hòa Hơn Cờ nếu kết quả hòa nhưng có chênh lệch quân số
         if (playerMatchResult.winner === "draw") {
@@ -1313,31 +1444,14 @@ class TFTGameManager {
             comebackPackage = this.awardComebackCache(this.player);
         }
 
-        // STAGE ARMORY REWARD (KHO TIẾP TẾ CHIẾN TRƯỜNG KHI CHUYỂN GIAI ĐOẠN)
-        if (isStageTransition && this.stage >= 2) {
-            this.phase = "armory";
-            const armoryChoices = this.generateStageArmoryChoices(this.stage);
-            this.currentArmoryChoices = armoryChoices;
-            return {
-                phase: "armory",
-                isStageTransition: true,
-                newStage: this.stage,
-                prevStage,
-                armoryChoices,
-                freeRerollGiven,
-                comebackPackage,
-                shopLockedPreserved: wasShopLocked,
-                boardScaled: newCfg.cols !== oldCfg.cols
-            };
-        }
-
         // Determine phase based on TFT Stage-Round Format
         const newStageFmt = (window.CHESS_TFT_DATA.STAGE_ROUNDS_FORMAT && window.CHESS_TFT_DATA.STAGE_ROUNDS_FORMAT[this.stage]) || [];
         const roundDef = newStageFmt.find(r => r.round === this.roundInStage) || { type: "combat" };
 
         if (roundDef.type === "augment") {
             const allAugs = (window.CHESS_TFT_DATA.AUGMENTS || []).map(a => a.id);
-            for (const opp of this.opponents) {
+            const botsList = (this.bots && this.bots.length > 0) ? this.bots : (this.opponents || []);
+            for (const opp of botsList) {
                 if (!opp.augments) opp.augments = [];
                 if (opp.augments.length < 3) {
                     const unowned = allAugs.filter(a => !opp.augments.includes(a));
@@ -1352,6 +1466,22 @@ class TFTGameManager {
                 this.phase = "prep";
                 this.pickPotentialOpponents();
             }
+        } else if (isStageTransition && this.stage >= 3) {
+            // STAGE ARMORY REWARD KHI CHUYỂN GIAI ĐOẠN 3 & 4
+            this.phase = "armory";
+            const armoryChoices = this.generateStageArmoryChoices(this.stage);
+            this.currentArmoryChoices = armoryChoices;
+            return {
+                phase: "armory",
+                isStageTransition: true,
+                newStage: this.stage,
+                prevStage,
+                armoryChoices,
+                freeRerollGiven,
+                comebackPackage,
+                shopLockedPreserved: wasShopLocked,
+                boardScaled: newCfg.cols !== oldCfg.cols
+            };
         } else if (roundDef.type === "carousel") {
             this.phase = "carousel";
         } else {

@@ -546,7 +546,7 @@
                             <span class="hk-chip" title="Phím F: Mua 4 Kinh Nghiệm để tăng Cấp (4 Vàng)"><kbd class="hk-key">F</kbd> Mua XP</span>
                             <span class="hk-chip" title="Phím E: Bán nhanh quân cờ đang trỏ chuột hoặc đang chọn"><kbd class="hk-key">E</kbd> Bán Tướng</span>
                             <span class="hk-chip" title="Phím W: Đưa tướng lên sân đấu hoặc thu hồi về hàng chờ"><kbd class="hk-key">W</kbd> Đổi Chỗ</span>
-                            <span class="hk-chip" title="Phím X: Khóa/Mở Khóa cửa hàng giữ bài qua vòng sau"><kbd class="hk-key">X</kbd> Khóa Shop</span>
+                            <span class="hk-chip" title="Phím Space: Khóa/Mở Khóa cửa hàng giữ bài qua vòng sau (hoặc phím X)"><kbd class="hk-key">Space</kbd> Khóa Shop</span>
                         </div>
                     </div>
 
@@ -578,13 +578,21 @@
                                     </div>
                                     <span id="reroll-cost-label" class="reroll-btn-cost">2 🪙</span>
                                 </button>
+                                <button id="btn-lock-shop" class="btn-tft-lock" title="Khóa/Mở khóa cửa hàng cho vòng sau (Phím tắt: Space / X)">
+                                    <div class="hud-btn-main">
+                                        <span id="btn-lock-icon">🔓</span>
+                                        <span id="btn-lock-text" class="lock-btn-title">Khóa Shop</span>
+                                        <span class="hud-keybind-badge lock-keybind">Space</span>
+                                    </div>
+                                    <span id="btn-lock-label" class="lock-btn-cost">Giữ bài</span>
+                                </button>
                             </div>
                         </div>
 
                         <!-- 5 THẺ BÀI TƯỚNG SHOP (TRUNG TÂM) -->
                         <div id="shop-cards" class="shop-cards"></div>
 
-                        <!-- TIỀN VÀNG, KHÓA SHOP & GIAO TRANH (BÊN PHẢI) -->
+                        <!-- TIỀN VÀNG & GIAO TRANH (BÊN PHẢI) -->
                         <div class="hud-gold-side">
                             <div class="gold-big-display">
                                 <span class="gold-coin-icon">🪙</span>
@@ -595,11 +603,7 @@
                                 <span id="hud-streak-badge" class="hud-pill streak-pill">🔥 Chuỗi 0</span>
                             </div>
                             <div style="display:flex; gap:6px; margin-top:4px;">
-                                <button id="btn-lock-shop" class="btn-tft-lock" title="Khóa cửa hàng lại cho vòng sau (Phím tắt: X)">
-                                    <span id="btn-lock-icon">🔓</span>
-                                    <span class="hud-keybind-badge lock-keybind">X</span>
-                                </button>
-                                <button id="btn-start-combat" class="btn-combat-go" style="padding: 6px 14px; font-size:0.85rem;">⚔️ VÀO TRẬN</button>
+                                <button id="btn-start-combat" class="btn-combat-go" style="padding: 6px 16px; font-size:0.85rem;">⚔️ VÀO TRẬN</button>
                             </div>
                         </div>
                     </div>
