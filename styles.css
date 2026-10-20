@@ -42,44 +42,53 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 18px;
-    background: rgba(15, 23, 42, 0.92);
-    border-bottom: 1px solid var(--border-color);
-    gap: 12px;
-    flex-wrap: wrap;
+    padding: 3px 12px;
+    background: rgba(13, 19, 33, 0.96);
+    border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+    gap: 8px;
+    flex-wrap: nowrap;
+    height: 38px;
+    min-height: 38px;
+    max-height: 38px;
+    overflow: hidden;
 }
 
 .brand-wrap {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
+    flex-shrink: 0;
 }
 
 .brand-title {
-    font-size: 1.2rem;
-    font-weight: 800;
+    font-size: 1.05rem;
+    font-weight: 900;
+    font-family: 'Cinzel', serif;
     letter-spacing: 0.5px;
     background: linear-gradient(90deg, #fbbf24, #f97316);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    white-space: nowrap;
 }
 
 .badge-pill {
-    padding: 4px 10px;
+    padding: 2px 7px;
     border-radius: 999px;
-    font-size: 0.8rem;
+    font-size: 0.72rem;
     font-weight: 700;
     background: var(--bg-panel-alt);
     border: 1px solid var(--border-color);
     color: var(--accent-blue);
+    white-space: nowrap;
 }
 
 .phase-banner {
-    padding: 6px 16px;
-    border-radius: 8px;
-    font-size: 0.86rem;
-    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 800;
     text-align: center;
+    white-space: nowrap;
 }
 
 .phase-prep {
@@ -103,8 +112,13 @@ body {
 .player-stats-bar {
     display: flex;
     align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+    gap: 5px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+}
+
+.player-stats-bar button {
+    white-space: nowrap;
 }
 
 .stat-chip {
@@ -1496,6 +1510,36 @@ button {
     align-items: center;
     justify-content: center;
     padding: 20px;
+}
+
+#screen-game {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: radial-gradient(ellipse at 50% 12%, #131c31 0%, #090d18 60%, #04060c 100%) !important;
+    color: #f8fafc !important;
+}
+
+#screen-game.hidden {
+    display: none !important;
+}
+
+#screen-spectator {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: #090d18 !important;
+    color: #f8fafc !important;
+}
+
+#screen-spectator.hidden {
+    display: none !important;
 }
 
 .auth-card {
@@ -4316,29 +4360,41 @@ button {
 }
 
 /* ============================================================================
-   CHESS.COM STYLE DESKTOP & LAPTOP LAYOUT
+   ROYAL GRANDMASTER ARENA: SIGNATURE DESKTOP & LAPTOP LAYOUT
    ============================================================================ */
-.cc-layout-screen {
+.cc-layout-screen:not(.hidden) {
     display: flex !important;
     flex-direction: row !important;
     width: 100vw !important;
     height: 100vh !important;
     overflow: hidden !important;
-    background: #302e2b !important;
-    color: #f1f1f1 !important;
+    background: radial-gradient(ellipse at 50% 12%, #131c31 0%, #090d18 60%, #04060c 100%) !important;
+    background-attachment: fixed !important;
+    color: #f8fafc !important;
+    font-family: 'Outfit', sans-serif !important;
 }
 
-/* LEFT SIDEBAR (CHESS.COM ICONIC NAV) */
+.hidden,
+#screen-lobby.hidden,
+#screen-game.hidden,
+#screen-auth.hidden,
+#screen-spectator.hidden {
+    display: none !important;
+}
+
+/* LEFT SIDEBAR (ROYAL COMMAND RAIL) */
 .cc-sidebar {
-    width: 175px !important;
-    min-width: 175px !important;
+    width: 184px !important;
+    min-width: 184px !important;
     height: 100vh !important;
-    background: #21201d !important;
-    border-right: 1px solid #363431 !important;
+    background: rgba(8, 12, 22, 0.96) !important;
+    backdrop-filter: blur(16px) !important;
+    border-right: 1px solid rgba(212, 175, 55, 0.22) !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.6) !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-between !important;
-    padding: 12px 10px !important;
+    padding: 14px 10px !important;
     z-index: 100 !important;
     user-select: none !important;
 }
@@ -4346,109 +4402,159 @@ button {
 .cc-brand {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     padding: 6px 8px 14px;
-    border-bottom: 1px solid #2d2b27;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.cc-brand-icon {
-    font-size: 1.6rem;
+.cc-brand-crest {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(180, 83, 9, 0.12) 100%);
+    border: 1.5px solid #f59e0b;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.35);
+    flex-shrink: 0;
+}
+
+.crest-crown {
+    font-size: 1.4rem;
     line-height: 1;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}
+
+.cc-brand-text {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .cc-brand-title {
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 1.3rem;
+    font-family: 'Cinzel', serif;
+    font-size: 1.12rem;
     font-weight: 900;
     color: #ffffff;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
+    line-height: 1.1;
 }
 
-.cc-brand-green {
-    color: #81b64c;
+.cc-brand-gold {
+    background: linear-gradient(135deg, #ffd700 0%, #f59e0b 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 900;
 }
 
+.cc-brand-subtitle {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.6rem;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    color: #38bdf8;
+    margin-top: 1px;
+}
+
+/* SIDEBAR NAV LINKS */
 .cc-nav-menu {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    margin-top: 10px;
+    gap: 5px;
+    margin-top: 12px;
     flex: 1;
 }
 
 .cc-nav-link {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 11px;
     padding: 9px 12px;
     background: transparent;
-    border: none;
-    border-radius: 6px;
-    color: #c3c2c1;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: #94a3b8;
     font-size: 0.85rem;
     font-weight: 700;
     cursor: pointer;
     text-align: left;
-    transition: all 0.12s ease;
+    transition: all 0.15s ease;
     width: 100%;
 }
 
 .cc-nav-link:hover {
-    background: #2d2b27;
-    color: #ffffff;
+    background: rgba(30, 41, 59, 0.6);
+    color: #f8fafc;
+    border-color: rgba(255, 255, 255, 0.1);
+    transform: translateX(2px);
 }
 
 .cc-nav-link.active {
-    background: #363431;
-    color: #ffffff;
-    box-shadow: inset 3px 0 0 #81b64c;
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.22) 0%, rgba(245, 158, 11, 0.05) 100%) !important;
+    color: #fef08a !important;
+    border-left: 3px solid #f59e0b !important;
+    border-color: rgba(245, 158, 11, 0.3) !important;
+    box-shadow: inset 0 0 14px rgba(245, 158, 11, 0.15) !important;
 }
 
 .cc-nav-icon {
     font-size: 1.15rem;
     line-height: 1;
-    width: 20px;
+    width: 22px;
     text-align: center;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
 }
 
 .cc-sidebar-footer {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    border-top: 1px solid #2d2b27;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
     padding-top: 10px;
 }
 
 .cc-audio-btn {
-    background: #2a2926;
-    border: 1px solid #3d3b37;
-    color: #989795;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #94a3b8;
     border-radius: 6px;
     padding: 5px 8px;
     font-size: 0.72rem;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.12s ease;
+    transition: all 0.15s ease;
 }
 
 .cc-audio-btn:hover {
-    background: #363431;
-    color: #fff;
+    background: rgba(30, 41, 59, 0.9);
+    color: #38bdf8;
+    border-color: #38bdf8;
 }
 
 .cc-user-pill {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 8px;
-    background: #262421;
-    border: 1px solid #363431;
-    border-radius: 6px;
+    gap: 9px;
+    padding: 7px 9px;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.7) 100%);
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 
 .cc-user-avatar {
-    font-size: 1.3rem;
+    font-size: 1.35rem;
     line-height: 1;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid #f59e0b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
 
 .cc-user-meta {
@@ -4458,7 +4564,7 @@ button {
 }
 
 .cc-user-name {
-    font-size: 0.78rem;
+    font-size: 0.8rem;
     font-weight: 800;
     color: #fff;
     white-space: nowrap;
@@ -4468,26 +4574,26 @@ button {
 
 .cc-user-elo {
     font-size: 0.68rem;
-    color: #81b64c;
-    font-weight: 700;
+    color: #fbbf24;
+    font-weight: 800;
 }
 
 .cc-logout-btn {
     background: transparent;
-    border: 1px solid #3d3b37;
+    border: 1px solid rgba(239, 68, 68, 0.3);
     border-radius: 6px;
-    color: #989795;
+    color: #f87171;
     font-size: 0.72rem;
     font-weight: 700;
     padding: 4px;
     cursor: pointer;
-    transition: all 0.12s ease;
+    transition: all 0.15s ease;
 }
 
 .cc-logout-btn:hover {
     background: rgba(239, 68, 68, 0.2);
-    color: #f87171;
     border-color: #ef4444;
+    color: #fff;
 }
 
 /* MAIN CONTENT AREA */
@@ -4495,11 +4601,11 @@ button {
     flex: 1 !important;
     height: 100vh !important;
     overflow-y: auto !important;
-    padding: 10px 16px 16px !important;
-    background: #302e2b !important;
+    padding: 8px 14px 14px !important;
+    background: transparent !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 10px !important;
+    gap: 8px !important;
 }
 
 /* TOP STATUS BAR */
@@ -4507,10 +4613,11 @@ button {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #262421;
-    border: 1px solid #363431;
+    background: rgba(13, 19, 33, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 8px;
-    padding: 6px 12px;
+    padding: 5px 12px;
+    backdrop-filter: blur(10px);
 }
 
 .cc-topbar-left, .cc-topbar-right {
@@ -4519,20 +4626,30 @@ button {
     gap: 8px;
 }
 
+.cc-arena-tag {
+    font-family: 'Cinzel', serif;
+    font-size: 0.76rem;
+    font-weight: 900;
+    color: #fef08a;
+    letter-spacing: 0.8px;
+    text-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+    margin-right: 4px;
+}
+
 .cc-record-tag {
     font-size: 0.74rem;
-    color: #989795;
+    color: #94a3b8;
     font-weight: 700;
 }
 
 .cc-stat-chip {
-    background: #1e1e1d;
-    border: 1px solid #3d3b37;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 6px;
     padding: 3px 8px;
     font-size: 0.74rem;
     font-weight: 800;
-    color: #f1f1f1;
+    color: #f1f5f9;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -4540,48 +4657,50 @@ button {
 
 .cc-stat-chip.streak-chip {
     color: #fbbf24;
-    border-color: rgba(251, 191, 36, 0.3);
+    border-color: rgba(251, 191, 36, 0.35);
+    background: rgba(245, 158, 11, 0.12);
 }
 
 /* HERO ROW: QUICK PLAY + 3 FEATURE CARDS (COMPACT FOR LAPTOPS) */
 .cc-hero-row {
     display: grid !important;
-    grid-template-columns: 330px 1fr !important;
-    gap: 12px !important;
+    grid-template-columns: 340px 1fr !important;
+    gap: 10px !important;
     min-height: 250px !important;
 }
 
-/* QUICK PLAY BOX */
+/* QUICK PLAY COMMAND BOX */
 .cc-quickplay-card {
-    background: #262421;
-    border: 1px solid #363431;
-    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(20, 28, 48, 0.95) 0%, rgba(11, 16, 29, 0.98) 100%);
+    border: 1.5px solid rgba(212, 175, 55, 0.35);
+    border-radius: 12px;
     padding: 10px 12px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .cc-time-tabs {
     display: flex;
     gap: 4px;
-    background: #1e1e1d;
+    background: rgba(8, 11, 20, 0.85);
     padding: 3px;
-    border-radius: 6px;
-    border: 1px solid #363431;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .cc-time-tab {
     flex: 1;
     background: transparent;
-    border: none;
-    border-radius: 4px;
-    color: #989795;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: #94a3b8;
     font-size: 0.72rem;
     font-weight: 700;
     padding: 5px 2px;
     cursor: pointer;
-    transition: all 0.12s ease;
+    transition: all 0.15s ease;
 }
 
 .cc-time-tab:hover {
@@ -4589,52 +4708,90 @@ button {
 }
 
 .cc-time-tab.active {
-    background: #363431;
-    color: #ffffff;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.28) 0%, rgba(217, 119, 6, 0.18) 100%);
+    color: #fef08a;
+    border: 1px solid rgba(245, 158, 11, 0.65);
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
 }
 
-/* GIANT CHESS.COM GREEN BUTTON */
+/* MAJESTIC ROYAL BATTLE CTA BUTTON (CHẤT RIÊNG ĐỘC BẢN) */
 .cc-cta-wrap {
     margin: 8px 0;
     text-align: center;
 }
 
-.cc-btn-green-giant {
+.cc-btn-royal-warcrest {
     width: 100% !important;
-    background: #81b64c !important;
-    color: #ffffff !important;
-    font-size: 1.15rem !important;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 45%, #b45309 100%) !important;
+    color: #080c16 !important;
+    font-family: 'Cinzel', serif !important;
+    font-size: 1.18rem !important;
     font-weight: 900 !important;
     padding: 13px !important;
-    border-radius: 8px !important;
-    border: none !important;
-    box-shadow: 0 4px 0 #537133 !important;
+    border-radius: 9px !important;
+    border: 1.5px solid #fde047 !important;
+    box-shadow: 0 5px 0 #78350f, 0 10px 25px rgba(245, 158, 11, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
     cursor: pointer !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 8px !important;
-    letter-spacing: 0.5px !important;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) !important;
-    transition: all 0.1s ease !important;
+    gap: 9px !important;
+    letter-spacing: 0.8px !important;
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.4) !important;
+    position: relative !important;
+    overflow: hidden !important;
+    transition: all 0.12s ease !important;
 }
 
-.cc-btn-green-giant:hover {
-    background: #a3d160 !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 5px 0 #537133 !important;
+.cc-btn-royal-warcrest:hover {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 45%, #d97706 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 7px 0 #78350f, 0 14px 30px rgba(245, 158, 11, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
 }
 
-.cc-btn-green-giant:active {
-    transform: translateY(3px) !important;
-    box-shadow: 0 1px 0 #537133 !important;
+.cc-btn-royal-warcrest:active {
+    transform: translateY(4px) !important;
+    box-shadow: 0 1px 0 #78350f, 0 4px 10px rgba(245, 158, 11, 0.3) !important;
+}
+
+.warcrest-shine {
+    position: absolute;
+    top: 0;
+    left: -120%;
+    width: 80%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+    transform: skewX(-25deg);
+    animation: warcrestSweep 3.2s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes warcrestSweep {
+    0%, 65% { left: -120%; }
+    100% { left: 180%; }
+}
+
+.cc-mode-desc-wrap {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    background: rgba(10, 15, 28, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    padding: 6px 8px;
+    margin-top: 6px;
+    text-align: left;
+}
+
+.desc-badge {
+    font-size: 0.85rem;
+    line-height: 1;
 }
 
 .cc-mode-desc {
-    font-size: 0.72rem;
-    color: #989795;
-    margin: 6px 0 0 0;
+    font-size: 0.71rem;
+    color: #94a3b8;
+    margin: 0;
     line-height: 1.35;
 }
 
@@ -4646,27 +4803,28 @@ button {
 }
 
 .cc-action-item {
-    background: #302e2b;
-    border: 1px solid #3d3b37;
-    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 7px;
     padding: 6px 8px;
     font-size: 0.72rem;
     font-weight: 700;
-    color: #c3c2c1;
+    color: #cbd5e1;
     display: flex;
     align-items: center;
     gap: 6px;
     cursor: pointer;
-    transition: all 0.12s ease;
+    transition: all 0.15s ease;
 }
 
 .cc-action-item:hover {
-    background: #3d3b37;
+    background: rgba(30, 41, 59, 0.9);
     color: #ffffff;
-    border-color: #81b64c;
+    border-color: #f59e0b;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
 }
 
-/* 3 FEATURE CARDS (CHESS.COM MINI BOARD PREVIEW) */
+/* 3 BESPOKE FEATURE CARDS */
 .cc-feature-cards-grid {
     display: grid !important;
     grid-template-columns: repeat(3, 1fr) !important;
@@ -4674,64 +4832,102 @@ button {
 }
 
 .cc-feature-card {
-    background: #262421;
-    border: 1px solid #363431;
-    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(10, 15, 26, 0.98) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    transition: all 0.15s ease;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    transition: all 0.18s ease;
+    position: relative;
 }
 
 .cc-feature-card:hover {
-    transform: translateY(-2px);
-    border-color: #81b64c;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    transform: translateY(-3px);
+    border-color: rgba(212, 175, 55, 0.6);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7), 0 0 15px rgba(245, 158, 11, 0.25);
 }
 
 .cc-board-preview {
-    height: 120px;
-    background: #1e1e1d;
+    height: 115px;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 8px;
+    position: relative;
+    overflow: hidden;
 }
 
-/* CHESS.COM CHECKERBOARD (GREEN & CREAM SQUARES) */
-.mini-board-chesscom {
-    width: 104px;
-    height: 104px;
+.preview-arcane {
+    background: radial-gradient(circle at center, rgba(14, 165, 233, 0.25) 0%, rgba(8, 12, 22, 0.9) 70%);
+    border-bottom: 1px solid rgba(14, 165, 233, 0.3);
+}
+
+.preview-crimson {
+    background: radial-gradient(circle at center, rgba(239, 68, 68, 0.25) 0%, rgba(8, 12, 22, 0.9) 70%);
+    border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.preview-royal {
+    background: radial-gradient(circle at center, rgba(245, 158, 11, 0.25) 0%, rgba(8, 12, 22, 0.9) 70%);
+    border-bottom: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.preview-corner-badge {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    font-size: 0.6rem;
+    font-weight: 800;
+    padding: 2px 6px;
     border-radius: 4px;
-    border: 2px solid #4a4742;
-    position: relative;
-    background-size: 26px 26px;
-    background-position: 0 0, 13px 13px;
-    background-image: 
-        linear-gradient(45deg, #86a666 25%, transparent 25%), 
-        linear-gradient(-45deg, #86a666 25%, transparent 25%), 
-        linear-gradient(45deg, transparent 75%, #86a666 75%), 
-        linear-gradient(-45deg, transparent 75%, #86a666 75%);
-    background-color: #eeeed2;
+    background: rgba(0, 0, 0, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #e2e8f0;
+    letter-spacing: 0.5px;
+}
+
+.tactical-board-frame {
     display: flex;
     align-items: center;
-    justify-content: space-around;
+    justify-content: center;
+    gap: 14px;
+    position: relative;
 }
 
-.mini-cell-piece, .mini-cell-target {
-    font-size: 1.5rem;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
-    animation: gentleBob 2s ease-in-out infinite alternate;
+.tactical-glyph-cell {
+    width: 44px;
+    height: 44px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.55rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    transition: all 0.2s ease;
+    animation: glyphFloat 2.2s ease-in-out infinite alternate;
 }
 
-.mini-cell-target {
-    animation-delay: 1s;
+.glyph-coach { background: rgba(14, 165, 233, 0.2); border: 1.5px solid #38bdf8; }
+.glyph-pawn { background: rgba(56, 189, 248, 0.15); border: 1.5px solid #0284c7; animation-delay: 1.1s; }
+.glyph-bot { background: rgba(239, 68, 68, 0.2); border: 1.5px solid #f87171; }
+.glyph-swords { background: rgba(245, 158, 11, 0.2); border: 1.5px solid #fbbf24; animation-delay: 1.1s; }
+.glyph-trophy { background: rgba(245, 158, 11, 0.25); border: 1.5px solid #f59e0b; }
+.glyph-king { background: rgba(234, 179, 8, 0.25); border: 1.5px solid #facc15; animation-delay: 1.1s; }
+
+.tactical-rune-vs {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 900;
+    color: #f87171;
+    text-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
 }
 
-@keyframes gentleBob {
+@keyframes glyphFloat {
     from { transform: translateY(0); }
-    to { transform: translateY(-4px); }
+    to { transform: translateY(-5px); }
 }
 
 .cc-feature-body {
@@ -4740,13 +4936,13 @@ button {
     flex-direction: column;
     justify-content: space-between;
     gap: 6px;
-    background: #262421;
+    background: transparent;
 }
 
 .cc-feature-tag {
     font-size: 0.62rem;
     font-weight: 800;
-    color: #81b64c;
+    color: #f59e0b;
     letter-spacing: 0.5px;
 }
 
@@ -4759,21 +4955,46 @@ button {
 
 .cc-feature-btn {
     width: 100%;
-    background: #363431;
-    border: 1px solid #4a4742;
-    color: #ffffff;
-    font-weight: 800;
     padding: 6px;
     border-radius: 6px;
     font-size: 0.74rem;
+    font-weight: 800;
     cursor: pointer;
-    transition: all 0.12s ease;
+    transition: all 0.15s ease;
+    border: 1px solid transparent;
 }
 
-.cc-feature-card:hover .cc-feature-btn {
-    background: #81b64c;
-    border-color: #81b64c;
-    color: #000;
+.btn-feature-cyan {
+    background: rgba(14, 165, 233, 0.15);
+    border-color: #38bdf8;
+    color: #38bdf8;
+}
+.btn-feature-cyan:hover {
+    background: #0284c7;
+    color: #fff;
+    box-shadow: 0 0 12px rgba(14, 165, 233, 0.5);
+}
+
+.btn-feature-amber {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: #f59e0b;
+    color: #fbbf24;
+}
+.btn-feature-amber:hover {
+    background: #d97706;
+    color: #fff;
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
+}
+
+.btn-feature-gold {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.25) 100%);
+    border-color: #fbbf24;
+    color: #fef08a;
+}
+.btn-feature-gold:hover {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #0b0f19;
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.6);
 }
 
 /* ADMIN SPECTATOR BAR IN HUB */
@@ -4803,40 +5024,40 @@ button {
     margin-right: 6px;
 }
 
-/* ROOMS & CODEX IN CHESS.COM TABS */
+/* ROOMS & CODEX IN TABS */
 .cc-room-box {
-    background: #262421;
-    border: 1px solid #363431;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 10px;
     padding: 14px;
 }
 
 .cc-sub {
     font-size: 0.75rem;
-    color: #989795;
+    color: #94a3b8;
     margin: 4px 0 10px;
 }
 
 /* ============================================================================
-   INTERACTIVE TUTORIAL COACH OVERLAY & STYLES
+   INTERACTIVE TUTORIAL COACH OVERLAY & STYLES (ROYAL EMERALD & GOLD)
    ============================================================================ */
 .tutorial-coach-bar {
     display: flex;
     align-items: center;
     gap: 14px;
-    background: linear-gradient(90deg, #1c2718 0%, #263320 100%);
-    border: 2px solid #81b64c;
+    background: linear-gradient(90deg, rgba(16, 36, 26, 0.95) 0%, rgba(13, 29, 39, 0.95) 100%);
+    border: 1.5px solid #22c55e;
     border-radius: 10px;
     padding: 8px 16px;
     margin: 4px 14px;
-    box-shadow: 0 0 20px rgba(129, 182, 76, 0.35);
+    box-shadow: 0 0 24px rgba(34, 197, 94, 0.35);
     animation: coachPulse 1.8s ease-in-out infinite alternate;
     z-index: 90;
 }
 
 @keyframes coachPulse {
-    from { box-shadow: 0 0 12px rgba(129, 182, 76, 0.25); }
-    to { box-shadow: 0 0 22px rgba(129, 182, 76, 0.5); }
+    from { box-shadow: 0 0 12px rgba(34, 197, 94, 0.25); }
+    to { box-shadow: 0 0 25px rgba(34, 197, 94, 0.55); }
 }
 
 .coach-icon {
@@ -4860,22 +5081,22 @@ button {
 .coach-title {
     font-size: 0.85rem;
     font-weight: 800;
-    color: #a3d160;
+    color: #4ade80;
 }
 
 .coach-step-pill {
-    background: rgba(129, 182, 76, 0.2);
-    border: 1px solid #81b64c;
+    background: rgba(34, 197, 94, 0.2);
+    border: 1px solid #22c55e;
     border-radius: 4px;
     padding: 1px 6px;
     font-size: 0.65rem;
     font-weight: 800;
-    color: #81b64c;
+    color: #4ade80;
 }
 
 .coach-body-text {
     font-size: 0.8rem;
-    color: #f1f1f1;
+    color: #f1f5f9;
     line-height: 1.35;
 }
 
@@ -4886,10 +5107,10 @@ button {
 }
 
 .coach-btn-action {
-    background: #81b64c;
-    border: 1px solid #81b64c;
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    border: 1px solid #4ade80;
     border-radius: 6px;
-    color: #000;
+    color: #052e16;
     font-weight: 800;
     font-size: 0.78rem;
     padding: 6px 12px;
@@ -4898,15 +5119,15 @@ button {
 }
 
 .coach-btn-action:hover {
-    background: #a3d160;
-    box-shadow: 0 0 10px rgba(129, 182, 76, 0.4);
+    background: #4ade80;
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.5);
 }
 
 .coach-btn-dismiss {
     background: transparent;
-    border: 1px solid #4a4742;
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 6px;
-    color: #989795;
+    color: #94a3b8;
     font-size: 0.72rem;
     font-weight: 700;
     padding: 5px 8px;
@@ -4915,19 +5136,19 @@ button {
 
 .coach-btn-dismiss:hover {
     color: #fff;
-    border-color: #989795;
+    border-color: #94a3b8;
 }
 
 /* TUTORIAL HIGHLIGHT PULSE FOR BOARD & SHOP */
 .tutorial-highlight-target {
-    outline: 3px solid #81b64c !important;
-    box-shadow: 0 0 25px rgba(129, 182, 76, 0.8) !important;
+    outline: 3px solid #f59e0b !important;
+    box-shadow: 0 0 25px rgba(245, 158, 11, 0.85) !important;
     animation: tutorialGlow 0.8s ease-in-out infinite alternate !important;
 }
 
 @keyframes tutorialGlow {
-    from { outline-color: #81b64c; box-shadow: 0 0 15px rgba(129, 182, 76, 0.5); }
-    to { outline-color: #a3d160; box-shadow: 0 0 30px rgba(163, 209, 96, 0.9); }
+    from { outline-color: #f59e0b; box-shadow: 0 0 15px rgba(245, 158, 11, 0.5); }
+    to { outline-color: #fde047; box-shadow: 0 0 30px rgba(253, 224, 71, 0.9); }
 }
 
 @media (max-width: 900px) {
@@ -4937,6 +5158,60 @@ button {
     .cc-sidebar {
         width: 140px !important;
         min-width: 140px !important;
+    }
+}
+
+@media (max-height: 820px) {
+    .top-bar {
+        height: 36px !important;
+        min-height: 36px !important;
+        padding: 2px 10px !important;
+    }
+    .stage-round-tracker {
+        padding: 2px 10px !important;
+        font-size: 0.72rem !important;
+    }
+    .tft-layout-grid {
+        height: calc(100vh - 66px) !important;
+        max-height: calc(100vh - 66px) !important;
+        padding: 0 8px 4px !important;
+        gap: 8px !important;
+    }
+    .center-stage {
+        gap: 4px !important;
+        justify-content: flex-start !important;
+    }
+    .map-info-bar {
+        padding: 2px 8px !important;
+        font-size: 0.72rem !important;
+        margin-bottom: 2px !important;
+    }
+    .chess-board {
+        width: min(390px, 36vh) !important;
+        height: min(350px, 33vh) !important;
+    }
+    .bench-container {
+        padding: 2px 4px !important;
+        margin-top: 2px !important;
+    }
+    .bench-grid {
+        gap: 4px !important;
+    }
+    .bench-cell {
+        width: 36px !important;
+        height: 36px !important;
+    }
+    .shop-container {
+        padding: 4px 8px !important;
+        margin-top: 2px !important;
+    }
+    .shop-cards-grid {
+        gap: 6px !important;
+    }
+    .shop-card {
+        height: 104px !important;
+        min-width: 100px !important;
+        padding: 4px !important;
     }
 }
 

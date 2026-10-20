@@ -584,16 +584,16 @@ class ChessTFTApp {
                 const mode = tab.getAttribute("data-mode");
                 this.activeHeroMode = mode;
                 if (mode === "ranked") {
-                    if (heroBtnLabel) heroBtnLabel.textContent = "BẮT ĐẦU VÁN CỜ (RANK)";
+                    if (heroBtnLabel) heroBtnLabel.textContent = "XUẤT TRẬN CHIẾN ĐẤU (RANK)";
                     if (heroModeDesc) heroModeDesc.textContent = "Tự động ghép cùng kỳ thủ online thật. Ghế trống tự động thêm 7 Bot AI sau 4s!";
                 } else if (mode === "solo") {
-                    if (heroBtnLabel) heroBtnLabel.textContent = "ĐẤU VỚI BOT NGAY";
+                    if (heroBtnLabel) heroBtnLabel.textContent = "KHIÊU CHIẾN 7 BOT AI";
                     if (heroModeDesc) heroModeDesc.textContent = "Luyện tập offline cùng 7 Bot AI thông minh (Magnus, Kasparov...). Không sợ mất điểm ELO!";
                 } else if (mode === "tutorial") {
-                    if (heroBtnLabel) heroBtnLabel.textContent = "BẮT ĐẦU HƯỚNG DẪN";
-                    if (heroModeDesc) heroModeDesc.textContent = "Khóa huấn luyện tương tác từng bước cùng Huấn Luyện Viên Bot. Nắm vững luật cờ và tộc hệ!";
+                    if (heroBtnLabel) heroBtnLabel.textContent = "VÀO LỚP HỌC VIỆN";
+                    if (heroModeDesc) heroModeDesc.textContent = "Khóa huấn luyện tương tác từng bước cùng Huấn Luyện Viên Martin. Nắm vững luật cờ và tộc hệ!";
                 } else if (mode === "custom") {
-                    if (heroBtnLabel) heroBtnLabel.textContent = "PHÒNG CHƠI BẠN BÈ";
+                    if (heroBtnLabel) heroBtnLabel.textContent = "MỞ PHÒNG BẠN BÈ";
                     if (heroModeDesc) heroModeDesc.textContent = "Tạo phòng riêng hoặc nhập mã để mời bạn bè cùng so tài cờ chớp!";
                 }
             });

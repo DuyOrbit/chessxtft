@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chess TFT Online - Đấu Trường Cờ Vua Chiến Thuật</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👑</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;500;600;700;800;900&family=Rajdhani:wght@600;700;800&display=swap" rel="stylesheet">
@@ -68,35 +70,40 @@
     </div>
 
     <!-- ====================================================================
-         SCREEN 2: SẢNH CHỜ CHÍNH (CHESS.COM STYLE LOBBY HUB)
+         SCREEN 2: SẢNH CHỜ CHÍNH (ROYAL GRANDMASTER ARENA LOBBY)
          ==================================================================== -->
     <div id="screen-lobby" class="screen-container cc-layout-screen hidden">
-        <!-- LEFT SLIM SIDEBAR (CHESS.COM STYLE) -->
+        <!-- LEFT SLIM SIDEBAR (ROYAL COMMAND RAIL) -->
         <aside class="cc-sidebar">
             <div class="cc-brand">
-                <span class="cc-brand-icon">♟️</span>
-                <div class="cc-brand-title">Chess<span class="cc-brand-green">.tft</span></div>
+                <div class="cc-brand-crest">
+                    <span class="crest-crown">👑</span>
+                </div>
+                <div class="cc-brand-text">
+                    <div class="cc-brand-title">CHESS<span class="cc-brand-gold">TFT</span></div>
+                    <div class="cc-brand-subtitle">GRANDMASTER ARENA</div>
+                </div>
             </div>
 
             <!-- SIDEBAR NAV LINKS -->
             <nav class="cc-nav-menu">
-                <button id="nav-item-play" class="cc-nav-link active" title="Chơi Cờ">
-                    <span class="cc-nav-icon">♟️</span>
-                    <span class="cc-nav-label">Chơi</span>
+                <button id="nav-item-play" class="cc-nav-link active" title="Đấu Trường Cờ Vua TFT">
+                    <span class="cc-nav-icon">⚔️</span>
+                    <span class="cc-nav-label">Xuất Trận</span>
                 </button>
-                <button id="nav-item-tutorial" class="cc-nav-link" title="Hướng Dẫn Tân Thủ">
+                <button id="nav-item-tutorial" class="cc-nav-link" title="Học Viện & Huấn Luyện Tân Thủ">
                     <span class="cc-nav-icon">🎓</span>
-                    <span class="cc-nav-label">Hướng Dẫn</span>
+                    <span class="cc-nav-label">Học Viện</span>
                 </button>
                 <button id="nav-item-codex" class="cc-nav-link" title="Cẩm Nang Quân Cờ & Tộc Hệ">
                     <span class="cc-nav-icon">📖</span>
                     <span class="cc-nav-label">Cẩm Nang</span>
                 </button>
-                <button id="nav-item-rooms" class="cc-nav-link" title="Phòng Chơi Bạn Bè">
+                <button id="nav-item-rooms" class="cc-nav-link" title="Phòng So Tài Bạn Bè">
                     <span class="cc-nav-icon">👥</span>
-                    <span class="cc-nav-label">Tạo Phòng</span>
+                    <span class="cc-nav-label">Phòng Riêng</span>
                 </button>
-                <button id="btn-open-spectator-top" class="cc-nav-link cc-nav-admin hidden" title="Quan Sát 4 Bàn Đấu">
+                <button id="btn-open-spectator-top" class="cc-nav-link cc-nav-admin hidden" title="Quan Sát 4 Bàn Đấu (GM)">
                     <span class="cc-nav-icon">📺</span>
                     <span class="cc-nav-label">4 Bàn Đấu</span>
                 </button>
@@ -127,6 +134,7 @@
             <!-- TOP STATS BAR -->
             <div class="cc-topbar">
                 <div class="cc-topbar-left">
+                    <span class="cc-arena-tag">👑 ĐẤU TRƯỜNG KỲ VƯƠNG</span>
                     <span id="lobby-user-role-badge" class="badge-role-tag">VIP</span>
                     <span id="lobby-user-record" class="cc-record-tag">Top 1: 0/0</span>
                     <span id="lobby-online-status" class="badge-pill online-pulse">🟢 Máy Chủ Sẵn Sàng</span>
@@ -144,32 +152,36 @@
             <span id="lobby-user-elo" class="hidden"></span>
             <span id="lobby-user-perks" class="hidden"></span>
 
-            <!-- TAB 1: MAIN PLAY HUB (CHESS.COM HERO + 3 FEATURE CARDS) -->
+            <!-- TAB 1: MAIN PLAY HUB (GRANDMASTER BATTLE DECK + 3 FEATURE CARDS) -->
             <div id="view-hub-play" class="cc-tab-view active">
                 <div class="cc-hero-row">
-                    <!-- HERO QUICK PLAY BOX (GIỐNG HÌNH 3 CHESS.COM) -->
+                    <!-- HERO COMMAND BATTLE BOX -->
                     <div class="cc-quickplay-card">
                         <div class="cc-time-tabs">
-                            <button class="cc-time-tab active" data-mode="ranked">🏆 Đấu Rank</button>
-                            <button class="cc-time-tab" data-mode="solo">🤖 Luyện Bot</button>
-                            <button class="cc-time-tab" data-mode="tutorial">🎓 Hướng Dẫn</button>
+                            <button class="cc-time-tab active" data-mode="ranked">🏆 Đấu Xếp Hạng</button>
+                            <button class="cc-time-tab" data-mode="solo">🤖 Luyện Bot AI</button>
+                            <button class="cc-time-tab" data-mode="tutorial">🎓 Tân Thủ</button>
                             <button class="cc-time-tab" data-mode="custom">👥 Bạn Bè</button>
                         </div>
 
-                        <!-- GIANT CHESS.COM GREEN CTA BUTTON (CỰC NỔI BẬT) -->
+                        <!-- MAJESTIC ROYAL BATTLE CTA BUTTON (CHẤT RIÊNG ĐỘC BẢN) -->
                         <div class="cc-cta-wrap">
-                            <button id="btn-hero-play-main" class="cc-btn-green-giant">
-                                <span class="cc-play-icon">▶️</span>
-                                <span id="hero-btn-label" class="cc-btn-label">BẮT ĐẦU VÁN CỜ</span>
+                            <button id="btn-hero-play-main" class="cc-btn-green-giant cc-btn-royal-warcrest">
+                                <span class="warcrest-shine"></span>
+                                <span class="cc-play-icon">⚔️</span>
+                                <span id="hero-btn-label" class="cc-btn-label">XUẤT TRẬN CHIẾN ĐẤU</span>
                             </button>
-                            <p id="hero-mode-desc" class="cc-mode-desc">Tự động ghép cùng kỳ thủ online thật. Ghế trống tự động thêm 7 Bot AI sau 4s!</p>
+                            <div class="cc-mode-desc-wrap">
+                                <span class="desc-badge">⚡</span>
+                                <p id="hero-mode-desc" class="cc-mode-desc">Tự động ghép cùng kỳ thủ online thật. Ghế trống tự động thêm 7 Bot AI sau 4s!</p>
+                            </div>
                         </div>
 
                         <!-- QUICK ACTIONS BELOW -->
                         <div class="cc-quick-actions-row">
                             <button id="btn-start-matchmaking" class="cc-action-item">
                                 <span class="action-icon">🎯</span>
-                                <span>Chơi Trực Tuyến</span>
+                                <span>Tìm Trận Rank</span>
                             </button>
                             <button id="btn-quick-solo" class="cc-action-item">
                                 <span class="action-icon">🤖</span>
@@ -177,65 +189,71 @@
                             </button>
                             <button id="btn-quick-tutorial" class="cc-action-item">
                                 <span class="action-icon">🎓</span>
-                                <span>Học Cách Chơi</span>
+                                <span>Học Viện Cờ</span>
                             </button>
                             <button id="btn-quick-friends" class="cc-action-item">
                                 <span class="action-icon">👥</span>
-                                <span>Phòng Bạn Bè</span>
+                                <span>Phòng Riêng</span>
                             </button>
                         </div>
                     </div>
 
-                    <!-- 3 FEATURE CARDS WITH MINI BOARD PREVIEW (GIỐNG HÌNH 3 CHESS.COM) -->
+                    <!-- 3 BESPOKE FEATURE CARDS (DARK FANTASY TACTICAL CHESS THEME) -->
                     <div class="cc-feature-cards-grid">
                         <!-- CARD 1: TUTORIAL LESSONS -->
                         <div class="cc-feature-card card-tutorial" id="card-feature-tutorial">
-                            <div class="cc-board-preview">
-                                <div class="mini-board-chesscom mini-pattern-1">
-                                    <div class="mini-cell-piece">🎓</div>
-                                    <div class="mini-cell-target">♟️</div>
+                            <div class="cc-board-preview preview-arcane">
+                                <div class="tactical-board-frame">
+                                    <div class="tactical-glyph-cell glyph-coach">🎓</div>
+                                    <div class="tactical-rune-path"></div>
+                                    <div class="tactical-glyph-cell glyph-pawn">♟️</div>
                                 </div>
+                                <span class="preview-corner-badge">HỌC VIỆN</span>
                             </div>
                             <div class="cc-feature-body">
                                 <div class="cc-feature-head">
-                                    <span class="cc-feature-tag">🎓 BÀI HỌC TÂN THỦ</span>
-                                    <div class="cc-feature-title">Huấn Luyện Viên Bot</div>
+                                    <span class="cc-feature-tag">🎓 HUẤN LUYỆN 1-KÈM-1</span>
+                                    <div class="cc-feature-title">Học Viện Kỳ Thủ Martin</div>
                                 </div>
-                                <button id="btn-start-tutorial" class="cc-feature-btn">Học Cách Chơi</button>
+                                <button id="btn-start-tutorial" class="cc-feature-btn btn-feature-cyan">Vào Lớp Học</button>
                             </div>
                         </div>
 
                         <!-- CARD 2: PLAY VS BOT -->
                         <div class="cc-feature-card card-bot" id="card-feature-bot">
-                            <div class="cc-board-preview">
-                                <div class="mini-board-chesscom mini-pattern-2">
-                                    <div class="mini-cell-piece">🤖</div>
-                                    <div class="mini-cell-target">⚔️</div>
+                            <div class="cc-board-preview preview-crimson">
+                                <div class="tactical-board-frame">
+                                    <div class="tactical-glyph-cell glyph-bot">🤖</div>
+                                    <div class="tactical-rune-vs">VS</div>
+                                    <div class="tactical-glyph-cell glyph-swords">⚔️</div>
                                 </div>
+                                <span class="preview-corner-badge">7 AI GRANDMASTER</span>
                             </div>
                             <div class="cc-feature-body">
                                 <div class="cc-feature-head">
-                                    <span class="cc-feature-tag">🤖 LUYỆN TẬP 7 BOT</span>
-                                    <div class="cc-feature-title">Bot AI (Magnus...)</div>
+                                    <span class="cc-feature-tag">🤖 THỰC CHIẾN 7 BOT</span>
+                                    <div class="cc-feature-title">Đại Kiện Tướng AI Magnus</div>
                                 </div>
-                                <button id="btn-play-bot-feature" class="cc-feature-btn">Chơi Với Bot</button>
+                                <button id="btn-play-bot-feature" class="cc-feature-btn btn-feature-amber">Đấu Với Bot</button>
                             </div>
                         </div>
 
                         <!-- CARD 3: RANKED MATCH -->
                         <div class="cc-feature-card card-rank" id="card-feature-rank">
-                            <div class="cc-board-preview">
-                                <div class="mini-board-chesscom mini-pattern-3">
-                                    <div class="mini-cell-piece">🏆</div>
-                                    <div class="mini-cell-target">👑</div>
+                            <div class="cc-board-preview preview-royal">
+                                <div class="tactical-board-frame">
+                                    <div class="tactical-glyph-cell glyph-trophy">🏆</div>
+                                    <div class="tactical-rune-glow"></div>
+                                    <div class="tactical-glyph-cell glyph-king">👑</div>
                                 </div>
+                                <span class="preview-corner-badge">LEO RANK ELO</span>
                             </div>
                             <div class="cc-feature-body">
                                 <div class="cc-feature-head">
-                                    <span class="cc-feature-tag">🔥 ĐẤU RANK ONLINE</span>
-                                    <div class="cc-feature-title">Xếp Hạng Kỳ Thủ</div>
+                                    <span class="cc-feature-tag">🔥 ĐẤU TRƯỜNG KỲ VƯƠNG</span>
+                                    <div class="cc-feature-title">Xếp Hạng Bảng Vàng</div>
                                 </div>
-                                <button id="btn-play-rank-feature" class="cc-feature-btn">Tìm Trận Rank</button>
+                                <button id="btn-play-rank-feature" class="cc-feature-btn btn-feature-gold">Tìm Trận Rank</button>
                             </div>
                         </div>
                     </div>
