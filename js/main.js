@@ -371,6 +371,7 @@ class ChessTFTApp {
         // UI interaction state
         this.selectedPrepUnitUid = null;
         this.selectedItemIndex = null;
+        this.isRemoverActive = false;
         this.selectedCombatSquare = null;
         this.validCombatActions = [];
         this.hoveredUnit = null; // { type: 'board'|'bench', unit, r, c, slotIndex, uid }
@@ -4009,6 +4010,21 @@ class ChessTFTApp {
         document.getElementById("btn-sell-selected")?.addEventListener("click", sellUnitAction);
         document.getElementById("btn-sell-hud-direct")?.addEventListener("click", sellUnitAction);
 
+        document.getElementById("btn-item-remover")?.addEventListener("click", () => {
+            if (this.tft.phase !== "prep") {
+                this.showToast("Chỉ có thể dùng Búa Gỡ Đồ trong giai đoạn Chuẩn Bị!", "warn");
+                return;
+            }
+            this.isRemoverActive = !this.isRemoverActive;
+            if (this.isRemoverActive) {
+                this.selectedItemIndex = null;
+                this.showToast("✂️ Búa Gỡ Đồ đang bật! Bấm vào bất kỳ quân cờ nào để tháo đồ về kho.", "info");
+            } else {
+                this.showToast("Đã tắt Búa Gỡ Đồ.", "info");
+            }
+            this.renderRightPanel();
+        });
+
         document.getElementById("btn-unequip-selected")?.addEventListener("click", () => {
             if (!this.selectedPrepUnitUid) return;
             const res = this.tft.unequipItems(this.selectedPrepUnitUid);
@@ -4506,28 +4522,6 @@ class ChessTFTApp {
                 }
             }
 
-            // Augments badges (compact)
-            const augsHtml = (part.augments || []).map(augId => {
-                const def = (window.CHESS_TFT_DATA.AUGMENTS || []).find(a => a.id === augId);
-                if (!def) return "";
-                return `<span class="lb-aug-badge" title="[Lõi] ${def.name}: ${def.desc}">${def.icon} ${def.name}</span>`;
-            }).join("");
-
-            // Item badges (compact icons only, no bulky text, hooking up tooltip on hover)
-            const itemCounts = {};
-            for (const itId of allItems) itemCounts[itId] = (itemCounts[itId] || 0) + 1;
-            const itemsHtml = Object.keys(itemCounts).slice(0, 4).map(itId => {
-                const def = window.CHESS_TFT_DATA.ITEMS[itId];
-                if (!def) return "";
-                const count = itemCounts[itId];
-                return `<span class="lb-item-badge" data-item-id="${itId}" title="${def.name}: ${def.desc}">${def.icon}${count > 1 ? `<sup>${count}</sup>` : ""}</span>`;
-            }).join("");
-
-            let badgesCluster = "";
-            if (augsHtml || itemsHtml) {
-                badgesCluster = `<div class="lb-badges-cluster">${augsHtml}${itemsHtml}</div>`;
-            }
-
             row.innerHTML = `
                 <div class="leader-top">
                     <span class="leader-avatar">${part.avatar}</span>
@@ -4537,7 +4531,6 @@ class ChessTFTApp {
                     </div>
                     <span class="leader-hp-num">${part.hp} HP</span>
                 </div>
-                ${badgesCluster}
                 <div class="leader-hp-bar">
                     <div class="leader-hp-fill" style="width:${hpPercent}%; background:${part.hp > 50 ? "#22c55e" : (part.hp > 25 ? "#f59e0b" : "#ef4444")}"></div>
                 </div>
@@ -4556,22 +4549,6 @@ class ChessTFTApp {
                 this.tft.scoutingPlayerId = part.id;
                 this.selectedPrepUnitUid = null;
                 this.renderAll();
-            });
-
-            row.querySelectorAll("[data-item-id]").forEach(el => {
-                const itemId = el.getAttribute("data-item-id");
-                el.addEventListener("mouseenter", (e) => {
-                    e.stopPropagation();
-                    this.showItemTooltip(itemId, e);
-                });
-                el.addEventListener("mousemove", (e) => {
-                    e.stopPropagation();
-                    this.moveItemTooltip(e);
-                });
-                el.addEventListener("mouseleave", (e) => {
-                    e.stopPropagation();
-                    this.hideItemTooltip();
-                });
             });
 
             listEl.appendChild(row);
@@ -4968,6 +4945,21 @@ class ChessTFTApp {
     }
 
     handlePrepBoardClick(r, c, unitOnCell) {
+        // 0. If Remover is active, unequip items from the clicked unit
+        if (this.isRemoverActive && unitOnCell) {
+            const res = this.tft.unequipItems(unitOnCell.uid);
+            if (res.ok) {
+                this.isRemoverActive = false;
+                this.sfx.move();
+                this.showToast(`✂️ Đã tháo ${res.count} trang bị từ ${res.unitName} về kho đồ!`, "success");
+                this.renderAll();
+                this.syncMyStateToRoom();
+            } else {
+                this.showToast(res.msg, "warn");
+            }
+            return;
+        }
+
         // 1. If an item is selected in inventory, equip it onto the clicked unit!
         if (this.selectedItemIndex !== null && unitOnCell) {
             const res = this.tft.equipItem(this.selectedItemIndex, unitOnCell.uid);
@@ -5281,6 +5273,21 @@ class ChessTFTApp {
                     return;
                 }
 
+                // Unequip item via Remover tool on bench unit
+                if (this.isRemoverActive && unit) {
+                    const res = this.tft.unequipItems(unit.uid);
+                    if (res.ok) {
+                        this.isRemoverActive = false;
+                        this.sfx.move();
+                        this.showToast(`✂️ Đã tháo ${res.count} trang bị từ ${res.unitName} về kho đồ!`, "success");
+                        this.renderAll();
+                        this.syncMyStateToRoom();
+                    } else {
+                        this.showToast(res.msg, "warn");
+                    }
+                    return;
+                }
+
                 // Equip item onto bench unit
                 if (this.selectedItemIndex !== null && unit) {
                     const res = this.tft.equipItem(this.selectedItemIndex, unit.uid);
@@ -5503,6 +5510,7 @@ class ChessTFTApp {
                     slot.addEventListener("click", () => {
                         this.selectedItemIndex = this.selectedItemIndex === idx ? null : idx;
                         if (this.selectedItemIndex !== null) {
+                            this.isRemoverActive = false; // deactivate remover if selecting an item
                             this.showToast(`Đã chọn ${it.name} — Bấm vào 1 quân cờ trên bàn hoặc hàng chờ để trang bị!`, "info");
                         }
                         this.renderRightPanel();
@@ -5516,6 +5524,13 @@ class ChessTFTApp {
                 grid.appendChild(slot);
             });
             itemContainer.appendChild(grid);
+        }
+
+        // Remover tool slot state
+        const removerBtn = document.getElementById("btn-item-remover");
+        if (removerBtn) {
+            removerBtn.classList.toggle("selected", !!this.isRemoverActive);
+            removerBtn.parentElement.style.display = isSelf ? "flex" : "none";
         }
 
         // 3. Augments Owned

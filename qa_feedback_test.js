@@ -63,14 +63,19 @@ const fs = require('fs');
             }
         }
 
-        // 3. Test Unequip
-        console.log("-> Bấm Gỡ Đồ...");
-        const unequipBtn = await page.$("#btn-unequip-selected");
-        if (unequipBtn && !(await unequipBtn.evaluate(el => el.classList.contains("hidden")))) {
-            await unequipBtn.click();
-            await page.waitForTimeout(500);
-            await page.screenshot({ path: path.join(screenshotDir, "test_item_unequipped.png") });
-            console.log("📸 Đã chụp test_item_unequipped.png");
+        // 3. Test Unequip with dedicated Búa Gỡ Đồ (Scissors/Remover Slot)
+        console.log("-> Test dùng Búa Gỡ Đồ (#btn-item-remover)...");
+        const removerBtn = await page.$("#btn-item-remover");
+        if (removerBtn) {
+            await removerBtn.click();
+            await page.waitForTimeout(300);
+            const unitPiece = await page.$("#chess-board .chess-piece");
+            if (unitPiece) {
+                await unitPiece.click();
+                await page.waitForTimeout(500);
+                await page.screenshot({ path: path.join(screenshotDir, "test_remover_used.png") });
+                console.log("📸 Đã chụp test_remover_used.png");
+            }
         }
 
         // 4. Test Sell unit
@@ -87,6 +92,13 @@ const fs = require('fs');
                 console.log("📸 Đã chụp test_unit_sold.png");
             }
         }
+
+        // 5. Verify Leaderboard has NO item/augment badges
+        const badgesCount = await page.$$eval(".custom-leaderboard-list .lb-badges-cluster", els => els.length);
+        console.log(`-> Số lượng cụm đồ/lõi trên thanh máu BXH: ${badgesCount} (Mong muốn: 0)`);
+
+        await page.screenshot({ path: path.join(screenshotDir, "test_final_hud.png") });
+        console.log("📸 Đã chụp test_final_hud.png");
 
         console.log("✅ All functional tests executed successfully!");
 

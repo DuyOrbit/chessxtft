@@ -473,10 +473,16 @@
         <main class="main-workspace tft-layout-grid">
             <!-- CỘT TRÁI: DỌC TRANG BỊ (BÊN TRÁI) + TỘC / HỆ A, B, C (BÊN PHẢI) -->
             <aside class="side-panel side-panel-left custom-hud-left">
-                <!-- CỘT CON 1: DỌC CÁC Ô TRANG BỊ -->
+                <!-- CỘT CON 1: DỌC CÁC Ô TRANG BỊ & BÚA GỠ ĐỒ -->
                 <div class="hud-items-column">
                     <div class="hud-column-title">TRANG BỊ</div>
                     <div id="item-inventory" class="hud-item-slots-vertical"></div>
+                    <div class="hud-remover-wrap" style="margin-top:auto; padding-top:6px; width:100%; display:flex; flex-direction:column; align-items:center;">
+                        <div id="btn-item-remover" class="inv-slot-compact remover-slot" title="Búa Gỡ Đồ: Bấm vào đây rồi bấm vào quân cờ để tháo toàn bộ trang bị về kho!">
+                            <span>✂️</span>
+                        </div>
+                        <span style="font-size:0.6rem; color:#f87171; font-weight:700; margin-top:2px; text-transform:uppercase;">Gỡ Đồ</span>
+                    </div>
                 </div>
 
                 <!-- CỘT CON 2: TỘC / HỆ A, B, C & LÕI CÔNG NGHỆ -->

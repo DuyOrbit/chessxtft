@@ -6048,6 +6048,37 @@ button {
     box-shadow: 0 0 14px rgba(253, 224, 71, 0.5) !important;
 }
 
+.remover-slot {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    border: 2px dashed #f87171 !important;
+    border-radius: 8px !important;
+    background: rgba(239, 68, 68, 0.15) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 1.4rem !important;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.2);
+    transition: all 0.2s ease;
+}
+
+.remover-slot:hover {
+    transform: scale(1.12);
+    background: rgba(239, 68, 68, 0.3) !important;
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 16px rgba(239, 68, 68, 0.6) !important;
+}
+
+.remover-slot.selected {
+    border: 2px solid #ef4444 !important;
+    background: rgba(239, 68, 68, 0.45) !important;
+    box-shadow: 0 0 18px rgba(239, 68, 68, 0.8) !important;
+    animation: pulse 1s infinite alternate;
+}
+
 .hud-synergies-column {
     display: flex;
     flex-direction: column;
