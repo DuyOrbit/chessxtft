@@ -27,19 +27,19 @@
     }
   },
   {
-    "id": "user_friend1",
+    "id": "user_kithu1",
     "username": "kithu1",
     "password": "123",
-    "displayName": "Kỳ Thủ Bạn Bè 1",
+    "displayName": "Kỳ Thủ Tiên Phong",
     "avatar": "🦊",
     "role": "player",
     "createdAt": "2026-10-19T19:00:00.000Z",
     "stats": {
       "elo": 1050,
-      "gamesPlayed": 2,
-      "top1Count": 1,
-      "wins": 7,
-      "losses": 3
+      "gamesPlayed": 8,
+      "top1Count": 2,
+      "wins": 12,
+      "losses": 6
     },
     "customModifiers": {
       "startingHp": 100,
@@ -50,6 +50,368 @@
         "stun_hammer",
         "burn_cloak"
       ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "user_kithu2",
+    "username": "kithu2",
+    "password": "123",
+    "displayName": "Kỳ Thủ Chiến Lược",
+    "avatar": "🐺",
+    "role": "player",
+    "createdAt": "2026-10-19T19:05:00.000Z",
+    "stats": {
+      "elo": 1100,
+      "gamesPlayed": 6,
+      "top1Count": 1,
+      "wins": 9,
+      "losses": 5
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "iron_armor"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "user_kithu3",
+    "username": "kithu3",
+    "password": "123",
+    "displayName": "Kỳ Thủ Tinh Anh",
+    "avatar": "🦁",
+    "role": "player",
+    "createdAt": "2026-10-19T19:10:00.000Z",
+    "stats": {
+      "elo": 1150,
+      "gamesPlayed": 10,
+      "top1Count": 3,
+      "wins": 15,
+      "losses": 7
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "sniper_scope"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "user_kithu4",
+    "username": "kithu4",
+    "password": "123",
+    "displayName": "Kỳ Thủ Bất Bại",
+    "avatar": "🐯",
+    "role": "player",
+    "createdAt": "2026-10-19T19:15:00.000Z",
+    "stats": {
+      "elo": 1200,
+      "gamesPlayed": 12,
+      "top1Count": 4,
+      "wins": 20,
+      "losses": 8
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "phase_boots"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "user_kithu5",
+    "username": "kithu5",
+    "password": "123",
+    "displayName": "Kỳ Thủ Phù Thủy",
+    "avatar": "🧙‍♂️",
+    "role": "player",
+    "createdAt": "2026-10-19T19:20:00.000Z",
+    "stats": {
+      "elo": 1250,
+      "gamesPlayed": 9,
+      "top1Count": 2,
+      "wins": 14,
+      "losses": 6
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "user_kithu6",
+    "username": "kithu6",
+    "password": "123",
+    "displayName": "Kỳ Thủ Thiện Xạ",
+    "avatar": "🏹",
+    "role": "player",
+    "createdAt": "2026-10-19T19:25:00.000Z",
+    "stats": {
+      "elo": 1300,
+      "gamesPlayed": 11,
+      "top1Count": 3,
+      "wins": 17,
+      "losses": 7
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "sniper_scope"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "user_kithu7",
+    "username": "kithu7",
+    "password": "123",
+    "displayName": "Kỳ Thủ Thần Tài",
+    "avatar": "🎰",
+    "role": "player",
+    "createdAt": "2026-10-19T19:30:00.000Z",
+    "stats": {
+      "elo": 1350,
+      "gamesPlayed": 15,
+      "top1Count": 5,
+      "wins": 22,
+      "losses": 9
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 8,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "user_kithu8",
+    "username": "kithu8",
+    "password": "123",
+    "displayName": "Kỳ Thủ Hộ Vệ",
+    "avatar": "🛡️",
+    "role": "player",
+    "createdAt": "2026-10-19T19:35:00.000Z",
+    "stats": {
+      "elo": 1400,
+      "gamesPlayed": 14,
+      "top1Count": 4,
+      "wins": 21,
+      "losses": 8
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "iron_armor"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "bot_magnus",
+    "username": "bot_magnus",
+    "password": "123",
+    "displayName": "Đại Kiện Tướng Magnus (Bot)",
+    "avatar": "🤖",
+    "role": "player",
+    "createdAt": "2026-10-19T19:00:00.000Z",
+    "stats": {
+      "elo": 1800,
+      "gamesPlayed": 50,
+      "top1Count": 25,
+      "wins": 80,
+      "losses": 20
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "phase_boots"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "bot_kasparov",
+    "username": "bot_kasparov",
+    "password": "123",
+    "displayName": "Bá Tước Bóng Đêm (Bot)",
+    "avatar": "🦇",
+    "role": "player",
+    "createdAt": "2026-10-19T19:00:00.000Z",
+    "stats": {
+      "elo": 1750,
+      "gamesPlayed": 45,
+      "top1Count": 20,
+      "wins": 70,
+      "losses": 22
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "bot_frost",
+    "username": "bot_frost",
+    "password": "123",
+    "displayName": "Phù Thủy Băng Giá (Bot)",
+    "avatar": "🧙‍♀️",
+    "role": "player",
+    "createdAt": "2026-10-19T19:00:00.000Z",
+    "stats": {
+      "elo": 1650,
+      "gamesPlayed": 35,
+      "top1Count": 15,
+      "wins": 55,
+      "losses": 18
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "bot_guardian",
+    "username": "bot_guardian",
+    "password": "123",
+    "displayName": "Hiệp Sĩ Hoàng Gia (Bot)",
+    "avatar": "🛡️",
+    "role": "player",
+    "createdAt": "2026-10-19T19:00:00.000Z",
+    "stats": {
+      "elo": 1600,
+      "gamesPlayed": 30,
+      "top1Count": 12,
+      "wins": 48,
+      "losses": 16
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "iron_armor"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "bot_sniper",
+    "username": "bot_sniper",
+    "password": "123",
+    "displayName": "Xạ Thủ Tinh Anh (Bot)",
+    "avatar": "🏹",
+    "role": "player",
+    "createdAt": "2026-10-19T19:00:00.000Z",
+    "stats": {
+      "elo": 1550,
+      "gamesPlayed": 28,
+      "top1Count": 10,
+      "wins": 42,
+      "losses": 15
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "sniper_scope"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "bot_fortune",
+    "username": "bot_fortune",
+    "password": "123",
+    "displayName": "Đạo Tặc Thần Bài (Bot)",
+    "avatar": "🎰",
+    "role": "player",
+    "createdAt": "2026-10-19T19:00:00.000Z",
+    "stats": {
+      "elo": 1500,
+      "gamesPlayed": 25,
+      "top1Count": 8,
+      "wins": 38,
+      "losses": 14
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 10,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "bot_martin",
+    "username": "bot_martin",
+    "password": "123",
+    "displayName": "Kỳ Thủ Martin (Bot)",
+    "avatar": "♟️",
+    "role": "player",
+    "createdAt": "2026-10-19T19:00:00.000Z",
+    "stats": {
+      "elo": 1200,
+      "gamesPlayed": 20,
+      "top1Count": 4,
+      "wins": 25,
+      "losses": 12
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [],
       "isBanned": false
     }
   }

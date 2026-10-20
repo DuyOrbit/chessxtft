@@ -226,6 +226,35 @@ if ($action === 'register') {
         unset($userObj['password']);
         echo json_encode(['ok' => true, 'user' => $userObj], JSON_UNESCAPED_UNICODE);
         exit;
+    } else {
+        $users = readJsonFallback('users.json', []);
+        $cleanUser = strtolower($username);
+        foreach ($users as $u) {
+            if (strtolower($u['username']) === $cleanUser) {
+                echo json_encode(['ok' => false, 'msg' => 'Tên đăng nhập này đã tồn tại!']);
+                exit;
+            }
+        }
+        $newUser = [
+            'id' => 'u_' . time() . '_' . rand(100, 999),
+            'username' => $cleanUser,
+            'password' => $password,
+            'displayName' => $displayName ?: $username,
+            'role' => 'player',
+            'avatar' => $avatar ?: '♟️',
+            'createdAt' => date('c'),
+            'stats' => ['gamesPlayed' => 0, 'top1Count' => 0, 'top4Count' => 0, 'elo' => 1000],
+            'customModifiers' => [
+                'startingHp' => 100, 'startingGold' => 6, 'startingLevel' => 3,
+                'extraClockSeconds' => 0, 'bonusItems' => ['stun_hammer', 'burn_cloak'], 'isBanned' => false
+            ]
+        ];
+        $users[] = $newUser;
+        writeJsonFallback('users.json', $users);
+        $safe = $newUser;
+        unset($safe['password']);
+        echo json_encode(['ok' => true, 'user' => $safe], JSON_UNESCAPED_UNICODE);
+        exit;
     }
 }
 
@@ -252,6 +281,28 @@ if ($action === 'login') {
         unset($userObj['password']);
         echo json_encode(['ok' => true, 'user' => $userObj], JSON_UNESCAPED_UNICODE);
         exit;
+    } else {
+        $users = readJsonFallback('users.json', []);
+        $cleanUser = strtolower($username);
+        $found = null;
+        foreach ($users as $u) {
+            if (strtolower($u['username']) === $cleanUser && (string)$u['password'] === (string)$password) {
+                $found = $u;
+                break;
+            }
+        }
+        if (!$found) {
+            echo json_encode(['ok' => false, 'msg' => 'Sai tên đăng nhập hoặc mật khẩu!']);
+            exit;
+        }
+        if (!empty($found['customModifiers']['isBanned'])) {
+            echo json_encode(['ok' => false, 'msg' => 'Tài khoản này đang bị tạm khóa bởi Admin!']);
+            exit;
+        }
+        $safe = $found;
+        unset($safe['password']);
+        echo json_encode(['ok' => true, 'user' => $safe], JSON_UNESCAPED_UNICODE);
+        exit;
     }
 }
 
@@ -275,7 +326,7 @@ if ($action === 'admin_db') {
 
     echo json_encode([
         'ok' => true,
-        'dbEngine' => $pdo ? 'MySQL (chesstft_db)' : 'JSON',
+        'dbEngine' => $pdo ? 'MySQL (chesstft_db)' : 'JSON Database (db/users.json)',
         'users' => $users,
         'rules' => loadRulesFromDb($pdo),
         'entities' => loadEntitiesFromDb($pdo),
@@ -285,7 +336,7 @@ if ($action === 'admin_db') {
 }
 
 // ============================================================================
-// 5. ADMIN: UPDATE USER ACCOUNT & MODIFIERS IN MYSQL
+// 5. ADMIN: UPDATE USER ACCOUNT & MODIFIERS IN MYSQL / JSON
 // ============================================================================
 if ($action === 'admin_user') {
     $userId = $body['userId'] ?? '';
@@ -320,7 +371,126 @@ if ($action === 'admin_user') {
         $updatedUser = formatUserRow($stmt->fetch());
         echo json_encode(['ok' => true, 'msg' => 'Đã lưu tài khoản vào bảng `users` trong MySQL (phpMyAdmin)!', 'user' => $updatedUser], JSON_UNESCAPED_UNICODE);
         exit;
+    } else {
+        $users = readJsonFallback('users.json', []);
+        $idx = -1;
+        foreach ($users as $i => $u) {
+            if ($u['id'] === $userId) { $idx = $i; break; }
+        }
+        if ($idx === -1) {
+            echo json_encode(['ok' => false, 'msg' => 'Không tìm thấy tài khoản!']);
+            exit;
+        }
+        if (isset($up['displayName'])) $users[$idx]['displayName'] = $up['displayName'];
+        if (isset($up['role'])) $users[$idx]['role'] = $up['role'];
+        if (!empty($up['password'])) $users[$idx]['password'] = $up['password'];
+        if (isset($up['elo'])) $users[$idx]['stats']['elo'] = (int)$up['elo'];
+        if ($mods) {
+            $users[$idx]['customModifiers'] = array_merge($users[$idx]['customModifiers'] ?? [], [
+                'startingHp' => isset($mods['startingHp']) ? (int)$mods['startingHp'] : 100,
+                'startingGold' => isset($mods['startingGold']) ? (int)$mods['startingGold'] : 6,
+                'startingLevel' => isset($mods['startingLevel']) ? (int)$mods['startingLevel'] : 3,
+                'extraClockSeconds' => isset($mods['extraClockSeconds']) ? (int)$mods['extraClockSeconds'] : 0,
+                'bonusItems' => $mods['bonusItems'] ?? ['stun_hammer', 'burn_cloak'],
+                'isBanned' => !empty($mods['isBanned'])
+            ]);
+        }
+        writeJsonFallback('users.json', $users);
+        $safe = $users[$idx];
+        unset($safe['password']);
+        echo json_encode(['ok' => true, 'msg' => "Đã lưu tài khoản {$safe['username']} vào Database!", 'user' => $safe], JSON_UNESCAPED_UNICODE);
+        exit;
     }
+}
+
+// 5b. ADMIN CREATE USER
+if ($action === 'admin_user_create') {
+    $username = strtolower(trim($body['username'] ?? ''));
+    $password = $body['password'] ?? '123';
+    $displayName = trim($body['displayName'] ?? $username);
+    $role = ($body['role'] ?? 'player') === 'admin' ? 'admin' : 'player';
+    $avatar = $body['avatar'] ?? '👤';
+    $elo = (int)($body['elo'] ?? 1000);
+    $mods = $body['customModifiers'] ?? [];
+
+    if (strlen($username) < 2) {
+        echo json_encode(['ok' => false, 'msg' => 'Tên đăng nhập phải từ 2 ký tự trở lên!']);
+        exit;
+    }
+
+    $users = readJsonFallback('users.json', []);
+    foreach ($users as $u) {
+        if (strtolower($u['username']) === $username) {
+            echo json_encode(['ok' => false, 'msg' => "Tên đăng nhập '{$username}' đã tồn tại!"]);
+            exit;
+        }
+    }
+
+    $newId = 'u_' . time() . '_' . rand(100, 999);
+    $newUser = [
+        'id' => $newId,
+        'username' => $username,
+        'password' => $password,
+        'displayName' => $displayName ?: $username,
+        'role' => $role,
+        'avatar' => $avatar,
+        'createdAt' => date('c'),
+        'stats' => ['elo' => $elo, 'gamesPlayed' => 0, 'top1Count' => 0, 'wins' => 0, 'losses' => 0],
+        'customModifiers' => [
+            'startingHp' => (int)($mods['startingHp'] ?? 100),
+            'startingGold' => (int)($mods['startingGold'] ?? 6),
+            'startingLevel' => (int)($mods['startingLevel'] ?? 3),
+            'extraClockSeconds' => (int)($mods['extraClockSeconds'] ?? 0),
+            'bonusItems' => $mods['bonusItems'] ?? ['stun_hammer', 'burn_cloak'],
+            'isBanned' => !empty($mods['isBanned'])
+        ]
+    ];
+    $users[] = $newUser;
+    writeJsonFallback('users.json', $users);
+
+    if ($pdo) {
+        try {
+            $bonusStr = is_array($newUser['customModifiers']['bonusItems']) ? implode(',', $newUser['customModifiers']['bonusItems']) : '';
+            $ins = $pdo->prepare("INSERT INTO users (id, username, password, displayName, role, avatar, elo, gamesPlayed, top1Count, top4Count, startingHp, startingGold, startingLevel, extraClockSeconds, bonusItems, isBanned) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?, ?, ?, ?, ?)");
+            $ins->execute([$newId, $username, $password, $displayName ?: $username, $role, $avatar, $elo, $newUser['customModifiers']['startingHp'], $newUser['customModifiers']['startingGold'], $newUser['customModifiers']['startingLevel'], $newUser['customModifiers']['extraClockSeconds'], $bonusStr, $newUser['customModifiers']['isBanned'] ? 1 : 0]);
+        } catch (Exception $e) {}
+    }
+
+    echo json_encode(['ok' => true, 'msg' => "Đã tạo tài khoản '{$username}' thành công!", 'user' => $newUser, 'users' => $users], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// 5c. ADMIN DELETE USER
+if ($action === 'admin_user_delete') {
+    $userId = $body['userId'] ?? '';
+    if (!$userId) {
+        echo json_encode(['ok' => false, 'msg' => 'Thiếu ID người dùng cần xóa!']);
+        exit;
+    }
+    $users = readJsonFallback('users.json', []);
+    $idx = -1;
+    foreach ($users as $i => $u) {
+        if ($u['id'] === $userId) { $idx = $i; break; }
+    }
+    if ($idx === -1) {
+        echo json_encode(['ok' => false, 'msg' => 'Không tìm thấy tài khoản cần xóa!']);
+        exit;
+    }
+    if ($users[$idx]['username'] === 'admin') {
+        echo json_encode(['ok' => false, 'msg' => 'Không thể xóa tài khoản Admin Tối Thượng!']);
+        exit;
+    }
+    $deleted = array_splice($users, $idx, 1)[0];
+    writeJsonFallback('users.json', $users);
+
+    if ($pdo) {
+        try {
+            $del = $pdo->prepare("DELETE FROM users WHERE id = ?");
+            $del->execute([$userId]);
+        } catch (Exception $e) {}
+    }
+    echo json_encode(['ok' => true, 'msg' => "Đã xóa tài khoản '{$deleted['username']}' khỏi hệ thống!", 'users' => $users], JSON_UNESCAPED_UNICODE);
+    exit;
 }
 
 // ============================================================================

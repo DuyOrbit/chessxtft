@@ -36,6 +36,15 @@ app.all("/api.php", (req, res, next) => {
     } else if (action === "admin_user") {
         req.url = "/api/admin/user";
         req.method = "POST";
+    } else if (action === "admin_user_create") {
+        req.url = "/api/admin/user/create";
+        req.method = "POST";
+    } else if (action === "admin_user_delete") {
+        req.url = "/api/admin/user/delete";
+        req.method = "POST";
+    } else if (action === "admin_seed_defaults") {
+        req.url = "/api/admin/seed_defaults";
+        req.method = "POST";
     } else if (action === "admin_rules") {
         req.url = "/api/admin/rules";
         req.method = "POST";
@@ -95,6 +104,35 @@ function sanitizeUser(u) {
     const copy = { ...u };
     delete copy.password;
     return copy;
+}
+
+function ensureUserInDatabase(user) {
+    if (!user || (!user.username && !user.id)) return;
+    const users = readJSON(FILES.users, []);
+    const cleanUser = String(user.username || user.displayName || user.id).trim().toLowerCase();
+    const existing = users.find(u => u.id === user.id || u.username.toLowerCase() === cleanUser);
+    if (!existing) {
+        const newUser = {
+            id: user.id || `user_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+            username: cleanUser,
+            password: user.password || "123",
+            displayName: user.displayName || user.username || cleanUser,
+            avatar: user.avatar || "👤",
+            role: user.role || "player",
+            createdAt: user.createdAt || new Date().toISOString(),
+            stats: user.stats || { elo: 1000, gamesPlayed: 0, top1Count: 0, wins: 0, losses: 0 },
+            customModifiers: user.customModifiers || {
+                startingHp: 100,
+                startingGold: 6,
+                startingLevel: 3,
+                extraClockSeconds: 0,
+                bonusItems: ["stun_hammer", "burn_cloak"],
+                isBanned: false
+            }
+        };
+        users.push(newUser);
+        writeJSON(FILES.users, users);
+    }
 }
 
 // ============================================================================
@@ -272,6 +310,92 @@ app.post("/api/admin/user", (req, res) => {
 
     writeJSON(FILES.users, users);
     res.json({ ok: true, msg: `Đã cập nhật tài khoản ${u.username}!`, user: sanitizeUser(u) });
+});
+
+app.post("/api/admin/user/create", (req, res) => {
+    const { username, displayName, password, role, elo, avatar, customModifiers } = req.body || {};
+    if (!username || !password) {
+        return res.status(400).json({ ok: false, msg: "Vui lòng nhập Tên đăng nhập và Mật khẩu!" });
+    }
+    const cleanUser = String(username).trim().toLowerCase();
+    const users = readJSON(FILES.users, []);
+    if (users.some(u => u.username.toLowerCase() === cleanUser)) {
+        return res.status(400).json({ ok: false, msg: `Tên đăng nhập '${cleanUser}' đã tồn tại!` });
+    }
+    const newUser = {
+        id: `user_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        username: cleanUser,
+        password: String(password).trim(),
+        displayName: (displayName && String(displayName).trim()) || cleanUser,
+        avatar: avatar || "👤",
+        role: role === "admin" ? "admin" : "player",
+        createdAt: new Date().toISOString(),
+        stats: {
+            elo: Number(elo) || 1000,
+            gamesPlayed: 0,
+            top1Count: 0,
+            wins: 0,
+            losses: 0
+        },
+        customModifiers: {
+            startingHp: Number(customModifiers?.startingHp) || 100,
+            startingGold: Number(customModifiers?.startingGold) || 6,
+            startingLevel: Math.min(8, Math.max(1, Number(customModifiers?.startingLevel) || 3)),
+            extraClockSeconds: Number(customModifiers?.extraClockSeconds) || 0,
+            bonusItems: Array.isArray(customModifiers?.bonusItems) ? customModifiers.bonusItems : ["stun_hammer", "burn_cloak"],
+            isBanned: !!customModifiers?.isBanned
+        }
+    };
+    users.push(newUser);
+    writeJSON(FILES.users, users);
+    res.json({ ok: true, msg: `Đã tạo tài khoản '${cleanUser}' thành công!`, user: sanitizeUser(newUser), users: users.map(sanitizeUser) });
+});
+
+app.post("/api/admin/user/delete", (req, res) => {
+    const { userId } = req.body || {};
+    if (!userId) return res.status(400).json({ ok: false, msg: "Thiếu ID tài khoản cần xóa!" });
+    const users = readJSON(FILES.users, []);
+    const idx = users.findIndex(u => u.id === userId);
+    if (idx === -1) return res.status(404).json({ ok: false, msg: "Không tìm thấy tài khoản cần xóa!" });
+    if (users[idx].username === "admin" || (users[idx].role === "admin" && users.filter(x => x.role === "admin").length <= 1)) {
+        return res.status(400).json({ ok: false, msg: "Không thể xóa tài khoản Admin Tối Thượng duy nhất!" });
+    }
+    const deleted = users.splice(idx, 1)[0];
+    writeJSON(FILES.users, users);
+    res.json({ ok: true, msg: `Đã xóa tài khoản '${deleted.username}' khỏi hệ thống!`, users: users.map(sanitizeUser) });
+});
+
+app.post("/api/admin/seed_defaults", (req, res) => {
+    const defaultAccounts = [
+        { id: "user_admin", username: "admin", password: "123", displayName: "Admin Tối Thượng", avatar: "👑", role: "admin", stats: { elo: 1500, gamesPlayed: 5, top1Count: 3, wins: 18, losses: 4 }, customModifiers: { startingHp: 100, startingGold: 10, startingLevel: 3, extraClockSeconds: 10, bonusItems: ["stun_hammer", "burn_cloak"], isBanned: false } },
+        { id: "user_kithu1", username: "kithu1", password: "123", displayName: "Kỳ Thủ Tiên Phong", avatar: "🦊", role: "player", stats: { elo: 1050, gamesPlayed: 8, top1Count: 2, wins: 12, losses: 6 }, customModifiers: { startingHp: 100, startingGold: 6, startingLevel: 3, extraClockSeconds: 0, bonusItems: ["stun_hammer", "burn_cloak"], isBanned: false } },
+        { id: "user_kithu2", username: "kithu2", password: "123", displayName: "Kỳ Thủ Chiến Lược", avatar: "🐺", role: "player", stats: { elo: 1100, gamesPlayed: 6, top1Count: 1, wins: 9, losses: 5 }, customModifiers: { startingHp: 100, startingGold: 6, startingLevel: 3, extraClockSeconds: 0, bonusItems: ["iron_armor"], isBanned: false } },
+        { id: "user_kithu3", username: "kithu3", password: "123", displayName: "Kỳ Thủ Tinh Anh", avatar: "🦁", role: "player", stats: { elo: 1150, gamesPlayed: 10, top1Count: 3, wins: 15, losses: 7 }, customModifiers: { startingHp: 100, startingGold: 6, startingLevel: 3, extraClockSeconds: 0, bonusItems: ["sniper_scope"], isBanned: false } },
+        { id: "user_kithu4", username: "kithu4", password: "123", displayName: "Kỳ Thủ Bất Bại", avatar: "🐯", role: "player", stats: { elo: 1200, gamesPlayed: 12, top1Count: 4, wins: 20, losses: 8 }, customModifiers: { startingHp: 100, startingGold: 6, startingLevel: 3, extraClockSeconds: 0, bonusItems: ["phase_boots"], isBanned: false } },
+        { id: "user_kithu5", username: "kithu5", password: "123", displayName: "Kỳ Thủ Phù Thủy", avatar: "🧙‍♂️", role: "player", stats: { elo: 1250, gamesPlayed: 9, top1Count: 2, wins: 14, losses: 6 }, customModifiers: { startingHp: 100, startingGold: 6, startingLevel: 3, extraClockSeconds: 0, bonusItems: ["burn_cloak"], isBanned: false } },
+        { id: "user_kithu6", username: "kithu6", password: "123", displayName: "Kỳ Thủ Thiện Xạ", avatar: "🏹", role: "player", stats: { elo: 1300, gamesPlayed: 11, top1Count: 3, wins: 17, losses: 7 }, customModifiers: { startingHp: 100, startingGold: 6, startingLevel: 3, extraClockSeconds: 0, bonusItems: ["sniper_scope"], isBanned: false } },
+        { id: "user_kithu7", username: "kithu7", password: "123", displayName: "Kỳ Thủ Thần Tài", avatar: "🎰", role: "player", stats: { elo: 1350, gamesPlayed: 15, top1Count: 5, wins: 22, losses: 9 }, customModifiers: { startingHp: 100, startingGold: 8, startingLevel: 3, extraClockSeconds: 0, bonusItems: ["stun_hammer"], isBanned: false } },
+        { id: "user_kithu8", username: "kithu8", password: "123", displayName: "Kỳ Thủ Hộ Vệ", avatar: "🛡️", role: "player", stats: { elo: 1400, gamesPlayed: 14, top1Count: 4, wins: 21, losses: 8 }, customModifiers: { startingHp: 100, startingGold: 6, startingLevel: 3, extraClockSeconds: 0, bonusItems: ["iron_armor"], isBanned: false } },
+        { id: "bot_magnus", username: "bot_magnus", password: "123", displayName: "Đại Kiện Tướng Magnus (Bot)", avatar: "🤖", role: "player", stats: { elo: 1800, gamesPlayed: 50, top1Count: 25, wins: 80, losses: 20 }, customModifiers: { startingHp: 100, startingGold: 6, startingLevel: 3, extraClockSeconds: 0, bonusItems: ["phase_boots"], isBanned: false } },
+        { id: "bot_kasparov", username: "bot_kasparov", password: "123", displayName: "Bá Tước Bóng Đêm (Bot)", avatar: "🦇", role: "player", stats: { elo: 1750, gamesPlayed: 45, top1Count: 20, wins: 70, losses: 22 }, customModifiers: { startingHp: 100, startingGold: 6, startingLevel: 3, extraClockSeconds: 0, bonusItems: ["burn_cloak"], isBanned: false } },
+        { id: "bot_frost", username: "bot_frost", password: "123", displayName: "Phù Thủy Băng Giá (Bot)", avatar: "🧙‍♀️", role: "player", stats: { elo: 1650, gamesPlayed: 35, top1Count: 15, wins: 55, losses: 18 }, customModifiers: { startingHp: 100, startingGold: 6, startingLevel: 3, extraClockSeconds: 0, bonusItems: ["stun_hammer"], isBanned: false } },
+        { id: "bot_guardian", username: "bot_guardian", password: "123", displayName: "Hiệp Sĩ Hoàng Gia (Bot)", avatar: "🛡️", role: "player", stats: { elo: 1600, gamesPlayed: 30, top1Count: 12, wins: 48, losses: 16 }, customModifiers: { startingHp: 100, startingGold: 6, startingLevel: 3, extraClockSeconds: 0, bonusItems: ["iron_armor"], isBanned: false } },
+        { id: "bot_sniper", username: "bot_sniper", password: "123", displayName: "Xạ Thủ Tinh Anh (Bot)", avatar: "🏹", role: "player", stats: { elo: 1550, gamesPlayed: 28, top1Count: 10, wins: 42, losses: 15 }, customModifiers: { startingHp: 100, startingGold: 6, startingLevel: 3, extraClockSeconds: 0, bonusItems: ["sniper_scope"], isBanned: false } },
+        { id: "bot_fortune", username: "bot_fortune", password: "123", displayName: "Đạo Tặc Thần Bài (Bot)", avatar: "🎰", role: "player", stats: { elo: 1500, gamesPlayed: 25, top1Count: 8, wins: 38, losses: 14 }, customModifiers: { startingHp: 100, startingGold: 10, startingLevel: 3, extraClockSeconds: 0, bonusItems: ["stun_hammer"], isBanned: false } },
+        { id: "bot_martin", username: "bot_martin", password: "123", displayName: "Kỳ Thủ Martin (Bot)", avatar: "♟️", role: "player", stats: { elo: 1200, gamesPlayed: 20, top1Count: 4, wins: 25, losses: 12 }, customModifiers: { startingHp: 100, startingGold: 6, startingLevel: 3, extraClockSeconds: 0, bonusItems: [], isBanned: false } }
+    ];
+
+    const currentUsers = readJSON(FILES.users, []);
+    let addedCount = 0;
+    for (const def of defaultAccounts) {
+        const found = currentUsers.find(u => u.username.toLowerCase() === def.username.toLowerCase());
+        if (!found) {
+            currentUsers.push({ ...def, createdAt: new Date().toISOString() });
+            addedCount++;
+        }
+    }
+    writeJSON(FILES.users, currentUsers);
+    res.json({ ok: true, msg: `Đã nạp bổ sung ${addedCount} tài khoản chuẩn vào Database! Tổng số: ${currentUsers.length} tài khoản.`, users: currentUsers.map(sanitizeUser) });
 });
 
 app.post("/api/admin/rules", (req, res) => {
@@ -499,6 +623,7 @@ io.on("connection", (socket) => {
             avatar: isSpectator ? "🎙️" : "👑",
             stats: { elo: 1000 }
         };
+        ensureUserInDatabase(freshUser);
 
         const room = {
             code,
@@ -563,6 +688,7 @@ io.on("connection", (socket) => {
             avatar: asSpectator ? "👁️" : "👑",
             stats: { elo: 1000 }
         };
+        ensureUserInDatabase(freshUser);
 
         if (asSpectator) {
             if (!room.spectators) room.spectators = [];

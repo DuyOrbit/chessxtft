@@ -1927,6 +1927,40 @@ class ChessTFTApp {
             document.getElementById("modal-admin-db").classList.add("hidden");
         });
 
+        const searchInput = document.getElementById("admin-user-search");
+        if (searchInput) {
+            searchInput.addEventListener("input", () => {
+                this.renderAdminUsersTab();
+            });
+        }
+
+        const addBtn = document.getElementById("btn-admin-add-user");
+        if (addBtn) {
+            addBtn.addEventListener("click", () => {
+                this.adminUserCreateMode = true;
+                this.renderAdminUsersTab();
+            });
+        }
+
+        const resetBtn = document.getElementById("btn-admin-reset-users");
+        if (resetBtn) {
+            resetBtn.addEventListener("click", async () => {
+                try {
+                    const res = await fetch("api.php?action=admin_seed_defaults", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" }
+                    });
+                    const data = await res.json();
+                    if (data.ok) {
+                        this.showToast(data.msg || "Đã nạp bổ sung các tài khoản chuẩn!", "success");
+                        this.openAdminDatabaseModal();
+                    }
+                } catch (e) {
+                    this.showToast("Không thể kết nối đến máy chủ!", "warn");
+                }
+            });
+        }
+
         document.querySelectorAll(".admin-tab").forEach(tab => {
             tab.addEventListener("click", () => {
                 document.querySelectorAll(".admin-tab").forEach(t => t.classList.remove("active"));
@@ -1962,30 +1996,188 @@ class ChessTFTApp {
 
     renderAdminUsersTab() {
         const listEl = document.getElementById("admin-users-list");
+        if (!listEl) return;
         listEl.innerHTML = "";
         if (!this.adminDbCache || !this.adminDbCache.users) return;
 
-        if (!this.selectedAdminUserId && this.adminDbCache.users.length > 0) {
-            this.selectedAdminUserId = this.adminDbCache.users[0].id;
+        const allUsers = this.adminDbCache.users;
+        const searchInput = document.getElementById("admin-user-search");
+        const query = (searchInput?.value || "").trim().toLowerCase();
+
+        const filtered = query
+            ? allUsers.filter(u =>
+                (u.username && u.username.toLowerCase().includes(query)) ||
+                (u.displayName && u.displayName.toLowerCase().includes(query))
+              )
+            : allUsers;
+
+        const countEl = document.getElementById("admin-users-count");
+        if (countEl) countEl.textContent = `${filtered.length}/${allUsers.length}`;
+
+        if (!this.adminUserCreateMode && !this.selectedAdminUserId && filtered.length > 0) {
+            this.selectedAdminUserId = filtered[0].id;
         }
 
-        for (const u of this.adminDbCache.users) {
-            const item = document.createElement("div");
-            item.className = `admin-list-item ${this.selectedAdminUserId === u.id ? "active" : ""}`;
-            item.innerHTML = `
-                <span>${u.avatar || "👤"} ${u.displayName} (<code>${u.username}</code>)</span>
-                <span class="badge-pill">${u.role}</span>
+        if (filtered.length === 0) {
+            listEl.innerHTML = `<div class="empty-hint" style="font-size:0.75rem;">Không tìm thấy tài khoản nào khớp với "${query}".</div>`;
+        } else {
+            for (const u of filtered) {
+                const item = document.createElement("div");
+                const isSelected = (!this.adminUserCreateMode) && (this.selectedAdminUserId === u.id);
+                item.className = `admin-list-item ${isSelected ? "active" : ""}`;
+                item.innerHTML = `
+                    <span>${u.avatar || "👤"} ${u.displayName} (<code>${u.username}</code>)</span>
+                    <span class="badge-pill" style="font-size:0.65rem;">${u.role}</span>
+                `;
+                item.addEventListener("click", () => {
+                    this.adminUserCreateMode = false;
+                    this.selectedAdminUserId = u.id;
+                    this.renderAdminUsersTab();
+                });
+                listEl.appendChild(item);
+            }
+        }
+
+        const editor = document.getElementById("admin-user-editor");
+        if (!editor) return;
+
+        // MODE 1: CREATE NEW USER
+        if (this.adminUserCreateMode) {
+            const allItemsHtml = Object.values(window.CHESS_TFT_DATA.ITEMS).map(it => `
+                <label class="checkbox-label">
+                    <input type="checkbox" class="adm-new-user-item-chk" value="${it.id}" />
+                    <span>${it.icon} ${it.name}</span>
+                </label>
+            `).join("");
+
+            editor.innerHTML = `
+                <div class="lobby-box-title" style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>➕ Tạo Mới Tài Khoản Kỳ Thủ</span>
+                    <button id="btn-cancel-create-user" class="btn-sm-admin" style="background:#475569;">Quay Lại Sửa</button>
+                </div>
+                <div class="admin-grid-2">
+                    <div class="form-group">
+                        <label>Tên đăng nhập (Username) *</label>
+                        <input type="text" id="adm-new-username" placeholder="VD: kithu9, pro_player..." />
+                    </div>
+                    <div class="form-group">
+                        <label>Tên hiển thị (DisplayName)</label>
+                        <input type="text" id="adm-new-display" placeholder="VD: Kỳ Thủ Đại Sư..." />
+                    </div>
+                    <div class="form-group">
+                        <label>Mật khẩu ban đầu</label>
+                        <input type="text" id="adm-new-pass" value="123" />
+                    </div>
+                    <div class="form-group">
+                        <label>Quyền hạn (Role)</label>
+                        <select id="adm-new-role" class="lobby-select">
+                            <option value="player" selected>Player (Kỳ thủ thi đấu)</option>
+                            <option value="admin">Admin (Quản trị viên)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Avatar Biểu tượng</label>
+                        <input type="text" id="adm-new-avatar" value="👤" />
+                    </div>
+                    <div class="form-group">
+                        <label>Điểm Xếp Hạng (ELO)</label>
+                        <input type="number" id="adm-new-elo" value="1000" />
+                    </div>
+                </div>
+
+                <div class="panel-section-title" style="margin-top:8px;">⚡ Can Thiệp Chỉ Số Khởi Đầu Khi Vào Trận</div>
+                <div class="admin-grid-2">
+                    <div class="form-group">
+                        <label>❤️ Máu Linh Hồn Khởi Đầu</label>
+                        <input type="number" id="adm-new-hp" value="100" />
+                    </div>
+                    <div class="form-group">
+                        <label>🪙 Vàng Khởi Đầu Ván Đấu</label>
+                        <input type="number" id="adm-new-gold" value="6" />
+                    </div>
+                    <div class="form-group">
+                        <label>⬆️ Cấp Độ Khởi Đầu (3 -> 8)</label>
+                        <input type="number" id="adm-new-level" min="3" max="8" value="3" />
+                    </div>
+                    <div class="form-group">
+                        <label>⏱️ Cộng Giây Cờ Chớp</label>
+                        <input type="number" id="adm-new-clock" value="0" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>🎒 Trang Bị Tặng Sẵn Đầu Trận:</label>
+                    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:4px;">${allItemsHtml}</div>
+                </div>
+
+                <div style="margin-top:10px;">
+                    <button id="btn-submit-create-user" class="btn-combat-go">➕ Lưu Tài Khoản Mới Vào Database</button>
+                </div>
             `;
-            item.addEventListener("click", () => {
-                this.selectedAdminUserId = u.id;
+
+            document.getElementById("btn-cancel-create-user")?.addEventListener("click", () => {
+                this.adminUserCreateMode = false;
                 this.renderAdminUsersTab();
             });
-            listEl.appendChild(item);
+
+            document.getElementById("btn-submit-create-user")?.addEventListener("click", async () => {
+                const username = document.getElementById("adm-new-username").value.trim();
+                const displayName = document.getElementById("adm-new-display").value.trim();
+                const password = document.getElementById("adm-new-pass").value.trim();
+                const role = document.getElementById("adm-new-role").value;
+                const avatar = document.getElementById("adm-new-avatar").value.trim() || "👤";
+                const elo = Number(document.getElementById("adm-new-elo").value) || 1000;
+                const selectedItems = Array.from(editor.querySelectorAll(".adm-new-user-item-chk:checked")).map(c => c.value);
+
+                if (!username || !password) {
+                    this.showToast("Vui lòng điền đầy đủ Tên đăng nhập và Mật khẩu!", "warn");
+                    return;
+                }
+
+                try {
+                    const res = await fetch("api.php?action=admin_user_create", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            username,
+                            displayName,
+                            password,
+                            role,
+                            avatar,
+                            elo,
+                            customModifiers: {
+                                startingHp: Number(document.getElementById("adm-new-hp").value) || 100,
+                                startingGold: Number(document.getElementById("adm-new-gold").value) || 6,
+                                startingLevel: Number(document.getElementById("adm-new-level").value) || 3,
+                                extraClockSeconds: Number(document.getElementById("adm-new-clock").value) || 0,
+                                bonusItems: selectedItems,
+                                isBanned: false
+                            }
+                        })
+                    });
+                    const data = await res.json();
+                    if (data.ok) {
+                        this.showToast(data.msg || "Đã tạo tài khoản thành công!", "success");
+                        this.adminUserCreateMode = false;
+                        this.selectedAdminUserId = data.user?.id;
+                        this.openAdminDatabaseModal();
+                    } else {
+                        this.showToast(data.msg || "Tạo tài khoản thất bại!", "warn");
+                    }
+                } catch (e) {
+                    this.showToast("Lỗi khi kết nối đến server!", "warn");
+                }
+            });
+
+            return;
         }
 
-        const user = this.adminDbCache.users.find(u => u.id === this.selectedAdminUserId);
-        const editor = document.getElementById("admin-user-editor");
-        if (!user) return;
+        // MODE 2: EDIT EXISTING USER
+        const user = allUsers.find(u => u.id === this.selectedAdminUserId) || filtered[0];
+        if (!user) {
+            editor.innerHTML = `<div class="empty-hint">Chưa chọn tài khoản nào để chỉnh sửa.</div>`;
+            return;
+        }
 
         const mods = user.customModifiers || {};
         const ownedItems = new Set(mods.bonusItems || []);
@@ -1996,8 +2188,13 @@ class ChessTFTApp {
             </label>
         `).join("");
 
+        const isMainAdmin = user.username === "admin";
+
         editor.innerHTML = `
-            <div class="lobby-box-title">Chỉnh Sửa Tài Khoản: ${user.username}</div>
+            <div class="lobby-box-title" style="display:flex; justify-content:space-between; align-items:center;">
+                <span>Chỉnh Sửa Tài Khoản: <code>${user.username}</code> (${user.displayName})</span>
+                ${isMainAdmin ? `<span class="badge-role-tag">👑 TỐI CAO</span>` : `<button id="btn-delete-admin-user" class="btn-delete-admin-user">🗑️ Xóa Tài Khoản</button>`}
+            </div>
             <div class="admin-grid-2">
                 <div class="form-group">
                     <label>Tên hiển thị</label>
@@ -2053,7 +2250,7 @@ class ChessTFTApp {
             <button id="btn-save-admin-user" class="btn-combat-go">💾 Lưu Tài Khoản Vào Database (MySQL users / JSON)</button>
         `;
 
-        document.getElementById("btn-save-admin-user").addEventListener("click", async () => {
+        document.getElementById("btn-save-admin-user")?.addEventListener("click", async () => {
             const selectedItems = Array.from(editor.querySelectorAll(".adm-user-item-chk:checked")).map(c => c.value);
             const updates = {
                 displayName: document.getElementById("adm-u-display").value.trim(),
@@ -2084,6 +2281,27 @@ class ChessTFTApp {
                     this.renderLobbyHeader();
                 }
                 this.openAdminDatabaseModal();
+            }
+        });
+
+        document.getElementById("btn-delete-admin-user")?.addEventListener("click", async () => {
+            if (!confirm(`Bạn có chắc chắn muốn xóa tài khoản '${user.username}' khỏi hệ thống?`)) return;
+            try {
+                const res = await fetch("api.php?action=admin_user_delete", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ userId: user.id })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    this.showToast(data.msg, "info");
+                    this.selectedAdminUserId = null;
+                    this.openAdminDatabaseModal();
+                } else {
+                    this.showToast(data.msg || "Không thể xóa tài khoản!", "warn");
+                }
+            } catch (e) {
+                this.showToast("Lỗi khi kết nối đến máy chủ!", "warn");
             }
         });
     }

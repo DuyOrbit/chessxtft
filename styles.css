@@ -2069,6 +2069,61 @@ button {
     overflow-y: auto;
 }
 
+.btn-sm-admin {
+    background: rgba(56, 189, 248, 0.18);
+    border: 1px solid rgba(56, 189, 248, 0.5);
+    color: #e0f2fe;
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-sm-admin:hover {
+    background: rgba(56, 189, 248, 0.35);
+    border-color: #38bdf8;
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.admin-search-input {
+    width: 100%;
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: #fff;
+    font-size: 0.8rem;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.admin-search-input:focus {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+}
+
+.btn-delete-admin-user {
+    background: rgba(239, 68, 68, 0.18);
+    border: 1px solid rgba(239, 68, 68, 0.6);
+    color: #fca5a5;
+    padding: 9px 16px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-delete-admin-user:hover {
+    background: rgba(239, 68, 68, 0.35);
+    border-color: #ef4444;
+    color: #fff;
+}
+
 .admin-list-item {
     background: var(--bg-panel-alt);
     border: 1px solid var(--border-color);

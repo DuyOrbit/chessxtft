@@ -717,7 +717,14 @@
             <div id="admin-panel-users" class="admin-tab-body">
                 <div class="admin-split">
                     <div>
-                        <div class="panel-section-title">Danh Sách Tài Khoản</div>
+                        <div class="panel-section-title" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <span>Danh Sách Kỳ Thủ <span id="admin-users-count" class="badge-pill" style="font-size:0.75rem; margin-left:4px;">0</span></span>
+                            <div style="display:flex; gap:5px;">
+                                <button id="btn-admin-add-user" class="btn-sm-admin" title="Tạo tài khoản người chơi mới">➕ Thêm</button>
+                                <button id="btn-admin-reset-users" class="btn-sm-admin" title="Khôi phục đủ 8 kỳ thủ mẫu">🔄 8 Ghế Mẫu</button>
+                            </div>
+                        </div>
+                        <input type="text" id="admin-user-search" placeholder="🔍 Tìm username / tên kỳ thủ..." class="admin-search-input" />
                         <div id="admin-users-list" class="admin-list"></div>
                     </div>
                     <div id="admin-user-editor" class="admin-editor-box">

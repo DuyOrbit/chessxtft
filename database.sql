@@ -36,8 +36,22 @@ CREATE TABLE IF NOT EXISTS `users` (
 
 INSERT INTO `users` (`id`, `username`, `password`, `displayName`, `role`, `avatar`, `elo`, `gamesPlayed`, `top1Count`, `top4Count`, `startingHp`, `startingGold`, `startingLevel`, `extraClockSeconds`, `bonusItems`, `isBanned`)
 VALUES
-  ('u_admin', 'admin', '123', 'GM Tối Cao (Admin)', 'admin', '👑', 1500, 12, 6, 10, 100, 6, 3, 0, '', 0),
-  ('u_demo1', 'kithu1', '123', 'Kỳ Thủ Tiên Phong', 'player', '⚔️', 1050, 5, 1, 3, 100, 6, 3, 0, '', 0)
+  ('u_admin', 'admin', '123', 'GM Tối Cao (Admin)', 'admin', '👑', 1500, 12, 6, 10, 100, 10, 3, 10, 'stun_hammer,burn_cloak', 0),
+  ('u_kithu1', 'kithu1', '123', 'Kỳ Thủ Tiên Phong', 'player', '🦊', 1050, 8, 2, 4, 100, 6, 3, 0, 'stun_hammer,burn_cloak', 0),
+  ('u_kithu2', 'kithu2', '123', 'Kỳ Thủ Chiến Lược', 'player', '🐺', 1100, 6, 1, 3, 100, 6, 3, 0, 'iron_armor', 0),
+  ('u_kithu3', 'kithu3', '123', 'Kỳ Thủ Tinh Anh', 'player', '🦁', 1150, 10, 3, 5, 100, 6, 3, 0, 'sniper_scope', 0),
+  ('u_kithu4', 'kithu4', '123', 'Kỳ Thủ Bất Bại', 'player', '🐯', 1200, 12, 4, 7, 100, 6, 3, 0, 'phase_boots', 0),
+  ('u_kithu5', 'kithu5', '123', 'Kỳ Thủ Phù Thủy', 'player', '🧙‍♂️', 1250, 9, 2, 4, 100, 6, 3, 0, 'burn_cloak', 0),
+  ('u_kithu6', 'kithu6', '123', 'Kỳ Thủ Thiện Xạ', 'player', '🏹', 1300, 11, 3, 6, 100, 6, 3, 0, 'sniper_scope', 0),
+  ('u_kithu7', 'kithu7', '123', 'Kỳ Thủ Thần Tài', 'player', '🎰', 1350, 15, 5, 8, 100, 8, 3, 0, 'stun_hammer', 0),
+  ('u_kithu8', 'kithu8', '123', 'Kỳ Thủ Hộ Vệ', 'player', '🛡️', 1400, 14, 4, 7, 100, 6, 3, 0, 'iron_armor', 0),
+  ('u_bot_magnus', 'bot_magnus', '123', 'Đại Kiện Tướng Magnus (Bot)', 'player', '🤖', 1800, 50, 25, 38, 100, 6, 3, 0, 'phase_boots', 0),
+  ('u_bot_kasparov', 'bot_kasparov', '123', 'Bá Tước Bóng Đêm (Bot)', 'player', '🦇', 1750, 45, 20, 32, 100, 6, 3, 0, 'burn_cloak', 0),
+  ('u_bot_frost', 'bot_frost', '123', 'Phù Thủy Băng Giá (Bot)', 'player', '🧙‍♀️', 1650, 35, 15, 25, 100, 6, 3, 0, 'stun_hammer', 0),
+  ('u_bot_guardian', 'bot_guardian', '123', 'Hiệp Sĩ Hoàng Gia (Bot)', 'player', '🛡️', 1600, 30, 12, 22, 100, 6, 3, 0, 'iron_armor', 0),
+  ('u_bot_sniper', 'bot_sniper', '123', 'Xạ Thủ Tinh Anh (Bot)', 'player', '🏹', 1550, 28, 10, 19, 100, 6, 3, 0, 'sniper_scope', 0),
+  ('u_bot_fortune', 'bot_fortune', '123', 'Đạo Tặc Thần Bài (Bot)', 'player', '🎰', 1500, 25, 8, 17, 100, 10, 3, 0, 'stun_hammer', 0),
+  ('u_bot_martin', 'bot_martin', '123', 'Kỳ Thủ Martin (Bot)', 'player', '♟️', 1200, 20, 4, 11, 100, 6, 3, 0, '', 0)
 ON DUPLICATE KEY UPDATE `username` = VALUES(`username`);
 
 -- ============================================================================
