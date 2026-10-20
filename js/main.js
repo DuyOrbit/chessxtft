@@ -19,17 +19,17 @@ class SoundFX {
             expedition33: {
                 name: "Clair Obscur: Expedition 33",
                 tracks: {
-                    title: "assets/audio/expedition33_title.webm",
-                    lobby: "assets/audio/expedition33_lobby.webm",
-                    prep: "assets/audio/expedition33_prep.webm",
-                    combat: "assets/audio/expedition33_combat.webm",
+                    title: "assets/audio/expedition33_lumiere.webm",
+                    lobby: "assets/audio/expedition33_beneath_the_blue_tree.webm",
+                    prep: "assets/audio/expedition33_monoco.webm",
+                    combat: "assets/audio/expedition33_clea.webm",
                     combat_climax: "assets/audio/expedition33_combat_climax.webm"
                 },
                 names: {
                     title: "Lumière (Expedition 33)",
-                    lobby: "Spring Meadows - Linen and Cotton",
-                    prep: "Yellow Forest - Number the Hours",
-                    combat: "Spring Meadows - Get Up! For Lumière!",
+                    lobby: "Spring Meadows - Beneath the Blue Tree",
+                    prep: "Monoco (Expedition 33)",
+                    combat: "The Manor - Clea!",
                     combat_climax: "Forgotten Battlefield - Divided Swords"
                 }
             },
