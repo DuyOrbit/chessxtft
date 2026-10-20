@@ -467,13 +467,22 @@
 
                 <!-- TFT SHOP CONSOLE (TRẢI NGANG DƯỚI ĐÁY BÀN CỜ) -->
                 <div class="shop-container">
-                    <!-- TỶ LỆ RA TƯỚNG THEO TIER (SHOP ODDS BAR) -->
+                    <!-- TỶ LỆ RA TƯỚNG THEO TIER & PHÍM TẮT TFT -->
                     <div id="shop-odds-bar" class="shop-odds-bar">
-                        <span class="odds-item tier-1" title="Tướng 1 Vàng"><span class="odds-dot" style="background:#94a3b8;"></span> <span id="odds-tier-1">70%</span></span>
-                        <span class="odds-item tier-2" title="Tướng 2 Vàng"><span class="odds-dot" style="background:#22c55e;"></span> <span id="odds-tier-2">25%</span></span>
-                        <span class="odds-item tier-3" title="Tướng 3 Vàng"><span class="odds-dot" style="background:#3b82f6;"></span> <span id="odds-tier-3">5%</span></span>
-                        <span class="odds-item tier-4" title="Tướng 4 Vàng"><span class="odds-dot" style="background:#a855f7;"></span> <span id="odds-tier-4">0%</span></span>
-                        <span class="odds-item tier-5" title="Tướng 5 Vàng"><span class="odds-dot" style="background:#eab308;"></span> <span id="odds-tier-5">0%</span></span>
+                        <div class="odds-list">
+                            <span class="odds-item tier-1" title="Tướng 1 Vàng"><span class="odds-dot" style="background:#94a3b8;"></span> <span id="odds-tier-1">70%</span></span>
+                            <span class="odds-item tier-2" title="Tướng 2 Vàng"><span class="odds-dot" style="background:#22c55e;"></span> <span id="odds-tier-2">25%</span></span>
+                            <span class="odds-item tier-3" title="Tướng 3 Vàng"><span class="odds-dot" style="background:#3b82f6;"></span> <span id="odds-tier-3">5%</span></span>
+                            <span class="odds-item tier-4" title="Tướng 4 Vàng"><span class="odds-dot" style="background:#a855f7;"></span> <span id="odds-tier-4">0%</span></span>
+                            <span class="odds-item tier-5" title="Tướng 5 Vàng"><span class="odds-dot" style="background:#eab308;"></span> <span id="odds-tier-5">0%</span></span>
+                        </div>
+                        <div class="shop-hotkeys-inline">
+                            <span class="hk-chip" title="Phím D: Đổi lại 5 thẻ cờ trong Shop (2 Vàng)"><kbd class="hk-key">D</kbd> Đổi Shop</span>
+                            <span class="hk-chip" title="Phím F: Mua 4 Kinh Nghiệm để tăng Cấp (4 Vàng)"><kbd class="hk-key">F</kbd> Mua XP</span>
+                            <span class="hk-chip" title="Phím E: Bán nhanh quân cờ đang trỏ chuột hoặc đang chọn"><kbd class="hk-key">E</kbd> Bán Tướng</span>
+                            <span class="hk-chip" title="Phím W: Đưa tướng lên sân đấu hoặc thu hồi về hàng chờ"><kbd class="hk-key">W</kbd> Đổi Chỗ</span>
+                            <span class="hk-chip" title="Phím X: Khóa/Mở Khóa cửa hàng giữ bài qua vòng sau"><kbd class="hk-key">X</kbd> Khóa Shop</span>
+                        </div>
                     </div>
 
                     <!-- TFT PRO ECONOMY & LEVEL BAR -->
@@ -490,12 +499,18 @@
                                 </div>
                             </div>
                             <div class="hud-btn-stack">
-                                <button id="btn-buy-xp" class="btn-tft-xp" title="Mua 4 điểm kinh nghiệm với 4 vàng">
-                                    <span class="xp-btn-title">⬆️ MUA XP</span>
+                                <button id="btn-buy-xp" class="btn-tft-xp" title="Mua 4 điểm kinh nghiệm với 4 vàng (Phím tắt: F)">
+                                    <div class="hud-btn-main">
+                                        <span class="xp-btn-title">⬆️ MUA XP</span>
+                                        <span class="hud-keybind-badge">F</span>
+                                    </div>
                                     <span class="xp-btn-cost">4 🪙</span>
                                 </button>
-                                <button id="btn-reroll" class="btn-tft-reroll" title="Làm mới 5 quân cờ trong cửa hàng">
-                                    <span class="reroll-btn-title">🎲 ĐỔI LẠI</span>
+                                <button id="btn-reroll" class="btn-tft-reroll" title="Làm mới 5 quân cờ trong cửa hàng (Phím tắt: D)">
+                                    <div class="hud-btn-main">
+                                        <span class="reroll-btn-title">🎲 ĐỔI LẠI</span>
+                                        <span class="hud-keybind-badge">D</span>
+                                    </div>
                                     <span id="reroll-cost-label" class="reroll-btn-cost">2 🪙</span>
                                 </button>
                             </div>
@@ -515,8 +530,9 @@
                                 <span id="hud-streak-badge" class="hud-pill streak-pill">🔥 Chuỗi 0</span>
                             </div>
                             <div style="display:flex; gap:6px; margin-top:4px;">
-                                <button id="btn-lock-shop" class="btn-tft-lock" title="Khóa cửa hàng lại cho vòng sau">
+                                <button id="btn-lock-shop" class="btn-tft-lock" title="Khóa cửa hàng lại cho vòng sau (Phím tắt: X)">
                                     <span id="btn-lock-icon">🔓</span>
+                                    <span class="hud-keybind-badge lock-keybind">X</span>
                                 </button>
                                 <button id="btn-start-combat" class="btn-combat-go" style="padding: 6px 14px; font-size:0.85rem;">⚔️ VÀO TRẬN</button>
                             </div>

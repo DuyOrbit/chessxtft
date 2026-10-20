@@ -61,20 +61,25 @@ f:\chesstft\
    - Đồng bộ vòng đấu (Multiplayer Sync): Tất cả người chơi trong phòng phải hoàn tất giao tranh vòng hiện tại thì mới cùng qua vòng tiếp theo.
 3. **Huấn Luyện Viên Martin (Interactive Tutorial)**:
    - Chế độ hướng dẫn tương tác 4 bước giúp người chơi mới làm quen với việc mua tướng, dàn trận và kích hoạt tộc hệ.
+4. **Phím Tắt Nhanh Chuẩn TFT (Keyboard Shortcuts D/F/E/W/X)**:
+   - Phím `D`: Đổi lại 5 thẻ bài trong Cửa Hàng (Reroll, tốn 2 Vàng hoặc dùng Free Reroll từ Chuỗi Thua).
+   - Phím `F`: Mua 4 điểm kinh nghiệm (XP) để thăng cấp sàn đấu (tốn 4 Vàng).
+   - Phím `E`: Bán nhanh quân cờ đang trỏ chuột vào (hoặc quân đang chọn) và hoàn trả Vàng chuẩn theo số sao.
+   - Phím `W`: Đưa nhanh tướng từ Hàng Chờ lên sàn đấu (ưu tiên ô trống tại sân nhà) / Thu hồi tướng từ sân về Hàng Chờ.
+   - Phím `X` hoặc click nút Khóa: Bật/Tắt Khóa Cửa Hàng (Lock Shop 🔒).
+   - Dải phím tắt trực quan & Badges ký hiệu phím hiển thị đồng bộ trên thanh Shop HUD.
+5. **Khóa Cửa Hàng (Lock Shop 🔒)**:
+   - Nút Khóa Shop trên thanh kinh tế HUD hiển thị trạng thái phát sáng viền hổ phách hoàng gia (Amber Gold Pulse).
+   - Dải nhãn cảnh báo `🔒 SHOP ĐÃ KHÓA (GIỮ CHO VÒNG SAU)` hiển thị trên khung thẻ bài.
+   - Khi chuyển hiệp mới (`nextRound`), engine TFT tự động giữ nguyên 5 thẻ bài và thông báo Toast mở khóa cho kỳ thủ.
 
 ---
 
 ## 🚀 5. Roadmap Nâng Cao Trải Nghiệm Người Dùng (UX) Đang Chờ Triển Khai
-1. **Phím Tắt Nhanh Chuẩn TFT (Keyboard Shortcuts)**:
-   - Phím `D`: Đổi lại cửa hàng (Reroll).
-   - Phím `F`: Mua 4 XP.
-   - Phím `E`: Bán nhanh quân cờ đang trỏ chuột vào.
-   - Phím `W`: Đưa tướng từ Hàng Chờ lên sàn / thu hồi về.
-2. **Khóa Cửa Hàng (Lock Shop 🔒)**: Giữ nguyên thẻ cờ cho hiệp sau khi đang thiếu tiền.
-3. **Hiệu Ứng Số Sát Thương Bay (Floating Damage Numbers & Hit Flash)**: Chém nảy số `-25`, `-50 💥` và nháy đỏ viền tướng.
-4. **Kéo Thả Trực Quan (Drag & Drop)**: Hỗ trợ song song cả kéo-thả lẫn click-to-move.
-5. **Âm Thanh Riêng Cho Từng Quân Cờ (Piece SFX)**: Tiếng vó ngựa, tiếng tên bắn, tiếng sét ma thuật.
-6. **Combat DPS Meter**: Biểu đồ thống kê sát thương chi tiết sau mỗi hiệp.
+1. **Hiệu Ứng Số Sát Thương Bay (Floating Damage Numbers & Hit Flash)**: Chém nảy số `-25`, `-50 💥` và nháy đỏ viền tướng.
+2. **Kéo Thả Trực Quan (Drag & Drop)**: Hỗ trợ song song cả kéo-thả lẫn click-to-move.
+3. **Âm Thanh Riêng Cho Từng Quân Cờ (Piece SFX)**: Tiếng vó ngựa, tiếng tên bắn, tiếng sét ma thuật.
+4. **Combat DPS Meter**: Biểu đồ thống kê sát thương chi tiết sau mỗi hiệp.
 
 ---
 

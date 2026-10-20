@@ -158,6 +158,9 @@ class ChessTFTApp {
         this.selectedItemIndex = null;
         this.selectedCombatSquare = null;
         this.validCombatActions = [];
+        this.hoveredUnit = null; // { type: 'board'|'bench', unit, r, c, slotIndex, uid }
+        this.hoveredCell = null; // { r, c }
+        this.hoveredBenchSlot = null; // index 0..7
 
         // Blitz timers (in seconds)
         this.playerClock = 45;
@@ -2595,37 +2598,262 @@ class ChessTFTApp {
         return card;
     }
 
-    bindStaticEvents() {
-        document.getElementById("btn-reroll").addEventListener("click", () => {
-            if (this.tft.phase !== "prep") {
-                this.showToast("Chỉ có thể đổi Shop trong giai đoạn Chuẩn Bị!", "warn");
+    // ========================================================================
+    // TFT HOTKEY ACTIONS (D / F / E / W / X) & LOCK SHOP
+    // ========================================================================
+    handleHotkeyReroll() {
+        const gameScreen = document.getElementById("screen-game");
+        if (!gameScreen || gameScreen.classList.contains("hidden")) return;
+
+        if (this.tft.phase !== "prep") {
+            this.showToast("Chỉ có thể đổi Shop trong giai đoạn Chuẩn Bị!", "warn");
+            return;
+        }
+
+        const hadFree = (this.tft.player.freeRerolls || 0) > 0;
+        if (this.tft.rollShop(false)) {
+            this.sfx.move();
+            if (hadFree) {
+                this.showToast(`🎁 Đã dùng 1 lượt Đổi Shop MIỄN PHÍ [D]! Còn lại: ${this.tft.player.freeRerolls || 0}`, "success");
+            }
+            this.renderAll();
+            this.syncMyStateToRoom();
+
+            const btn = document.getElementById("btn-reroll");
+            if (btn) {
+                btn.classList.add("btn-key-pressed");
+                setTimeout(() => btn.classList.remove("btn-key-pressed"), 150);
+            }
+        } else {
+            this.showToast("Không đủ 2 Vàng để đổi Shop! [D]", "warn");
+        }
+    }
+
+    handleHotkeyBuyXP() {
+        const gameScreen = document.getElementById("screen-game");
+        if (!gameScreen || gameScreen.classList.contains("hidden")) return;
+
+        if (this.tft.phase !== "prep") {
+            this.showToast("Chỉ có thể mua XP trong giai đoạn Chuẩn Bị!", "warn");
+            return;
+        }
+
+        if (this.tft.buyXP()) {
+            this.sfx.starUp();
+            this.renderAll();
+            this.syncMyStateToRoom();
+
+            const btn = document.getElementById("btn-buy-xp");
+            if (btn) {
+                btn.classList.add("btn-key-pressed");
+                setTimeout(() => btn.classList.remove("btn-key-pressed"), 150);
+            }
+        } else {
+            this.showToast("Không đủ 4 Vàng hoặc đã đạt Cấp tối đa (Lv.8)! [F]", "warn");
+        }
+    }
+
+    handleHotkeySellPiece() {
+        const gameScreen = document.getElementById("screen-game");
+        if (!gameScreen || gameScreen.classList.contains("hidden")) return;
+
+        // Target priority: Hovered Unit -> Selected Prep Unit
+        let targetUid = null;
+        if (this.hoveredUnit && this.hoveredUnit.uid) {
+            targetUid = this.hoveredUnit.uid;
+        } else if (this.selectedPrepUnitUid) {
+            targetUid = this.selectedPrepUnitUid;
+        }
+
+        if (!targetUid) {
+            this.showToast("💡 Trỏ chuột vào quân cờ (hoặc bấm chọn) rồi nhấn phím [E] để Bán Nhanh!", "info");
+            return;
+        }
+
+        const benchUnit = this.tft.player.bench.find(u => u && u.uid === targetUid);
+        const boardUnit = this.tft.player.board.find(u => u && u.uid === targetUid);
+        const targetUnit = benchUnit || boardUnit;
+
+        if (!targetUnit) {
+            this.showToast("Không tìm thấy quân cờ để bán!", "warn");
+            return;
+        }
+
+        if (targetUnit.id === "king") {
+            this.showToast("Không thể bán Quốc Vương (Vua)!", "warn");
+            return;
+        }
+
+        if (this.tft.phase !== "prep" && boardUnit) {
+            this.showToast("Không thể bán quân đang trên bàn cờ khi đang Giao Tranh!", "warn");
+            return;
+        }
+
+        const res = this.tft.sellUnit(targetUnit.uid);
+        if (res.ok) {
+            if (this.selectedPrepUnitUid === targetUnit.uid) {
+                this.selectedPrepUnitUid = null;
+            }
+            if (this.hoveredUnit && this.hoveredUnit.uid === targetUnit.uid) {
+                this.hoveredUnit = null;
+            }
+            this.sfx.move();
+            this.showToast(`💰 Đã bán nhanh [E] ${res.name} (+${res.refund} 🪙)`, "info");
+            this.renderAll();
+            this.syncMyStateToRoom();
+
+            const sellBtn = document.getElementById("btn-sell-selected");
+            if (sellBtn && !sellBtn.classList.contains("hidden")) {
+                sellBtn.classList.add("btn-key-pressed");
+                setTimeout(() => sellBtn.classList.remove("btn-key-pressed"), 150);
+            }
+        } else {
+            this.showToast(res.msg || "Không thể bán quân cờ!", "warn");
+        }
+    }
+
+    handleHotkeyDeployOrRecall() {
+        const gameScreen = document.getElementById("screen-game");
+        if (!gameScreen || gameScreen.classList.contains("hidden")) return;
+
+        if (this.tft.phase !== "prep") {
+            this.showToast("Chỉ có thể điều động hoặc thu hồi quân cờ trong Giai Đoạn Chuẩn Bị!", "warn");
+            return;
+        }
+
+        let targetUid = null;
+        if (this.hoveredUnit && this.hoveredUnit.uid) {
+            targetUid = this.hoveredUnit.uid;
+        } else if (this.selectedPrepUnitUid) {
+            targetUid = this.selectedPrepUnitUid;
+        }
+
+        if (!targetUid) {
+            this.showToast("💡 Trỏ chuột vào quân cờ rồi bấm phím [W] để đưa lên sân hoặc thu hồi!", "info");
+            return;
+        }
+
+        const benchUnit = this.tft.player.bench.find(u => u && u.uid === targetUid);
+        const boardUnit = this.tft.player.board.find(u => u && u.uid === targetUid);
+
+        // CASE 1: UNIT IS ON BENCH -> DEPLOY TO BOARD
+        if (benchUnit) {
+            const cfg = this.tft.getStageConfig();
+            const minR = cfg.rows - cfg.deployRows;
+
+            let targetR = -1;
+            let targetC = -1;
+
+            // If player is hovering over a valid empty deploy cell, deploy there!
+            if (this.hoveredCell && this.hoveredCell.r >= minR && this.hoveredCell.r < cfg.rows) {
+                const occupied = this.tft.player.board.some(u => u.r === this.hoveredCell.r && u.c === this.hoveredCell.c);
+                if (!occupied) {
+                    targetR = this.hoveredCell.r;
+                    targetC = this.hoveredCell.c;
+                }
+            }
+
+            // Otherwise find the first available cell in deploy zone
+            if (targetR === -1) {
+                const centerC = Math.floor(cfg.cols / 2);
+                const colOrder = [centerC];
+                for (let d = 1; d < cfg.cols; d++) {
+                    if (centerC - d >= 0) colOrder.push(centerC - d);
+                    if (centerC + d < cfg.cols) colOrder.push(centerC + d);
+                }
+
+                for (let r = cfg.rows - 1; r >= minR; r--) {
+                    for (const c of colOrder) {
+                        const occupied = this.tft.player.board.some(u => u.r === r && u.c === c);
+                        if (!occupied) {
+                            targetR = r;
+                            targetC = c;
+                            break;
+                        }
+                    }
+                    if (targetR !== -1) break;
+                }
+            }
+
+            if (targetR === -1) {
+                this.showToast("Không còn ô trống nào trong khu vực sân nhà!", "warn");
                 return;
             }
-            const hadFree = (this.tft.player.freeRerolls || 0) > 0;
-            if (this.tft.rollShop(false)) {
-                this.sfx.move();
-                if (hadFree) {
-                    this.showToast(`🎁 Đã dùng 1 lượt Đổi Shop MIỄN PHÍ (Hỗ trợ Chuỗi Thua)! Còn lại: ${this.tft.player.freeRerolls || 0}`, "success");
-                }
-                this.renderAll();
-            } else {
-                this.showToast("Không đủ 2 Vàng để đổi Shop!", "warn");
-            }
-        });
 
-        document.getElementById("btn-buy-xp").addEventListener("click", () => {
-            if (this.tft.buyXP()) {
-                this.sfx.starUp();
+            const res = this.tft.movePlayerUnitToBoard(benchUnit.uid, targetR, targetC);
+            if (res.ok) {
+                const def = window.CHESS_TFT_DATA.PIECES[benchUnit.id];
+                this.selectedPrepUnitUid = null;
+                this.hoveredUnit = null;
+                this.sfx.move();
+                if (this.isTutorialMode && this.tutorialStep === 2) {
+                    this.advanceTutorialStep(3);
+                }
+                this.showToast(`⚔️ Đã đưa [W] ${def.name} lên sân đấu!`, "info");
                 this.renderAll();
                 this.syncMyStateToRoom();
             } else {
-                this.showToast("Không đủ 4 Vàng hoặc đã đạt Cấp tối đa (Lv.8)!", "warn");
+                this.showToast(res.msg || "Không thể đặt quân lên sàn!", "warn");
             }
+            return;
+        }
+
+        // CASE 2: UNIT IS ON BOARD -> RECALL TO BENCH
+        if (boardUnit) {
+            if (boardUnit.id === "king") {
+                this.showToast("Quốc Vương bắt buộc phải ở trên bàn cờ!", "warn");
+                return;
+            }
+
+            const res = this.tft.moveBoardUnitToBench(boardUnit.uid);
+            if (res.ok) {
+                const def = window.CHESS_TFT_DATA.PIECES[boardUnit.id];
+                this.selectedPrepUnitUid = null;
+                this.hoveredUnit = null;
+                this.sfx.move();
+                this.showToast(`📦 Đã thu hồi [W] ${def.name} về hàng chờ!`, "info");
+                this.renderAll();
+                this.syncMyStateToRoom();
+            } else {
+                this.showToast(res.msg || "Hàng chờ đã đầy!", "warn");
+            }
+            return;
+        }
+    }
+
+    toggleLockShop() {
+        const gameScreen = document.getElementById("screen-game");
+        if (!gameScreen || gameScreen.classList.contains("hidden")) return;
+
+        this.tft.shopLocked = !this.tft.shopLocked;
+        this.sfx.move();
+
+        if (this.tft.shopLocked) {
+            this.showToast("🔒 Đã KHÓA Cửa Hàng [X]! Các quân cờ sẽ được giữ nguyên cho vòng sau.", "info");
+        } else {
+            this.showToast("🔓 Đã MỞ KHÓA Cửa Hàng [X]! Sẽ tự động làm mới ở vòng sau.", "info");
+        }
+
+        this.renderShop();
+
+        const lockBtn = document.getElementById("btn-lock-shop");
+        if (lockBtn) {
+            lockBtn.classList.add("btn-key-pressed");
+            setTimeout(() => lockBtn.classList.remove("btn-key-pressed"), 150);
+        }
+    }
+
+    bindStaticEvents() {
+        document.getElementById("btn-reroll").addEventListener("click", () => {
+            this.handleHotkeyReroll();
+        });
+
+        document.getElementById("btn-buy-xp").addEventListener("click", () => {
+            this.handleHotkeyBuyXP();
         });
 
         document.getElementById("btn-lock-shop").addEventListener("click", () => {
-            this.tft.shopLocked = !this.tft.shopLocked;
-            this.renderShop();
+            this.toggleLockShop();
         });
 
         document.getElementById("btn-start-combat").addEventListener("click", () => {
@@ -2706,7 +2934,9 @@ class ChessTFTApp {
         updateBgmButtons();
 
         window.addEventListener("keydown", (e) => {
-            if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+            if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable)) return;
+
+            // Global Guide / Close shortcuts
             if (e.key === "h" || e.key === "H") {
                 const modal = document.getElementById("modal-piece-guide");
                 if (modal && !modal.classList.contains("hidden")) {
@@ -2714,8 +2944,36 @@ class ChessTFTApp {
                 } else {
                     this.openPieceGuide();
                 }
+                return;
             } else if (e.key === "Escape") {
                 this.closePieceGuide();
+                return;
+            }
+
+            // TFT In-Game Hotkeys: D / F / E / W / X
+            const gameScreen = document.getElementById("screen-game");
+            if (!gameScreen || gameScreen.classList.contains("hidden")) return;
+
+            // Prevent shortcuts when a modal overlay is visible
+            const openModal = document.querySelector(".modal-overlay:not(.hidden)");
+            if (openModal) return;
+
+            const k = e.key.toLowerCase();
+            if (k === "d") {
+                e.preventDefault();
+                this.handleHotkeyReroll();
+            } else if (k === "f") {
+                e.preventDefault();
+                this.handleHotkeyBuyXP();
+            } else if (k === "e") {
+                e.preventDefault();
+                this.handleHotkeySellPiece();
+            } else if (k === "w") {
+                e.preventDefault();
+                this.handleHotkeyDeployOrRecall();
+            } else if (k === "x") {
+                e.preventDefault();
+                this.toggleLockShop();
             }
         });
 
@@ -3347,6 +3605,27 @@ class ChessTFTApp {
                     cell.classList.add("cell-can-place");
                 }
 
+                if (!isScoutingOther) {
+                    cell.addEventListener("mouseenter", () => {
+                        this.hoveredCell = { r, c };
+                        if (unit) {
+                            this.hoveredUnit = { type: "board", unit, r, c, uid: unit.uid };
+                            cell.classList.add("cell-hover-target");
+                        } else {
+                            this.hoveredUnit = null;
+                        }
+                    });
+                    cell.addEventListener("mouseleave", () => {
+                        cell.classList.remove("cell-hover-target");
+                        if (this.hoveredUnit && this.hoveredUnit.uid === (unit && unit.uid)) {
+                            this.hoveredUnit = null;
+                        }
+                        if (this.hoveredCell && this.hoveredCell.r === r && this.hoveredCell.c === c) {
+                            this.hoveredCell = null;
+                        }
+                    });
+                }
+
                 cell.addEventListener("click", () => {
                     if (isScoutingOther) {
                         this.showToast("Bạn đang Soi Bài đối thủ! Bấm 'Về Sân Nhà' để xếp quân của mình.", "info");
@@ -3583,6 +3862,25 @@ class ChessTFTApp {
                 slotEl.innerHTML = `<span class="bench-empty-label">Hàng chờ ${i + 1}</span>`;
             }
 
+            slotEl.addEventListener("mouseenter", () => {
+                if (unit) {
+                    this.hoveredUnit = { type: "bench", unit, slotIndex: i, uid: unit.uid };
+                    slotEl.classList.add("bench-hover-target");
+                } else {
+                    this.hoveredBenchSlot = i;
+                    this.hoveredUnit = null;
+                }
+            });
+            slotEl.addEventListener("mouseleave", () => {
+                slotEl.classList.remove("bench-hover-target");
+                if (this.hoveredUnit && this.hoveredUnit.uid === (unit && unit.uid)) {
+                    this.hoveredUnit = null;
+                }
+                if (this.hoveredBenchSlot === i) {
+                    this.hoveredBenchSlot = null;
+                }
+            });
+
             slotEl.addEventListener("click", () => {
                 // Equip item onto bench unit
                 if (this.selectedItemIndex !== null && unit) {
@@ -3624,21 +3922,50 @@ class ChessTFTApp {
         const shopEl = document.getElementById("shop-cards");
         shopEl.innerHTML = "";
 
+        const isLocked = !!this.tft.shopLocked;
+        shopEl.classList.toggle("shop-locked", isLocked);
+
         const lockBtn = document.getElementById("btn-lock-shop");
-        lockBtn.textContent = this.tft.shopLocked ? "🔒 Đã Khóa" : "🔓 Khóa Shop";
-        lockBtn.className = `btn-secondary ${this.tft.shopLocked ? "btn-locked" : ""}`;
+        if (lockBtn) {
+            lockBtn.classList.toggle("is-locked", isLocked);
+            lockBtn.title = isLocked
+                ? "Cửa hàng đang KHÓA (Giữ nguyên thẻ bài cho vòng sau). Bấm hoặc nhấn [X] để Mở Khóa."
+                : "Khóa Cửa Hàng: Giữ nguyên 5 quân cờ này sang vòng sau (Phím tắt: X).";
+
+            const lockIcon = document.getElementById("btn-lock-icon");
+            if (lockIcon) {
+                lockIcon.textContent = isLocked ? "🔒" : "🔓";
+            } else {
+                lockBtn.innerHTML = `
+                    <span id="btn-lock-icon">${isLocked ? "🔒" : "🔓"}</span>
+                    <span class="hud-keybind-badge lock-keybind">X</span>
+                `;
+            }
+        }
 
         const rerollBtn = document.getElementById("btn-reroll");
         if (rerollBtn) {
             const freeCount = this.tft.player.freeRerolls || 0;
             if (freeCount > 0) {
-                rerollBtn.innerHTML = `🎲 Đổi Miễn Phí <span class="badge-free-reroll">(${freeCount})</span>`;
+                rerollBtn.innerHTML = `
+                    <div class="hud-btn-main">
+                        <span class="reroll-btn-title">🎲 ĐỔI MIỄN PHÍ</span>
+                        <span class="hud-keybind-badge">D</span>
+                    </div>
+                    <span class="reroll-btn-cost badge-free-reroll">FREE (${freeCount})</span>
+                `;
                 rerollBtn.classList.add("btn-free-reroll");
-                rerollBtn.title = `Bạn có ${freeCount} lượt đổi shop miễn phí nhờ chuỗi thua!`;
+                rerollBtn.title = `Bạn có ${freeCount} lượt đổi shop miễn phí nhờ chuỗi thua! (Phím tắt: D)`;
             } else {
-                rerollBtn.innerHTML = `🎲 Đổi Shop (2🪙)`;
+                rerollBtn.innerHTML = `
+                    <div class="hud-btn-main">
+                        <span class="reroll-btn-title">🎲 ĐỔI LẠI</span>
+                        <span class="hud-keybind-badge">D</span>
+                    </div>
+                    <span id="reroll-cost-label" class="reroll-btn-cost">2 🪙</span>
+                `;
                 rerollBtn.classList.remove("btn-free-reroll");
-                rerollBtn.title = "Đổi mới 5 quân cờ trong Cửa Hàng (Tốn 2 Vàng)";
+                rerollBtn.title = "Đổi mới 5 quân cờ trong Cửa Hàng (Tốn 2 Vàng - Phím tắt: D)";
             }
         }
 
@@ -3649,6 +3976,14 @@ class ChessTFTApp {
                 card.innerHTML = `<div class="sold-text">ĐÃ MUA</div>`;
                 shopEl.appendChild(card);
                 continue;
+            }
+
+            if (isLocked) {
+                const lockPill = document.createElement("span");
+                lockPill.className = "shop-card-locked-icon";
+                lockPill.textContent = "🔒";
+                lockPill.title = "Thẻ bài này đang được khóa cho vòng sau";
+                card.appendChild(lockPill);
             }
 
             const def = window.CHESS_TFT_DATA.PIECES[slot.id];
@@ -3836,7 +4171,7 @@ class ChessTFTApp {
 
         if (this.tft.phase === "prep" && !def.isKing) {
             const refund = this.tft.getUnitSellValue(unit);
-            sellBtn.textContent = `💰 Bán quân (+${refund} Vàng)`;
+            sellBtn.innerHTML = `💰 Bán quân (+${refund} 🪙) <span class="hud-keybind-badge" style="margin-left:4px;">E</span>`;
             sellBtn.classList.remove("hidden");
         } else {
             sellBtn.classList.add("hidden");
@@ -4144,6 +4479,10 @@ class ChessTFTApp {
 
         if (nextInfo.comebackPackage) {
             this.showToast(`🔥 TIẾP TẾ LỘI NGƯỢC DÒNG (Chuỗi Thua ≥ 4): Nhận ngay +${nextInfo.comebackPackage.gold}🪙 và ${nextInfo.comebackPackage.itemIcon} ${nextInfo.comebackPackage.itemName}!`, "success");
+        }
+
+        if (nextInfo.shopLockedPreserved) {
+            this.showToast("🔒 Cửa hàng đã được giữ nguyên từ vòng trước (Đã tự động mở khóa)!", "info");
         }
 
         // STAGE ARMORY SELECTION (ĐỀ XUẤT 1: KHO TIẾP TẾ CHIẾN TRƯỜNG KHI CHUYỂN GIAI ĐOẠN)

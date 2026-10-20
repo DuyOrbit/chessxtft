@@ -1251,6 +1251,7 @@ class TFTGameManager {
         this.upgradeAllBotsForRound();
 
         // Roll shop unless locked
+        const wasShopLocked = !!this.shopLocked;
         if (!this.shopLocked) {
             this.rollShop(true);
         } else {
@@ -1283,6 +1284,7 @@ class TFTGameManager {
                 armoryChoices,
                 freeRerollGiven,
                 comebackPackage,
+                shopLockedPreserved: wasShopLocked,
                 boardScaled: newCfg.cols !== oldCfg.cols
             };
         }
@@ -1305,6 +1307,7 @@ class TFTGameManager {
             isStageTransition: false,
             freeRerollGiven,
             comebackPackage,
+            shopLockedPreserved: wasShopLocked,
             boardScaled: newCfg.cols !== oldCfg.cols
         };
     }
