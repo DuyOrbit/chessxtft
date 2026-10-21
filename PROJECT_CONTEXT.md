@@ -44,7 +44,8 @@ f:\chesstft\
 │   ├── sfx-manager.js      # Bộ phát nhạc nền giao hưởng & hiệu ứng âm thanh Web Audio API
 │   ├── pieces-data.js      # Từ điển 15 quân cờ, 8 tộc hệ, trang bị, bản đồ
 │   └── bot-engine.js       # AI Bot chơi cờ (Magnus, Kasparov...)
-├── qa_screenshots/         # Ảnh chụp Playwright kiểm thử thực tế
+├── qa_screenshots/         # Bộ 8 ảnh chụp Playwright chuẩn 1080p
+├── capture_screenshots.js  # Kịch bản Playwright tự động chụp showcase toàn bộ giao diện
 └── PROJECT_CONTEXT.md      # Tài liệu này
 ```
 
@@ -85,18 +86,20 @@ f:\chesstft\
      - Nhật ký chiến đấu ghi lại chi tiết diễn biến thắng/thua/hết giờ/chiếu hết của cả 4 bàn cờ.
      - Nút `🏠 Về Sảnh` tự động rời phòng sạch sẽ và hoàn trả giao diện chuẩn.
 
-7. **Chế Độ Phòng Tập & Thử Nghiệm Sức Mạnh Tướng (Sandbox / God Mode Arena 🎯)**:
+7. **Chế Độ Phòng Tập & Thử Nghiệm Sức Mạnh Tướng (Tactical Sandbox 🎯)**:
    - Thêm nút và thẻ **Phòng Tập** tại Sảnh Chờ Lobby (thẻ thứ 4 trong bộ Feature Cards và dải phím nhanh).
-   - Bảng Điều Khiển Thần Thánh (**God Mode Toolkit**) hỗ trợ:
+   - Bảng Điều Khiển Chiến Thuật (**Tactical Toolkit**) hỗ trợ:
      - **Triệu Hồi Tướng & Sao Tùy Ý**: Mọi quân cờ từ 0-5 vàng có thể nhận ngay 1⭐, 2⭐ hoặc 3⭐ thẳng vào Hàng Chờ / Sàn Đấu.
      - **Kho Trang Bị & Lõi Công Nghệ**: Bấm là nhận ngay bất kỳ trang bị nào vào kho hoặc kích hoạt trực tiếp Lõi (Augment).
      - **Tùy Chỉnh Đội Hình Địch**: Sinh sẵn Hình Nhân Tập Đánh (**Target Dummy** 50 HP bia đỡ đạn tĩnh), Đội hình Full Thiết Giáp trâu bò, 6 Sát Thủ hoặc Boss Đại Thừa Tướng 3⭐.
      - **Chế Độ Bia Tập Đánh**: Tùy chọn Bật/Tắt AI đánh trả (cho Địch đứng yên làm bia thử nghiệm skill/nước đi).
-     - **Cheat Thần Thánh**: +999 Vàng, Max Cấp 8, Hồi Đầy 100 HP (Khóa HP bất tử khi test), Thăng cấp 3⭐ quân đang chọn, Reset sàn đấu khôi phục trạng thái chuẩn bị.
+     - **Công Cụ Thử Nghiệm**: +999 Vàng, Max Cấp 8, Hồi Đầy 100 HP (Khóa HP bất tử khi test), Thăng cấp 3⭐ quân đang chọn, Reset sàn đấu khôi phục trạng thái chuẩn bị.
      - **Thời gian chuẩn bị vô hạn (`♾️ VÔ HẠN`)**: Không lo hết giờ đếm ngược khi đang dàn trận thử nghiệm.
-8. **Biểu Đồ Sát Thương Thời Gian Thực (Combat DPS Meter 📊)**:
-   - Theo dõi tổng lượng sát thương và biểu đồ % sát thương của từng quân cờ (cả phe ta và phe địch) trong giao tranh.
-   - Nút bật/tắt `📊 DPS` ngay trên thanh Top Header.
+8. **Biểu Đồ Sát Thương Toàn Năng (Global Combat DPS Meter 📊) & Tốc Độ Solo**:
+   - Theo dõi tổng lượng sát thương và biểu đồ % sát thương của từng quân cờ (cả phe ta và phe địch) trong giao tranh tại mọi chế độ chơi.
+   - Nút bật/tắt `📊 DPS` ngay trên thanh Top Header kết nối sự kiện toàn cục.
+   - Nút `⏩ 1x / 2x` điều chỉnh tốc độ giao tranh và nhịp độ suy nghĩ của Bot AI trong các ván Solo.
+   - Tách biệt rõ ràng nút `⬅️ Sảnh` và nút `🏳️ Đầu Hàng` với khoảng cách an toàn và hộp thoại xác nhận 2 lớp.
 9. **Tối Ưu Bố Cục Không Gian 1366x768 & Trải Nghiệm Chuẩn Bị (Prep Phase UX) ⏳**:
    - **Tăng Thời Gian Chuẩn Bị (+10s)**: Nâng thời gian chuẩn bị từ 30s lên 40s (mặc định badge hiển thị `⏳ 40s`), giúp người chơi có đủ thời gian mua sắm, roll thẻ bài, quan sát đối thủ và sắp xếp chiến thuật.
    - **Thêm Nhạc Nền Giai Đoạn Chuẩn Bị (Soundtrack Expansion)**: Tích hợp thêm bản nhạc giao hưởng chuẩn bị chiến thuật mới `assets/audio/expedition33_prep.webm` ("Camp Preparation - Tactical Briefing"), tự động luân phiên giữa các vòng/stage cùng bản nhạc truyền thống giúp trải nghiệm âm thanh phong phú và thư giãn hơn.

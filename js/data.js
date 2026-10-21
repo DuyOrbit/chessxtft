@@ -729,8 +729,43 @@ window.CHESS_TFT_DATA = {
                 }
                 return grid;
             }
+        },
+        {
+            id: "labyrinth_rocks",
+            name: "Mê Cung Đá Tảng",
+            desc: "Nhiều khối Đá Cổ chia bàn cờ thành các lối đi hẹp. Quân Mã nhảy qua đá và Xạ Thủ bắn tỉa qua khe đá là chìa khóa chiến thắng!",
+            themeColor: "#475569",
+            generateTerrain: function(cols, rows) {
+                const grid = {};
+                const midR = Math.floor(rows / 2);
+                grid[`${midR},1`] = "wall";
+                grid[`${midR},${cols - 2}`] = "wall";
+                grid[`${midR - 1},${Math.floor(cols / 2)}`] = "wall";
+                grid[`${midR + 1},${Math.floor(cols / 2)}`] = "wall";
+                if (cols >= 6) {
+                    grid[`${midR - 1},0`] = "wall";
+                    grid[`${midR + 1},${cols - 1}`] = "wall";
+                }
+                return grid;
+            }
         }
     ],
+
+    // 4b. 1V1 TACTICAL SKIRMISH CONFIG (POINT-BUY ARMY BUILDER)
+    SKIRMISH_CONFIG: {
+        budget: 30,
+        cols: 6,
+        rows: 7,
+        deployRows: 3,
+        blitzTime: 45,
+        increment: 3,
+        maxTurns: 50,
+        difficulties: {
+            apprentice: { id: "apprentice", name: "Tập Sự (Dễ)", icon: "🟢", blunderChance: 0.35, budget: 20 },
+            veteran: { id: "veteran", name: "Chiến Binh (Vừa)", icon: "🟡", blunderChance: 0.18, budget: 26 },
+            grandmaster: { id: "grandmaster", name: "Đại Kiện Tướng Magnus (Khó)", icon: "🔴", blunderChance: 0.05, budget: 30 }
+        }
+    },
 
     // 5. ITEMS (TRANG BỊ)
     ITEMS: {

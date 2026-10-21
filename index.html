@@ -40,8 +40,8 @@
             <!-- REGISTER FORM -->
             <form id="form-register" class="auth-form hidden">
                 <div class="form-group">
-                    <label>Tên đăng nhập ( viết liền )</label>
-                    <input type="text" id="reg-username" placeholder="VD: kithu99" required />
+                    <label>Tên đăng nhập (viết liền không dấu cách)</label>
+                    <input type="text" id="reg-username" placeholder="VD: kithu99" autocomplete="username" pattern="[a-zA-Z0-9_]+" title="Chỉ gồm chữ cái, số và dấu gạch dưới, không có khoảng trắng" required />
                 </div>
                 <div class="form-group">
                     <label>Tên hiển thị trong game</label>
@@ -103,10 +103,6 @@
                     <span class="cc-nav-icon">👥</span>
                     <span class="cc-nav-label">Phòng Riêng</span>
                 </button>
-                <button id="btn-open-spectator-top" class="cc-nav-link cc-nav-admin hidden" title="Quan Sát 4 Bàn Đấu (GM)">
-                    <span class="cc-nav-icon">📺</span>
-                    <span class="cc-nav-label">4 Bàn Đấu</span>
-                </button>
                 <button id="btn-open-admin" class="cc-nav-link cc-nav-admin hidden" title="Quản Trị Database">
                     <span class="cc-nav-icon">🛠️</span>
                     <span class="cc-nav-label">Quản Trị DB</span>
@@ -143,8 +139,10 @@
                     <span id="lobby-online-status" class="badge-pill online-pulse">🟢 Máy Chủ Sẵn Sàng</span>
                 </div>
                 <div class="cc-topbar-right">
-                    <span class="cc-stat-chip"><span class="chip-icon">❤️</span> <span id="lobby-hp-val">100 HP</span></span>
-                    <span class="cc-stat-chip"><span class="chip-icon">🪙</span> <span id="lobby-gold-val">6 Vàng</span></span>
+                    <span class="cc-stat-chip"><span class="chip-icon">🏆</span> <span id="lobby-topbar-rank">Bạc Bất Khuất</span></span>
+                    <span class="cc-stat-chip" title="Chỉ số xuất phát mỗi ván cờ"><span class="chip-icon">⚔️</span> <span id="lobby-perks-val">Khởi Đầu: 100 HP • 6🪙</span></span>
+                    <span id="lobby-hp-val" class="hidden">100 HP</span>
+                    <span id="lobby-gold-val" class="hidden">6 Vàng</span>
                     <span id="lobby-user-streak" class="cc-stat-chip streak-chip">🔥 0 Ngày Chuỗi Thắng</span>
                     <button id="btn-open-guide-lobby" class="btn-game btn-game-gold" style="padding:4px 12px; font-size:0.75rem; font-weight:bold;">♟️ Hướng Dẫn Tướng</button>
                 </div>
@@ -162,6 +160,7 @@
                     <div class="cc-quickplay-card">
                         <div class="cc-time-tabs">
                             <button class="cc-time-tab active" data-mode="ranked">🏆 Đấu Xếp Hạng</button>
+                            <button class="cc-time-tab" data-mode="skirmish">⚔️ Đấu Trí 1v1</button>
                             <button class="cc-time-tab" data-mode="solo">🤖 Luyện Bot AI</button>
                             <button class="cc-time-tab" data-mode="sandbox">🎯 Phòng Tập (Sandbox)</button>
                             <button class="cc-time-tab" data-mode="tutorial">🎓 Tân Thủ</button>
@@ -186,6 +185,10 @@
                             <button id="btn-start-matchmaking" class="cc-action-item">
                                 <span class="action-icon">🎯</span>
                                 <span>Tìm Trận Rank</span>
+                            </button>
+                            <button id="btn-quick-skirmish" class="cc-action-item" style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.08);">
+                                <span class="action-icon">⚔️</span>
+                                <span style="color:#f59e0b; font-weight:700;">Đấu Trí 1v1</span>
                             </button>
                             <button id="btn-quick-solo" class="cc-action-item">
                                 <span class="action-icon">🤖</span>
@@ -277,23 +280,13 @@
                             </div>
                             <div class="cc-feature-body">
                                 <div class="cc-feature-head">
-                                    <span class="cc-feature-tag" style="color:#38bdf8;">🛠️ PHÒNG TẬP GOD MODE</span>
+                                    <span class="cc-feature-tag" style="color:#38bdf8;">🛠️ PHÒNG TẬP CHIẾN THUẬT</span>
                                     <div class="cc-feature-title">Đấu Trường Sandbox</div>
                                 </div>
                                 <button id="btn-play-sandbox-feature" class="cc-feature-btn btn-feature-cyan" style="background:linear-gradient(135deg, #0284c7 0%, #38bdf8 100%); color:#04060c; font-weight:800;">Vào Phòng Tập</button>
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <!-- ADMIN 4-SCREEN CARD (SHOWN ONLY IF ADMIN) -->
-                <div id="admin-spectator-card" class="cc-admin-spectator-bar hidden">
-                    <span class="admin-spec-icon">📺</span>
-                    <div class="admin-spec-info">
-                        <strong>CHẾ ĐỘ QUẢN TRỊ (GM SPECTATOR):</strong>
-                        <span>Theo dõi giải đấu 8 Bot AI trên 4 bàn cờ chia đôi cùng lúc với tốc độ 4x.</span>
-                    </div>
-                    <button id="btn-start-spectator-8bots" class="btn-game btn-game-cyan" style="padding:6px 16px; font-weight:700;">📺 XEM 4 BÀN ĐẤU</button>
                 </div>
             </div>
 
@@ -330,6 +323,7 @@
                             </select>
                         </div>
                         <button id="btn-create-room" class="btn-game btn-game-gold" style="height:38px; align-self:flex-end;">➕ Tạo Phòng Mới</button>
+                        <button id="btn-create-spectator-room" class="btn-game btn-game-cyan" style="height:38px; align-self:flex-end;" title="Tạo phòng với tư cách Khán Giả, 8 ghế tự động thêm Bot AI">👁️ Tạo Phòng Khán Giả</button>
                     </div>
 
                     <div class="room-options-row" style="margin-top:8px; display:flex; align-items:center;">
@@ -439,12 +433,33 @@
                 <span id="fortune-chest-badge" class="stat-chip stat-fortune hidden">🎰 0đ</span>
                 <button id="btn-toggle-bgm-game" class="btn-audio-pill" title="Bật/Tắt Nhạc Nền">🎵 Nhạc</button>
                 <button id="btn-toggle-dps-meter" class="btn-audio-pill" title="Mở Biểu Đồ Sát Thương DPS">📊 DPS</button>
+                <button id="btn-combat-speed" class="btn-audio-pill" title="Tốc độ trận đấu Solo Bot (1x / 2x)">⏩ 1x</button>
+                <button id="btn-toggle-guide-mode" class="btn-audio-pill" title="Chuyển chế độ: Tân Thủ (hiện gợi ý nước đi khi rê chuột) / Kỳ Thủ (tắt gợi ý)">🎓 Trợ Giúp: BẬT</button>
                 <button id="btn-piece-guide-modal" class="btn-primary" style="padding:4px 10px; font-size:0.75rem;">♟️ Tra Tướng</button>
                 <button id="btn-sandbox-panel-toggle" class="btn-game btn-game-cyan hidden" style="margin:0; padding:4px 10px; font-size:0.74rem; font-weight:800; border-color:#38bdf8;">🛠️ PHÒNG TẬP</button>
-                <button id="btn-surrender-game" class="btn-danger" style="margin:0; padding:4px 8px; font-size:0.74rem;">🏳️ Đầu Hàng</button>
-                <button id="btn-back-lobby" class="btn-game btn-game-gold" style="margin:0; padding:3px 8px; font-size:0.74rem;">⬅️ Sảnh</button>
+                <div class="hud-btn-divider"></div>
+                <button id="btn-back-lobby" class="btn-game btn-game-gold" style="margin:0; padding:4px 10px; font-size:0.74rem; font-weight:700;" title="Quay về Sảnh Chờ">⬅️ Sảnh</button>
+                <button id="btn-surrender-game" class="btn-surrender-hud" style="margin:0; margin-left:4px; padding:4px 8px; font-size:0.72rem;" title="Xác nhận đầu hàng và nhận kết quả thua">🏳️ Đầu Hàng</button>
             </div>
         </header>
+
+        <!-- SKIRMISH SPECTATOR CONTROL BAR (HIỆN KHI XEM 2 BOT ĐẤU TRÍ 1V1) -->
+        <div id="skirmish-spec-control-bar" class="skirmish-spec-bar hidden">
+            <div class="spec-cluster-left">
+                <span class="skirmish-live-pill">🎙️ KHÁN GIẢ • 2 BOT TỰ ĐẤU</span>
+                <span id="skirmish-spec-status-text" class="spec-status-text">Đang theo dõi: 🤖 Bot Trắng vs 🤖 Bot Đen (Magnus)</span>
+            </div>
+            <div class="spec-cluster-controls">
+                <button id="btn-skirmish-spec-pause" class="btn-game btn-game-gold" style="padding:4px 12px; font-size:0.75rem; font-weight:700;">⏸️ Tạm Dừng</button>
+                <div class="spec-speed-group">
+                    <span style="font-size:0.72rem; color:#94a3b8; font-weight:700;">Tốc Độ:</span>
+                    <button class="skirmish-speed-btn active" data-speed="1">1x</button>
+                    <button class="skirmish-speed-btn" data-speed="2">2x</button>
+                    <button class="skirmish-speed-btn" data-speed="3">3x</button>
+                </div>
+                <button id="btn-skirmish-spec-back" class="btn-secondary" style="padding:4px 10px; font-size:0.75rem;">⬅️ Dừng Xem</button>
+            </div>
+        </div>
 
         <!-- SPECTATOR POV CONTROL BAR (HIỆN KHI XEM GÓC NHÌN 1 KỲ THỦ) -->
         <div id="spec-pov-control-bar" class="spec-pov-control-bar hidden">
@@ -652,11 +667,11 @@
                     </div>
                     <div class="blitz-clocks">
                         <div id="clock-box-player" class="clock-box">
-                            <div class="clock-label">BẠN</div>
+                            <div id="label-clock-player" class="clock-label">BẠN</div>
                             <div id="clock-player" class="clock-time">45.0s</div>
                         </div>
                         <div id="clock-box-enemy" class="clock-box">
-                            <div class="clock-label">ĐỐI THỦ</div>
+                            <div id="label-clock-enemy" class="clock-label">ĐỐI THỦ</div>
                             <div id="clock-enemy" class="clock-time">45.0s</div>
                         </div>
                     </div>
@@ -696,7 +711,7 @@
                 <div class="sandbox-header-title">
                     <span class="sandbox-icon-big">🛠️</span>
                     <div>
-                        <h2>BẢNG ĐIỀU KHIỂN PHÒNG TẬP (GOD MODE TOOLKIT)</h2>
+                        <h2>BẢNG ĐIỀU KHIỂN PHÒNG TẬP (TACTICAL TOOLKIT)</h2>
                         <p class="sandbox-sub-desc">Thử nghiệm mọi tướng 1⭐-3⭐, trang bị, tài nguyên vô hạn và tạo hình nhân Dummy đo sát thương!</p>
                     </div>
                 </div>
@@ -708,7 +723,7 @@
                 <button class="sandbox-tab-btn active" data-tab="champions">♟️ Tướng & Sao</button>
                 <button class="sandbox-tab-btn" data-tab="items">🎒 Trang Bị & Lõi</button>
                 <button class="sandbox-tab-btn" data-tab="enemy">🤖 Đội Hình Địch</button>
-                <button class="sandbox-tab-btn" data-tab="cheats">⚡ Thần Thánh (God Mode)</button>
+                <button class="sandbox-tab-btn" data-tab="cheats">⚡ Công Cụ Thử Nghiệm</button>
             </div>
 
             <div class="sandbox-tab-content-area">
@@ -1110,6 +1125,126 @@
 
             <div class="guide-modal-footer">
                 <button id="btn-footer-close-guide" class="btn-primary" style="padding:7px 24px; font-weight:700;">Đã Hiểu — Quay Lại Đấu Trường</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====================================================================
+         MODAL 9: 1V1 TACTICAL SKIRMISH BUILDER (DOANH TRẠI DÀN QUÂN ĐẤU TRÍ 1V1)
+         ==================================================================== -->
+    <div id="modal-skirmish-builder" class="modal-overlay hidden">
+        <div class="modal-card skirmish-modal-card">
+            <!-- HEADER -->
+            <div class="skirmish-modal-header">
+                <div class="skirmish-header-title">
+                    <span class="skirmish-icon-big">⚔️</span>
+                    <div>
+                        <h2>DOANH TRẠI DÀN QUÂN — ĐẤU TRÍ CHIẾN THUẬT 1V1</h2>
+                        <p class="skirmish-sub-desc">Ngân sách 30 Vàng • Xếp đội hình bí mật • Nâng sao & Tộc hệ • Bản đồ có Đá cản đường</p>
+                    </div>
+                </div>
+                <button id="btn-close-skirmish-builder" class="guide-close-btn" title="Đóng doanh trại">✕</button>
+            </div>
+
+            <!-- TOP CONTROLS: GOLD, MAP SELECTOR, BOT DIFFICULTY -->
+            <div class="skirmish-top-controls">
+                <div class="skirmish-gold-badge">
+                    <span class="gold-icon">🪙</span>
+                    <span class="gold-label">Ngân Sách:</span>
+                    <span id="skirmish-gold-val" class="gold-number">30</span>
+                    <span class="gold-max">/ 30 Vàng</span>
+                </div>
+
+                <div class="skirmish-control-item">
+                    <label for="skirmish-map-select">🗺️ Bản Đồ & Địa Hình:</label>
+                    <select id="skirmish-map-select" class="skirmish-select">
+                        <option value="stone_fortress" selected>🪨 Pháo Đài Đá Cổ (Khối đá cản đường)</option>
+                        <option value="labyrinth_rocks">🏰 Mê Cung Đá Tảng (Nhiều đá, hành lang hẹp)</option>
+                        <option value="river_crossing">🌊 Thung Lũng Sông Băng (Sông làm chậm)</option>
+                        <option value="classic">⚔️ Đấu Trường Tốc Chiến (Đất bằng, ô Rune)</option>
+                        <option value="lava_rift">🌋 Hỏa Ngục Dung Nham (Dung nham thiêu đốt)</option>
+                    </select>
+                </div>
+
+                <div class="skirmish-control-item">
+                    <label for="skirmish-bot-select">🤖 Đối Thủ AI:</label>
+                    <select id="skirmish-bot-select" class="skirmish-select">
+                        <option value="grandmaster" selected>🔴 Đại Kiện Tướng Magnus (Thông minh)</option>
+                        <option value="veteran">🟡 Chiến Binh AI (Cân bằng)</option>
+                        <option value="apprentice">🟢 Tân Thủ AI (Dễ)</option>
+                    </select>
+                </div>
+
+                <div class="skirmish-control-item">
+                    <label for="skirmish-time-select">⏱️ Thời Gian Ván Cờ:</label>
+                    <select id="skirmish-time-select" class="skirmish-select">
+                        <option value="300_5" selected>⏱️ 5 Phút (+5s/nước) — Cờ tiêu chuẩn</option>
+                        <option value="600_10">☕ 10 Phút (+10s/nước) — Đấu trí chuyên sâu</option>
+                        <option value="180_3">⚡ 3 Phút (+3s/nước) — Cờ nhanh kịch tính</option>
+                        <option value="60_3">🚀 1 Phút (+3s/nước) — Cờ chớp chớp nhoáng</option>
+                    </select>
+                </div>
+
+                <div class="skirmish-control-item">
+                    <label for="skirmish-role-select">👁️ Vai Trò Của Bạn:</label>
+                    <select id="skirmish-role-select" class="skirmish-select">
+                        <option value="player" selected>⚔️ Người Chơi vs Bot AI (Trực tiếp đánh)</option>
+                        <option value="spectator">👁️ Khán Giả (Xem 2 Bot AI Tự Đấu)</option>
+                    </select>
+                </div>
+
+                <div class="skirmish-control-item">
+                    <label for="skirmish-guide-select">💡 Trợ Giúp Nước Đi:</label>
+                    <select id="skirmish-guide-select" class="skirmish-select">
+                        <option value="beginner" selected>🟢 Tân Thủ (Hiện gợi ý & sơ đồ 5x5)</option>
+                        <option value="veteran">🔴 Kỳ Thủ (Tắt gợi ý khi rê chuột)</option>
+                    </select>
+                </div>
+
+                <div class="skirmish-synergies-summary" id="skirmish-synergies-box">
+                    <!-- Dynamic synergy tags -->
+                </div>
+            </div>
+
+            <!-- MAIN WORKSPACE: BOARD (LEFT) + ROSTER & CONTROLS (RIGHT) -->
+            <div class="skirmish-workspace">
+                <!-- LEFT: 6x7 INTERACTIVE DEPLOYMENT BOARD -->
+                <div class="skirmish-board-wrap">
+                    <div class="skirmish-board-guide-banner">
+                        <span class="banner-tag">🔒 Nửa sân đối thủ (Bí mật)</span>
+                        <span class="banner-divider">•</span>
+                        <span class="banner-tag highlight">🛡️ Hàng 4, 5, 6: Vùng Triển Khai Quân Của Bạn</span>
+                    </div>
+                    <div id="skirmish-board" class="skirmish-board-grid"></div>
+                    <div id="skirmish-selected-unit-toolbar" class="skirmish-unit-toolbar hidden">
+                        <span id="skirmish-selected-unit-title">Quân cờ</span>
+                        <div class="toolbar-actions">
+                            <button id="btn-skirmish-upgrade-star" class="btn-sm btn-gold">⭐ Nâng Sao (+2g)</button>
+                            <button id="btn-skirmish-sell-unit" class="btn-sm btn-red">🗑️ Thu Hồi (Hoàn Tiền)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: SHOP ROSTER & TEAM ACTIONS -->
+                <div class="skirmish-roster-panel">
+                    <div class="roster-header">
+                        <span class="roster-title">♟️ Kho Quân Cờ (Bấm chọn rồi đặt vào ô sáng)</span>
+                        <span id="skirmish-unit-count-tag" class="count-tag">1 / 10 Quân</span>
+                    </div>
+
+                    <div id="skirmish-roster-grid" class="skirmish-roster-grid">
+                        <!-- Dynamic list of 15 pieces with cost, traits, icons -->
+                    </div>
+
+                    <div class="skirmish-action-row">
+                        <button id="btn-skirmish-auto-preset" class="btn-secondary btn-sm" title="Tự động xếp 1 đội hình mẫu cân bằng">🎲 Gợi Ý Đội Hình</button>
+                        <button id="btn-skirmish-reset-board" class="btn-secondary btn-sm" title="Xóa hết quân (trừ Vua) và nhận lại 30 Vàng">🔄 Đặt Lại</button>
+                        <button id="btn-skirmish-start-clash" class="btn-combat-go btn-skirmish-clash">
+                            <span>⚔️</span>
+                            <span>VÀO TRẬN ĐẤU (CLASH)!</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

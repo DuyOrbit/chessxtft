@@ -790,6 +790,38 @@ body {
     opacity: 0.75;
 }
 
+.btn-audio-pill.active {
+    background: rgba(56, 189, 248, 0.28);
+    border-color: #38bdf8;
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+}
+
+.hud-btn-divider {
+    width: 1px;
+    height: 18px;
+    background: rgba(255, 255, 255, 0.16);
+    margin: 0 4px;
+    flex-shrink: 0;
+}
+
+.btn-surrender-hud {
+    background: rgba(239, 68, 68, 0.12) !important;
+    border: 1px solid rgba(239, 68, 68, 0.45) !important;
+    color: #f87171 !important;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.btn-surrender-hud:hover {
+    background: rgba(239, 68, 68, 0.3) !important;
+    border-color: #ef4444 !important;
+    color: #fee2e2 !important;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.35);
+}
+
 .piece-sub-badge {
     font-size: 0.72rem;
     position: absolute;
@@ -6945,6 +6977,743 @@ button {
     padding: 10px 18px;
     background: rgba(0, 0, 0, 0.4);
     border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ==========================================================================
+   1V1 TACTICAL SKIRMISH BUILDER & ARENA STYLES
+   ========================================================================== */
+.skirmish-modal-card {
+    max-width: 1020px;
+    width: 96%;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(180deg, #090d18 0%, #04060c 100%);
+    border: 2px solid #f59e0b;
+    box-shadow: 0 0 35px rgba(245, 158, 11, 0.3), 0 20px 50px rgba(0, 0, 0, 0.95);
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.skirmish-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 18px;
+    background: rgba(245, 158, 11, 0.08);
+    border-bottom: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.skirmish-header-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.skirmish-icon-big {
+    font-size: 1.8rem;
+    filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.6));
+}
+
+.skirmish-header-title h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: #fbbf24;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.skirmish-sub-desc {
+    margin: 2px 0 0;
+    font-size: 0.74rem;
+    color: #94a3b8;
+}
+
+/* TOP CONTROLS: GOLD, MAP, BOT, SYNERGIES */
+.skirmish-top-controls {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 8px 18px;
+    background: rgba(0, 0, 0, 0.45);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    flex-wrap: wrap;
+}
+
+.skirmish-gold-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.1) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    border-radius: 8px;
+    padding: 5px 12px;
+}
+
+.skirmish-gold-badge .gold-icon {
+    font-size: 1.1rem;
+}
+
+.skirmish-gold-badge .gold-label {
+    font-size: 0.75rem;
+    color: #fbbf24;
+    font-weight: 700;
+}
+
+.skirmish-gold-badge .gold-number {
+    font-size: 1.15rem;
+    color: #fef08a;
+    font-weight: 900;
+}
+
+.skirmish-gold-badge .gold-max {
+    font-size: 0.72rem;
+    color: #94a3b8;
+}
+
+.skirmish-control-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.skirmish-control-item label {
+    font-size: 0.75rem;
+    color: #cbd5e1;
+    font-weight: 600;
+}
+
+.skirmish-select {
+    background: #0f172a;
+    color: #f8fafc;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    outline: none;
+    cursor: pointer;
+}
+
+.skirmish-select:focus {
+    border-color: #f59e0b;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+}
+
+.skirmish-synergies-summary {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-left: auto;
+}
+
+.skirmish-syn-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #94a3b8;
+}
+
+.skirmish-syn-pill.active {
+    background: rgba(245, 158, 11, 0.18);
+    border-color: #f59e0b;
+    color: #fbbf24;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.25);
+}
+
+/* WORKSPACE: BOARD (LEFT) + ROSTER (RIGHT) */
+.skirmish-workspace {
+    display: flex;
+    gap: 16px;
+    padding: 12px 18px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.skirmish-board-wrap {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.skirmish-board-guide-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.7rem;
+    color: #94a3b8;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.skirmish-board-guide-banner .highlight {
+    color: #38bdf8;
+    font-weight: 700;
+}
+
+/* 6x7 GRID */
+.skirmish-board-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    grid-template-rows: repeat(7, 1fr);
+    gap: 3px;
+    background: #060913;
+    padding: 6px;
+    border-radius: 10px;
+    border: 2px solid rgba(245, 158, 11, 0.4);
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8), 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+.skirmish-cell {
+    width: min(52px, 6.2vh);
+    height: min(52px, 6.2vh);
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+    background: #141b2d;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ENEMY HALF (ROWS 0-2) */
+.skirmish-cell.enemy-zone {
+    background: #0d121f;
+    border: 1px dashed rgba(248, 113, 113, 0.2);
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.skirmish-cell.enemy-zone::before {
+    content: "🔒";
+    font-size: 0.75rem;
+    opacity: 0.4;
+}
+
+/* NEUTRAL TERRAIN ROW (ROW 3) */
+.skirmish-cell.terrain-zone {
+    background: #0e1726;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+/* TERRAIN FEATURES ON BOARD */
+.skirmish-cell.terrain-wall {
+    background: linear-gradient(135deg, #475569 0%, #334155 100%) !important;
+    border: 2px solid #94a3b8 !important;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.7);
+    cursor: not-allowed;
+}
+
+.skirmish-cell.terrain-wall::after {
+    content: "🪨";
+    font-size: 1.3rem;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+}
+
+.skirmish-cell.terrain-river {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+    border: 1px solid #38bdf8 !important;
+}
+
+.skirmish-cell.terrain-river::after {
+    content: "🌊";
+    font-size: 1.2rem;
+}
+
+.skirmish-cell.terrain-lava {
+    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%) !important;
+    border: 1px solid #ef4444 !important;
+}
+
+.skirmish-cell.terrain-lava::after {
+    content: "🌋";
+    font-size: 1.2rem;
+}
+
+.skirmish-cell.terrain-rune {
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%) !important;
+    border: 1px solid #c084fc !important;
+}
+
+.skirmish-cell.terrain-rune::after {
+    content: "✨";
+    font-size: 1.2rem;
+}
+
+/* PLAYER DEPLOYMENT ZONE (ROWS 4-6) */
+.skirmish-cell.deploy-zone {
+    background: #101c33;
+    border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.skirmish-cell.deploy-zone:hover {
+    background: #1e293b;
+    border-color: #38bdf8;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+.skirmish-cell.valid-target-drop {
+    background: rgba(34, 197, 94, 0.22) !important;
+    border: 2px dashed #22c55e !important;
+    animation: skirmishPulseGreen 1.2s infinite alternate;
+}
+
+@keyframes skirmishPulseGreen {
+    0% { box-shadow: 0 0 4px rgba(34, 197, 94, 0.4); }
+    100% { box-shadow: 0 0 14px rgba(34, 197, 94, 0.8); }
+}
+
+.skirmish-cell.selected {
+    border: 2px solid #fbbf24 !important;
+    box-shadow: 0 0 14px rgba(251, 191, 36, 0.8);
+    transform: scale(1.05);
+    z-index: 2;
+}
+
+/* OCCUPIED PIECE IN CELL */
+.skirmish-piece-avatar {
+    font-size: 1.55rem;
+    line-height: 1;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.skirmish-piece-stars {
+    position: absolute;
+    top: 2px;
+    left: 3px;
+    font-size: 0.6rem;
+    color: #fbbf24;
+    font-weight: 800;
+    line-height: 1;
+    text-shadow: 0 1px 2px #000;
+}
+
+.skirmish-piece-hp {
+    position: absolute;
+    bottom: 2px;
+    right: 3px;
+    font-size: 0.58rem;
+    background: rgba(0, 0, 0, 0.75);
+    color: #4ade80;
+    font-weight: 800;
+    padding: 1px 3px;
+    border-radius: 3px;
+    line-height: 1;
+}
+
+/* UNIT TOOLBAR */
+.skirmish-unit-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 6px 10px;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid #fbbf24;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+.skirmish-unit-toolbar span {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #f8fafc;
+}
+
+.skirmish-unit-toolbar .toolbar-actions {
+    display: flex;
+    gap: 6px;
+}
+
+/* RIGHT PANEL: ROSTER */
+.skirmish-roster-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 320px;
+}
+
+.roster-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.roster-title {
+    font-size: 0.78rem;
+    color: #cbd5e1;
+    font-weight: 700;
+}
+
+.count-tag {
+    font-size: 0.72rem;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.12);
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    font-weight: 700;
+}
+
+.skirmish-roster-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 6px;
+    max-height: 52vh;
+    overflow-y: auto;
+    padding: 2px;
+}
+
+.skirmish-roster-card {
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 6px 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+    position: relative;
+}
+
+.skirmish-roster-card:hover:not(.disabled) {
+    background: #1e293b;
+    border-color: #fbbf24;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(251, 191, 36, 0.2);
+}
+
+.skirmish-roster-card.selected {
+    background: rgba(245, 158, 11, 0.18);
+    border-color: #f59e0b;
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+}
+
+.skirmish-roster-card.disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.roster-card-icon {
+    font-size: 1.4rem;
+}
+
+.roster-card-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.roster-card-name {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #f8fafc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.roster-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.65rem;
+    color: #94a3b8;
+}
+
+.roster-card-cost {
+    font-weight: 800;
+    color: #fbbf24;
+}
+
+.roster-card-traits {
+    font-size: 0.62rem;
+    color: #38bdf8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ACTION BUTTONS */
+.skirmish-action-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.btn-skirmish-clash {
+    flex: 1;
+    padding: 10px 16px;
+    font-size: 0.88rem;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    border: 1px solid #4ade80;
+    box-shadow: 0 0 18px rgba(34, 197, 94, 0.4);
+    border-radius: 8px;
+    color: #ffffff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-skirmish-clash:hover {
+    transform: scale(1.02);
+    box-shadow: 0 0 25px rgba(34, 197, 94, 0.7);
+}
+
+/* BUTTONS IN TOOLBAR */
+.btn-sm {
+    padding: 4px 8px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-gold {
+    background: #f59e0b;
+    color: #000;
+}
+
+.btn-gold:hover {
+    background: #fbbf24;
+}
+
+.btn-red {
+    background: #ef4444;
+    color: #fff;
+}
+
+.btn-red:hover {
+    background: #dc2626;
+}
+
+/* ============================================================================
+   SKIRMISH MODE IN-COMBAT HUD OPTIMIZATION
+   ============================================================================ */
+body.skirmish-active .bench-container,
+body.skirmish-active .custom-hud-bottom,
+body.skirmish-active .hud-items-column,
+body.skirmish-active .hud-center-stage-indicator .stage-giant-badge,
+body.skirmish-active .hud-center-stage-indicator .inline-tracker,
+body.skirmish-active .hud-center-stage-indicator .prep-timer-badge,
+body.skirmish-active #board-unit-watermark,
+body.skirmish-active .board-unit-watermark {
+    display: none !important;
+}
+
+body.skirmish-active .tft-layout-grid {
+    grid-template-columns: 290px 1fr 275px !important;
+    gap: 12px !important;
+}
+
+body.skirmish-active .side-panel-left,
+body.skirmish-active .custom-hud-left {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    background: rgba(11, 17, 33, 0.94) !important;
+    border: 1px solid rgba(56, 189, 248, 0.25) !important;
+    padding: 12px !important;
+    overflow-y: auto !important;
+}
+
+body.skirmish-active .custom-hud-left .hud-items-column {
+    display: none !important;
+}
+
+body.skirmish-active .custom-hud-left .hud-synergies-column {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+}
+
+body.skirmish-active .custom-hud-left .synergy-item {
+    width: 100% !important;
+    padding: 10px 12px !important;
+    border-radius: 8px !important;
+    background: rgba(15, 23, 42, 0.9) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35) !important;
+    transition: all 0.2s ease !important;
+}
+
+body.skirmish-active .custom-hud-left .synergy-active {
+    border-color: rgba(251, 191, 36, 0.6) !important;
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.12) 0%, rgba(15, 23, 42, 0.95) 100%) !important;
+    box-shadow: 0 0 14px rgba(251, 191, 36, 0.22) !important;
+}
+
+body.skirmish-active .custom-hud-left .synergy-head {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    width: 100% !important;
+}
+
+body.skirmish-active .custom-hud-left .synergy-icon {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    font-size: 1.15rem !important;
+    border-radius: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+body.skirmish-active .custom-hud-left .synergy-title-wrap {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    flex: 1 !important;
+}
+
+body.skirmish-active .custom-hud-left .synergy-name {
+    font-size: 0.92rem !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+    color: #ffffff !important;
+    letter-spacing: 0.3px !important;
+}
+
+body.skirmish-active .custom-hud-left .synergy-count {
+    font-size: 0.76rem !important;
+    font-weight: 800 !important;
+    color: #fbbf24 !important;
+    background: rgba(251, 191, 36, 0.18) !important;
+    padding: 2px 8px !important;
+    border-radius: 99px !important;
+    border: 1px solid rgba(251, 191, 36, 0.38) !important;
+    white-space: nowrap !important;
+}
+
+body.skirmish-active .custom-hud-left .synergy-desc {
+    font-size: 0.74rem !important;
+    line-height: 1.42 !important;
+    color: #cbd5e1 !important;
+    margin-top: 6px !important;
+    display: block !important;
+}
+
+body.skirmish-active .center-stage {
+    justify-content: center !important;
+    gap: 12px !important;
+}
+
+body.skirmish-active .chess-board {
+    width: min(580px, 72vh) !important;
+    height: min(640px, 74vh) !important;
+}
+
+/* 1V1 TACTICAL SKIRMISH SPECTATOR CONTROL BAR */
+.skirmish-spec-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(90deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95));
+    border-bottom: 2px solid rgba(56, 189, 248, 0.4);
+    padding: 6px 18px;
+    z-index: 100;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.skirmish-spec-bar.hidden {
+    display: none !important;
+}
+
+.skirmish-spec-bar .spec-cluster-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.skirmish-live-pill {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    border: 1px solid #ef4444;
+    font-size: 0.74rem;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 999px;
+    letter-spacing: 0.5px;
+    animation: livePulse 1.6s infinite ease-in-out;
+}
+
+@keyframes livePulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.75; transform: scale(0.97); }
+}
+
+.spec-status-text {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #e2e8f0;
+}
+
+.skirmish-spec-bar .spec-cluster-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.skirmish-spec-bar .spec-speed-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 2px 6px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.skirmish-speed-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #cbd5e1;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.skirmish-speed-btn.active, .skirmish-speed-btn:hover {
+    background: #0284c7 !important;
+    border-color: #38bdf8 !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
 }
 
 

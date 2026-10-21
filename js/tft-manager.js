@@ -476,12 +476,13 @@ class TFTGameManager {
         if (bIdx !== -1) {
             const unit = this.player.bench[bIdx];
             const refund = this.getUnitSellValue(unit);
+            const feeDeducted = (unit.stars === 2) ? 1 : ((unit.stars === 3) ? 2 : 0);
             this.player.gold += refund;
             if (unit.items && unit.items.length > 0) {
                 this.player.items.push(...unit.items);
             }
             this.player.bench[bIdx] = null;
-            return { ok: true, refund, name: window.CHESS_TFT_DATA.PIECES[unit.id].name };
+            return { ok: true, refund, stars: unit.stars || 1, feeDeducted, name: window.CHESS_TFT_DATA.PIECES[unit.id].name };
         }
 
         if (this.phase !== "prep") {
@@ -495,12 +496,13 @@ class TFTGameManager {
                 return { ok: false, msg: "Không thể bán Quốc Vương (Vua)!" };
             }
             const refund = this.getUnitSellValue(unit);
+            const feeDeducted = (unit.stars === 2) ? 1 : ((unit.stars === 3) ? 2 : 0);
             this.player.gold += refund;
             if (unit.items && unit.items.length > 0) {
                 this.player.items.push(...unit.items);
             }
             this.player.board.splice(boardIdx, 1);
-            return { ok: true, refund, name: window.CHESS_TFT_DATA.PIECES[unit.id].name };
+            return { ok: true, refund, stars: unit.stars || 1, feeDeducted, name: window.CHESS_TFT_DATA.PIECES[unit.id].name };
         }
 
         return { ok: false, msg: "Không tìm thấy quân cờ!" };

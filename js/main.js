@@ -189,7 +189,11 @@ class SoundFX {
         }
 
         if (!inDeck.src || inDeck.src.indexOf(targetSrc) === -1) {
+            try {
+                inDeck.pause();
+            } catch (e) {}
             inDeck.src = targetSrc;
+            inDeck.load();
         }
         inDeck.currentTime = 0;
         inDeck.volume = 0;
@@ -199,9 +203,14 @@ class SoundFX {
         this.idleDeck = outDeck;
 
         if (this.userUnlocked && !this.bgmMuted) {
-            inDeck.play().catch(e => {
-                console.log("BGM play deferred until user gesture:", e);
-            });
+            const playPromise = inDeck.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(e => {
+                    if (e.name !== "AbortError") {
+                        // Suppress expected track aborts on fast screen changes
+                    }
+                });
+            }
         }
 
         if (outDeck.paused || outDeck.volume <= 0.01) {
@@ -353,6 +362,15 @@ class SoundFX {
             setTimeout(() => this.playTone(f, "sawtooth", 0.22, 0.14), idx * 100);
         });
     }
+    buy() { this.playTone(520, "triangle", 0.1, 0.12); }
+    sell() { this.playTone(380, "triangle", 0.1, 0.12); }
+    upgrade() { this.starUp(); }
+    combatStart() {
+        this.duckBgm(0.3, 1000);
+        [330, 440, 550, 660].forEach((f, idx) => {
+            setTimeout(() => this.playTone(f, "sine", 0.15, 0.15), idx * 60);
+        });
+    }
 }
 
 class ChessTFTApp {
@@ -419,9 +437,31 @@ class ChessTFTApp {
         this.isSandboxMode = false;
         this.sandboxEnemyAI = true;
 
+        // 1v1 Tactical Skirmish Mode state
+        this.isSkirmishMode = false;
+        this.skirmishRole = "player"; // "player" | "spectator"
+        this.isSkirmishSpectator = false;
+        this.skirmishSpecPaused = false;
+        this.skirmishSpecSpeed = 1;
+        this.skirmishSpecTimeout = null;
+        this.guideMode = localStorage.getItem("chesstft_guide_mode") || "beginner";
+        this.skirmishState = {
+            budget: 30,
+            goldRemaining: 30,
+            mapId: "stone_fortress",
+            botDifficulty: "grandmaster",
+            timeControl: "300_5",
+            selectedRosterPieceId: null,
+            selectedBoardPos: null,
+            units: [
+                { uid: "skirmish_king", id: "king", r: 6, c: 2, stars: 1, cost: 0, isKing: true }
+            ]
+        };
+
         this.initSocket();
         this.bindStaticEvents();
         this.bindAuthAndLobbyEvents();
+        this.initSkirmishEvents();
         this.bindAdminEvents();
         this.bindSpectatorEvents();
         this.loadInitialConfigAndSession();
@@ -483,12 +523,22 @@ class ChessTFTApp {
         if (specEl) specEl.classList.toggle("hidden", screenName !== "spectator");
         this.hideSynergyTooltip();
 
+        if (screenName !== "game") {
+            document.body.classList.remove("skirmish-active");
+            const shopHud = document.querySelector(".tft-bottom-hud");
+            if (shopHud) shopHud.classList.remove("hidden");
+            const benchRow = document.querySelector(".bench-container");
+            if (benchRow) benchRow.classList.remove("hidden");
+            const prepTimer = document.getElementById("prep-timer-badge");
+            if (prepTimer) prepTimer.classList.remove("hidden");
+        }
+
         if (screenName === "auth") {
             this.sfx.playBgm("title");
         } else if (screenName === "lobby" || screenName === "spectator") {
             this.sfx.playBgm("lobby");
         } else if (screenName === "game") {
-            if (this.tft && this.tft.phase === "combat") {
+            if (this.isSkirmishMode || (this.tft && this.tft.phase === "combat")) {
                 this.playCombatBgm();
             } else {
                 this.playPrepBgm();
@@ -820,6 +870,14 @@ class ChessTFTApp {
             });
         });
 
+        // Strip spaces automatically from registration username
+        const regUserInput = document.getElementById("reg-username");
+        if (regUserInput) {
+            regUserInput.addEventListener("input", () => {
+                regUserInput.value = regUserInput.value.replace(/\s+/g, "");
+            });
+        }
+
         formLogin.addEventListener("submit", async (e) => {
             e.preventDefault();
             const username = document.getElementById("login-username").value.trim();
@@ -1012,12 +1070,15 @@ class ChessTFTApp {
                 if (mode === "ranked") {
                     if (heroBtnLabel) heroBtnLabel.textContent = "XUẤT TRẬN CHIẾN ĐẤU (RANK)";
                     if (heroModeDesc) heroModeDesc.textContent = "Tự động ghép cùng kỳ thủ online thật. Ghế trống tự động thêm 7 Bot AI sau 4s!";
+                } else if (mode === "skirmish") {
+                    if (heroBtnLabel) heroBtnLabel.textContent = "DÀN QUÂN & THÁCH ĐẤU 1V1";
+                    if (heroModeDesc) heroModeDesc.textContent = "Đấu Trí 1v1: Mua quân với ngân sách 30 Vàng, tự chọn Bản đồ có Đá cản đường và đấu trí Turn-based!";
                 } else if (mode === "solo") {
                     if (heroBtnLabel) heroBtnLabel.textContent = "KHIÊU CHIẾN 7 BOT AI";
                     if (heroModeDesc) heroModeDesc.textContent = "Luyện tập offline cùng 7 Bot AI thông minh (Magnus, Kasparov...). Không sợ mất điểm ELO!";
                 } else if (mode === "sandbox") {
-                    if (heroBtnLabel) heroBtnLabel.textContent = "VÀO PHÒNG TẬP (GOD MODE)";
-                    if (heroModeDesc) heroModeDesc.textContent = "Phòng tập tự do không giới hạn: Thử nghiệm mọi tướng 1⭐-3⭐, trang bị, tạo hình nhân Dummy và đo DPS!";
+                    if (heroBtnLabel) heroBtnLabel.textContent = "VÀO PHÒNG TẬP (SANDBOX)";
+                    if (heroModeDesc) heroModeDesc.textContent = "Phòng tập chiến thuật không giới hạn: Thử nghiệm mọi tướng 1⭐-3⭐, trang bị, tạo hình nhân Dummy và đo DPS!";
                 } else if (mode === "tutorial") {
                     if (heroBtnLabel) heroBtnLabel.textContent = "VÀO LỚP HỌC VIỆN";
                     if (heroModeDesc) heroModeDesc.textContent = "Khóa huấn luyện tương tác từng bước cùng Huấn Luyện Viên Martin. Nắm vững luật cờ và tộc hệ!";
@@ -1032,6 +1093,8 @@ class ChessTFTApp {
         document.getElementById("btn-hero-play-main")?.addEventListener("click", () => {
             if (this.activeHeroMode === "ranked") {
                 this.startMatchmaking();
+            } else if (this.activeHeroMode === "skirmish") {
+                this.openSkirmishBuilderModal();
             } else if (this.activeHeroMode === "solo") {
                 document.getElementById("btn-quick-solo")?.click();
             } else if (this.activeHeroMode === "sandbox") {
@@ -1044,6 +1107,7 @@ class ChessTFTApp {
         });
 
         // Feature cards and Quick actions click handlers
+        document.getElementById("btn-quick-skirmish")?.addEventListener("click", () => this.openSkirmishBuilderModal());
         document.getElementById("btn-start-tutorial")?.addEventListener("click", () => this.startTutorialSession());
         document.getElementById("btn-quick-tutorial")?.addEventListener("click", () => this.startTutorialSession());
         document.getElementById("btn-play-bot-feature")?.addEventListener("click", () => document.getElementById("btn-quick-solo")?.click());
@@ -1153,6 +1217,44 @@ class ChessTFTApp {
             }
         });
 
+        // Create Room as Spectator (Caster Mode) directly
+        document.getElementById("btn-create-spectator-room")?.addEventListener("click", async () => {
+            const timeMode = document.getElementById("select-room-timemode")?.value || "standard";
+            const chk = document.getElementById("chk-host-as-spectator");
+            if (chk) chk.checked = true;
+
+            if (this.socket && this.socket.connected) {
+                this.socket.emit("room:create", { user: this.currentUser, timeMode, fillBots: true, isSpectator: true }, (res) => {
+                    if (res && res.ok) {
+                        this.currentRoom = res.room;
+                        this.renderWaitingRoom();
+                        this.showToast(`🎙️ Đã tạo phòng Khán Giả #${res.room.code}! 8 ghế sẽ tự động thêm Bot AI khi bắt đầu.`, "success");
+                    } else {
+                        this.showToast(res?.msg || "Không thể tạo phòng!", "warn");
+                    }
+                });
+                return;
+            }
+            try {
+                const res = await fetch("api.php?action=room_create", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ user: this.currentUser, timeMode, fillBots: true, isSpectator: true })
+                });
+                const d = await res.json();
+                if (d.ok && d.room) {
+                    this.currentRoom = d.room;
+                    this.renderWaitingRoom();
+                    this.showToast(`🎙️ Đã tạo phòng Khán Giả #${d.room.code}!`, "success");
+                }
+            } catch (e) {}
+        });
+
+        // Quick action: Spectator 8-bot match
+        document.getElementById("btn-quick-spectator")?.addEventListener("click", () => {
+            this.start8BotSpectatorMode();
+        });
+
         // Join Room by Code
         document.getElementById("btn-join-code").addEventListener("click", () => {
             const code = document.getElementById("input-room-code").value.trim().toUpperCase();
@@ -1260,6 +1362,8 @@ class ChessTFTApp {
         document.getElementById("btn-back-lobby").addEventListener("click", () => {
             this.stopCombatTimers();
             this.clearAllCountdowns();
+            document.getElementById("skirmish-spec-control-bar")?.classList.add("hidden");
+            this.isSkirmishSpectator = false;
             this.showScreen("lobby");
             this.refreshMyUserProfile();
         });
@@ -1268,9 +1372,36 @@ class ChessTFTApp {
             document.getElementById("modal-gameover").classList.add("hidden");
             this.stopCombatTimers();
             this.clearAllCountdowns();
+            document.getElementById("skirmish-spec-control-bar")?.classList.add("hidden");
+            this.isSkirmishSpectator = false;
             this.showScreen("lobby");
             this.refreshMyUserProfile();
         });
+
+        // Global DPS Meter Toggle (available across all match modes)
+        const btnDpsToggle = document.getElementById("btn-toggle-dps-meter");
+        if (btnDpsToggle) {
+            btnDpsToggle.addEventListener("click", () => {
+                const p = document.getElementById("panel-dps-meter");
+                if (p) {
+                    p.classList.toggle("hidden");
+                    btnDpsToggle.classList.toggle("active", !p.classList.contains("hidden"));
+                    this.renderDpsMeter();
+                }
+            });
+        }
+
+        // Combat speed toggle for Solo AI matches (1x / 2x)
+        this.combatSpeed = 1;
+        const btnCombatSpeed = document.getElementById("btn-combat-speed");
+        if (btnCombatSpeed) {
+            btnCombatSpeed.addEventListener("click", () => {
+                this.combatSpeed = (this.combatSpeed === 1) ? 2 : 1;
+                btnCombatSpeed.textContent = `⏩ ${this.combatSpeed}x`;
+                btnCombatSpeed.classList.toggle("active", this.combatSpeed === 2);
+                this.showToast(`⚡ Tốc độ giao tranh Solo: ${this.combatSpeed}x`, "info");
+            });
+        }
     }
 
     async refreshMyUserProfile() {
@@ -1330,6 +1461,11 @@ class ChessTFTApp {
         if (hpEl) hpEl.textContent = `${mods.startingHp || 100} HP`;
         if (goldEl) goldEl.textContent = `${mods.startingGold !== undefined ? mods.startingGold : 6} Vàng`;
 
+        const topbarRankEl = document.getElementById("lobby-topbar-rank");
+        const perksValEl = document.getElementById("lobby-perks-val");
+        if (topbarRankEl) topbarRankEl.textContent = `${rankIcon} ${rankTier}`;
+        if (perksValEl) perksValEl.textContent = `Khởi Đầu: ${mods.startingHp || 100} HP • ${mods.startingGold !== undefined ? mods.startingGold : 6}🪙`;
+
         // Legacy elements fallback
         const legacyBadge = document.getElementById("lobby-user-badge");
         if (legacyBadge) legacyBadge.textContent = `${u.avatar || "👑"} ${u.displayName || u.username} (${u.role === "admin" ? "ADMIN" : "Kỳ Thủ"})`;
@@ -1341,14 +1477,12 @@ class ChessTFTApp {
         const adminBtn = document.getElementById("btn-open-admin");
         const specTopBtn = document.getElementById("btn-open-spectator-top");
         const specCard = document.getElementById("admin-spectator-card");
+        if (specTopBtn) specTopBtn.classList.remove("hidden");
+        if (specCard) specCard.classList.remove("hidden");
         if (u.role === "admin") {
             if (adminBtn) adminBtn.classList.remove("hidden");
-            if (specTopBtn) specTopBtn.classList.remove("hidden");
-            if (specCard) specCard.classList.remove("hidden");
         } else {
             if (adminBtn) adminBtn.classList.add("hidden");
-            if (specTopBtn) specTopBtn.classList.add("hidden");
-            if (specCard) specCard.classList.add("hidden");
         }
     }
 
@@ -1758,6 +1892,24 @@ class ChessTFTApp {
                         </div>
                     </div>
                 </div>
+
+                <div class="game-rule-card">
+                    <div class="rule-card-title">🪙 4. Cơ Chế Bán Tướng & Phí Ghép Sao</div>
+                    <div class="rule-card-content">
+                        <div class="rule-row">
+                            <span class="rule-badge badge-gold">Tướng 1⭐</span>
+                            <span>Bán hoàn lại <strong>100%</strong> giá mua ban đầu (1🪙 ➔ 1🪙, 2🪙 ➔ 2🪙...).</span>
+                        </div>
+                        <div class="rule-row">
+                            <span class="rule-badge badge-purple">Tướng 2⭐ (Ghép từ 3 con)</span>
+                            <span>Bán hoàn lại: <code>(Giá gốc × 3) - 1🪙 Phí Ghép</code> (Tướng 1🪙 hoàn 2🪙; Tướng 2🪙 hoàn 5🪙; Tướng 3🪙 hoàn 8🪙...). Toàn bộ trang bị trên người sẽ an toàn rơi về kho!</span>
+                        </div>
+                        <div class="rule-row">
+                            <span class="rule-badge badge-gold">Tướng 3⭐ (Ghép từ 9 con)</span>
+                            <span>Bán hoàn lại: <code>(Giá gốc × 9) - 2🪙 Phí Ghép</code>.</span>
+                        </div>
+                    </div>
+                </div>
             `;
             return;
         }
@@ -2100,9 +2252,8 @@ class ChessTFTApp {
         const boardEl = document.getElementById("chess-board");
         if (!boardEl) return;
 
-        const cfg = this.tft ? this.tft.getStageConfig() : { rows: 6, cols: 5, deployRows: 2 };
-        const totalRows = cfg.rows;
-        const totalCols = cfg.cols;
+        const totalRows = (this.chess && this.chess.rows) ? this.chess.rows : (this.tft ? this.tft.getStageConfig().rows : 6);
+        const totalCols = (this.chess && this.chess.cols) ? this.chess.cols : (this.tft ? this.tft.getStageConfig().cols : 5);
 
         const r0 = centerR;
         const c0 = centerC;
@@ -2141,20 +2292,26 @@ class ChessTFTApp {
         const boardEl = document.getElementById("chess-board");
         if (!boardEl) return;
 
+        const piece = this.chess.board[r] && this.chess.board[r][c];
+        if (!piece) return;
+
         // Use real engine actions for the hovered piece (both player and enemy)
         const actions = this.chess.getPieceActions(r, c, true);
-        if (!actions || actions.length === 0) return;
-
-        actions.forEach(act => {
-            const cellEl = boardEl.querySelector(`.board-cell[data-row='${act.toR}'][data-col='${act.toC}']`);
-            if (cellEl) {
-                if (act.type === "ranged" || act.type === "melee" || act.type === "pawn-capture" || act.type === "cannon-fire") {
-                    cellEl.classList.add("cell-preview-attack");
-                } else {
-                    cellEl.classList.add("cell-preview-move");
+        if (actions && actions.length > 0) {
+            actions.forEach(act => {
+                const cellEl = boardEl.querySelector(`.board-cell[data-row='${act.toR}'][data-col='${act.toC}']`);
+                if (cellEl) {
+                    if (act.type === "ranged" || act.type === "melee" || act.type === "pawn-capture" || act.type === "cannon-fire") {
+                        cellEl.classList.add("cell-preview-attack");
+                    } else {
+                        cellEl.classList.add("cell-preview-move");
+                    }
                 }
-            }
-        });
+            });
+        } else {
+            // Show theoretical movement range if temporarily blocked or in opening grace
+            this.highlightPieceMovementPreview(piece.id, r, c);
+        }
     }
 
     clearMovementPreview() {
@@ -2329,7 +2486,7 @@ class ChessTFTApp {
             timeMode: "relaxed",
             fillBots: false,
             players: [
-                { id: this.currentUser ? this.currentUser.id : "guest", name: "Kỳ Thủ Thử Nghiệm (God Mode)", avatar: "🛠️" },
+                { id: this.currentUser ? this.currentUser.id : "guest", name: "Kỳ Thủ Thử Nghiệm", avatar: "🛠️" },
                 dummyBot
             ]
         };
@@ -2397,17 +2554,6 @@ class ChessTFTApp {
                 const targetPane = document.getElementById(`sandbox-view-${tab}`);
                 if (targetPane) targetPane.classList.remove("hidden");
             });
-        });
-
-        // Toggle DPS meter button
-        const btnDpsToggle = document.getElementById("btn-toggle-dps-meter");
-        btnDpsToggle?.replaceWith(btnDpsToggle.cloneNode(true));
-        document.getElementById("btn-toggle-dps-meter")?.addEventListener("click", () => {
-            const p = document.getElementById("panel-dps-meter");
-            if (p) {
-                p.classList.toggle("hidden");
-                this.renderDpsMeter();
-            }
         });
 
         // Enemy AI Toggle Checkbox
@@ -2686,6 +2832,748 @@ class ChessTFTApp {
             totalLabel.textContent = `${sumDamage} dmg`;
         }
     }
+
+    // ========================================================================
+    // 1V1 TACTICAL SKIRMISH BUILDER & ARENA
+    // ========================================================================
+    initSkirmishEvents() {
+        document.getElementById("btn-close-skirmish-builder")?.addEventListener("click", () => {
+            this.closeSkirmishBuilderModal();
+        });
+
+        document.getElementById("skirmish-map-select")?.addEventListener("change", (e) => {
+            this.skirmishState.mapId = e.target.value;
+            this.renderSkirmishBoard();
+        });
+
+        document.getElementById("skirmish-bot-select")?.addEventListener("change", (e) => {
+            this.skirmishState.botDifficulty = e.target.value;
+        });
+
+        document.getElementById("skirmish-time-select")?.addEventListener("change", (e) => {
+            this.skirmishState.timeControl = e.target.value;
+        });
+
+        document.getElementById("skirmish-role-select")?.addEventListener("change", (e) => {
+            this.skirmishRole = e.target.value;
+            const clashBtn = document.getElementById("btn-skirmish-start-clash");
+            if (clashBtn) {
+                if (this.skirmishRole === "spectator") {
+                    clashBtn.innerHTML = `<span>👁️</span><span>VÀO XEM 2 BOT ĐẤU (CLASH)!</span>`;
+                    this.showToast("👁️ Chế Độ Khán Giả: Trận đấu 1v1 sẽ tự động diễn ra giữa Bot Trắng và Bot Đen!", "info");
+                } else {
+                    clashBtn.innerHTML = `<span>⚔️</span><span>VÀO TRẬN ĐẤU (CLASH)!</span>`;
+                    this.showToast("⚔️ Chế Độ Thi Đấu: Bạn trực tiếp điều khiển quân cờ!", "info");
+                }
+            }
+        });
+
+        document.getElementById("skirmish-guide-select")?.addEventListener("change", (e) => {
+            this.guideMode = e.target.value;
+            localStorage.setItem("chesstft_guide_mode", this.guideMode);
+            if (this.updateGuideButtons) this.updateGuideButtons();
+            this.showToast(this.guideMode === "beginner" ? "🎓 Đã chọn: Chế độ Tân Thủ (Gợi ý đầy đủ)" : "♟️ Đã chọn: Chế độ Kỳ Thủ (Tắt gợi ý)", "info");
+        });
+
+        // Skirmish Spectator Control Bar events
+        document.getElementById("btn-skirmish-spec-pause")?.addEventListener("click", () => {
+            this.skirmishSpecPaused = !this.skirmishSpecPaused;
+            const pauseBtn = document.getElementById("btn-skirmish-spec-pause");
+            if (pauseBtn) pauseBtn.textContent = this.skirmishSpecPaused ? "▶️ Tiếp Tục" : "⏸️ Tạm Dừng";
+            this.showToast(this.skirmishSpecPaused ? "⏸️ Đã tạm dừng trận đấu 2 Bot!" : "▶️ Tiếp tục trận đấu!", "info");
+            if (!this.skirmishSpecPaused) {
+                this.scheduleSkirmishSpectatorTurn();
+            }
+        });
+
+        document.querySelectorAll(".skirmish-speed-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                document.querySelectorAll(".skirmish-speed-btn").forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                this.skirmishSpecSpeed = Number(btn.getAttribute("data-speed")) || 1;
+                this.showToast(`⚡ Tốc độ xem: ${this.skirmishSpecSpeed}x`, "info");
+            });
+        });
+
+        document.getElementById("btn-skirmish-spec-back")?.addEventListener("click", () => {
+            this.stopCombatTimers();
+            document.getElementById("skirmish-spec-control-bar")?.classList.add("hidden");
+            this.isSkirmishSpectator = false;
+            this.showScreen("lobby");
+            this.openSkirmishBuilderModal();
+        });
+
+        document.getElementById("btn-skirmish-auto-preset")?.addEventListener("click", () => {
+            this.autoGenerateSkirmishPreset();
+        });
+
+        document.getElementById("btn-skirmish-reset-board")?.addEventListener("click", () => {
+            this.resetSkirmishBoard();
+        });
+
+        document.getElementById("btn-skirmish-start-clash")?.addEventListener("click", () => {
+            this.startSkirmishBattle();
+        });
+
+        document.getElementById("btn-skirmish-upgrade-star")?.addEventListener("click", () => {
+            this.upgradeSkirmishUnitStar();
+        });
+
+        document.getElementById("btn-skirmish-sell-unit")?.addEventListener("click", () => {
+            this.sellSkirmishUnit();
+        });
+    }
+
+    openSkirmishBuilderModal() {
+        this.isSkirmishMode = false;
+        const modal = document.getElementById("modal-skirmish-builder");
+        if (!modal) return;
+
+        // Ensure state has King
+        if (!this.skirmishState.units || this.skirmishState.units.length === 0) {
+            this.skirmishState.units = [
+                { uid: "skirmish_king", id: "king", r: 6, c: 2, stars: 1, cost: 0, isKing: true }
+            ];
+        }
+
+        this.calculateSkirmishGold();
+        this.renderSkirmishBoard();
+        this.renderSkirmishRoster();
+        this.renderSkirmishSynergies();
+
+        const roleSel = document.getElementById("skirmish-role-select");
+        if (roleSel) roleSel.value = this.skirmishRole || "player";
+
+        const clashBtn = document.getElementById("btn-skirmish-start-clash");
+        if (clashBtn) {
+            if (this.skirmishRole === "spectator") {
+                clashBtn.innerHTML = `<span>👁️</span><span>VÀO XEM 2 BOT ĐẤU (CLASH)!</span>`;
+            } else {
+                clashBtn.innerHTML = `<span>⚔️</span><span>VÀO TRẬN ĐẤU (CLASH)!</span>`;
+            }
+        }
+
+        const guideSel = document.getElementById("skirmish-guide-select");
+        if (guideSel) guideSel.value = this.guideMode || "beginner";
+
+        modal.classList.remove("hidden");
+    }
+
+    closeSkirmishBuilderModal() {
+        document.getElementById("modal-skirmish-builder")?.classList.add("hidden");
+    }
+
+    calculateSkirmishGold() {
+        const totalBudget = window.CHESS_TFT_DATA.SKIRMISH_CONFIG?.budget || 30;
+        let spent = 0;
+        for (const u of this.skirmishState.units) {
+            spent += Number(u.cost || 0);
+        }
+        this.skirmishState.budget = totalBudget;
+        this.skirmishState.goldRemaining = Math.max(0, totalBudget - spent);
+
+        const goldValEl = document.getElementById("skirmish-gold-val");
+        if (goldValEl) {
+            goldValEl.textContent = this.skirmishState.goldRemaining;
+        }
+
+        const countTagEl = document.getElementById("skirmish-unit-count-tag");
+        if (countTagEl) {
+            countTagEl.textContent = `${this.skirmishState.units.length} / 10 Quân`;
+        }
+    }
+
+    renderSkirmishBoard() {
+        const boardGrid = document.getElementById("skirmish-board");
+        if (!boardGrid) return;
+        boardGrid.innerHTML = "";
+
+        const cols = 6;
+        const rows = 7;
+        const mapDef = window.CHESS_TFT_DATA.MAPS.find(m => m.id === this.skirmishState.mapId) || window.CHESS_TFT_DATA.MAPS[2];
+        const terrain = mapDef.generateTerrain(cols, rows);
+
+        const selectedRosterPiece = this.skirmishState.selectedRosterPieceId 
+            ? window.CHESS_TFT_DATA.PIECES[this.skirmishState.selectedRosterPieceId] 
+            : null;
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const cell = document.createElement("div");
+                cell.className = "skirmish-cell";
+                cell.dataset.r = r;
+                cell.dataset.c = c;
+
+                const terr = terrain[`${r},${c}`];
+                if (terr) {
+                    cell.classList.add(`terrain-${terr}`);
+                }
+
+                // Check zone
+                if (r <= 2) {
+                    cell.classList.add("enemy-zone");
+                } else if (r === 3) {
+                    cell.classList.add("terrain-zone");
+                } else {
+                    cell.classList.add("deploy-zone");
+                    // Valid drop indicator if placing from roster
+                    if (selectedRosterPiece && !terr) {
+                        const occupied = this.skirmishState.units.find(u => u.r === r && u.c === c);
+                        if (!occupied) {
+                            cell.classList.add("valid-target-drop");
+                        }
+                    }
+                }
+
+                // Check unit
+                const unit = this.skirmishState.units.find(u => u.r === r && u.c === c);
+                if (unit) {
+                    cell.classList.add("occupied");
+                    const def = window.CHESS_TFT_DATA.PIECES[unit.id];
+                    const starIdx = Math.min(2, (unit.stars || 1) - 1);
+                    const baseHp = def ? def.baseHp[starIdx] : 1;
+
+                    const starStr = unit.stars === 3 ? "⭐⭐⭐" : (unit.stars === 2 ? "⭐⭐" : "⭐");
+                    cell.innerHTML = `
+                        <span class="skirmish-piece-stars">${starStr}</span>
+                        <span class="skirmish-piece-avatar">${def?.icon || "♟️"}</span>
+                        <span class="skirmish-piece-hp">❤️x${baseHp}</span>
+                    `;
+
+                    if (this.skirmishState.selectedBoardPos && this.skirmishState.selectedBoardPos.r === r && this.skirmishState.selectedBoardPos.c === c) {
+                        cell.classList.add("selected");
+                    }
+                }
+
+                cell.addEventListener("mouseenter", (e) => {
+                    if (unit) {
+                        this.showPieceMovementTooltip(unit.id, e);
+                    }
+                });
+                cell.addEventListener("mousemove", (e) => {
+                    if (unit) {
+                        this.movePieceMovementTooltip(e);
+                    }
+                });
+                cell.addEventListener("mouseleave", () => {
+                    this.hidePieceMovementTooltip();
+                });
+
+                cell.addEventListener("click", () => {
+                    this.handleSkirmishCellClick(r, c);
+                });
+
+                boardGrid.appendChild(cell);
+            }
+        }
+    }
+
+    renderSkirmishRoster() {
+        const grid = document.getElementById("skirmish-roster-grid");
+        if (!grid) return;
+        grid.innerHTML = "";
+
+        const allPieces = window.CHESS_TFT_DATA.PIECES;
+        const validPieceIds = Object.keys(allPieces).filter(id => {
+            const p = allPieces[id];
+            return !p.isKing && id !== "stone_minion" && id !== "stone_golem" && id !== "target_dummy";
+        });
+
+        validPieceIds.forEach(id => {
+            const def = allPieces[id];
+            const card = document.createElement("div");
+            const canAfford = this.skirmishState.goldRemaining >= def.cost;
+            const isSelected = this.skirmishState.selectedRosterPieceId === id;
+
+            card.className = `skirmish-roster-card ${isSelected ? "selected" : ""} ${!canAfford && !isSelected ? "disabled" : ""}`;
+            card.innerHTML = `
+                <span class="roster-card-icon">${def.icon}</span>
+                <div class="roster-card-info">
+                    <span class="roster-card-name">${def.name}</span>
+                    <div class="roster-card-meta">
+                        <span class="roster-card-cost">🪙 ${def.cost}g</span>
+                        <span>❤️x${def.baseHp[0]}</span>
+                    </div>
+                    <span class="roster-card-traits">${def.traits.map(t => window.CHESS_TFT_DATA.SYNERGIES[t]?.name || t).join(" • ")}</span>
+                </div>
+            `;
+
+            card.title = `${def.name} (${def.cost} Vàng)\n${def.desc}\nTộc Hệ: ${def.traits.join(", ")}`;
+
+            card.addEventListener("click", () => {
+                if (!canAfford && !isSelected) {
+                    this.showToast(`Không đủ Vàng để mua ${def.name} (${def.cost} Vàng)!`, "warn");
+                    return;
+                }
+                if (this.skirmishState.selectedRosterPieceId === id) {
+                    this.skirmishState.selectedRosterPieceId = null;
+                } else {
+                    this.skirmishState.selectedRosterPieceId = id;
+                    this.skirmishState.selectedBoardPos = null;
+                    this.showToast(`Đã chọn ${def.name} — Bấm vào ô sáng ở hàng 4, 5, 6 để đặt!`, "info");
+                }
+                this.updateSkirmishToolbar();
+                this.renderSkirmishRoster();
+                this.renderSkirmishBoard();
+            });
+
+            card.addEventListener("mouseenter", (e) => {
+                this.showPieceMovementTooltip(id, e);
+            });
+            card.addEventListener("mousemove", (e) => {
+                this.movePieceMovementTooltip(e);
+            });
+            card.addEventListener("mouseleave", () => {
+                this.hidePieceMovementTooltip();
+            });
+
+            grid.appendChild(card);
+        });
+    }
+
+    renderSkirmishSynergies() {
+        const box = document.getElementById("skirmish-synergies-box");
+        if (!box) return;
+        box.innerHTML = "";
+
+        const syn = this.tft.calculateSynergies({ board: this.skirmishState.units });
+        let hasActive = false;
+
+        Object.keys(syn).forEach(traitId => {
+            const count = syn[traitId];
+            const def = window.CHESS_TFT_DATA.SYNERGIES[traitId];
+            if (!def) return;
+            const activeThreshold = [...def.thresholds].reverse().find(t => count >= t);
+
+            if (count > 0) {
+                hasActive = true;
+                const pill = document.createElement("span");
+                pill.className = `skirmish-syn-pill ${activeThreshold ? "active" : ""}`;
+                pill.innerHTML = `<span>${def.icon}</span> <span>${def.name}</span> <span>(${count})</span>`;
+                pill.title = `${def.name}: ${count} quân trên sân.\n${def.desc}`;
+                box.appendChild(pill);
+            }
+        });
+
+        if (!hasActive) {
+            box.innerHTML = `<span style="font-size:0.7rem; color:#64748b;">Chưa kích hoạt Tộc Hệ nào</span>`;
+        }
+    }
+
+    handleSkirmishCellClick(r, c) {
+        if (r <= 2) {
+            this.showToast("Đây là nửa sân đối thủ (Bí mật)! Bạn chỉ được xếp quân ở hàng 4, 5, 6.", "warn");
+            return;
+        }
+
+        const mapDef = window.CHESS_TFT_DATA.MAPS.find(m => m.id === this.skirmishState.mapId) || window.CHESS_TFT_DATA.MAPS[2];
+        const terrain = mapDef.generateTerrain(6, 7);
+        if (terrain[`${r},${c}`] === "wall") {
+            this.showToast("Ô này có đá tảng cản đường, không thể đặt quân!", "warn");
+            return;
+        }
+
+        const existingUnit = this.skirmishState.units.find(u => u.r === r && u.c === c);
+
+        // 1. If clicking on an occupied cell -> Select unit
+        if (existingUnit) {
+            this.skirmishState.selectedBoardPos = { r, c };
+            this.skirmishState.selectedRosterPieceId = null;
+            this.updateSkirmishToolbar(existingUnit);
+            this.renderSkirmishBoard();
+            this.renderSkirmishRoster();
+            return;
+        }
+
+        // 2. If clicking on an empty cell AND a roster piece was selected -> Place new piece
+        if (this.skirmishState.selectedRosterPieceId) {
+            const pieceId = this.skirmishState.selectedRosterPieceId;
+            const def = window.CHESS_TFT_DATA.PIECES[pieceId];
+            if (!def) return;
+
+            if (this.skirmishState.goldRemaining < def.cost) {
+                this.showToast(`Không đủ Vàng để mua ${def.name}!`, "warn");
+                return;
+            }
+
+            if (this.skirmishState.units.length >= 10) {
+                this.showToast("Đã đạt giới hạn tối đa 10 quân trên sân!", "warn");
+                return;
+            }
+
+            this.skirmishState.units.push({
+                uid: `skirmish_${pieceId}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+                id: pieceId,
+                r,
+                c,
+                stars: 1,
+                cost: def.cost,
+                isKing: false
+            });
+
+            this.sfx.buy();
+            this.calculateSkirmishGold();
+            this.renderSkirmishBoard();
+            this.renderSkirmishRoster();
+            this.renderSkirmishSynergies();
+            return;
+        }
+
+        // 3. If clicking on an empty cell AND a placed unit was selected -> Move unit to this cell
+        if (this.skirmishState.selectedBoardPos) {
+            const unit = this.skirmishState.units.find(u => u.r === this.skirmishState.selectedBoardPos.r && u.c === this.skirmishState.selectedBoardPos.c);
+            if (unit) {
+                unit.r = r;
+                unit.c = c;
+                this.sfx.move();
+                this.skirmishState.selectedBoardPos = null;
+                this.updateSkirmishToolbar();
+                this.renderSkirmishBoard();
+            }
+        }
+    }
+
+    updateSkirmishToolbar(unit = null) {
+        const toolbar = document.getElementById("skirmish-selected-unit-toolbar");
+        const titleEl = document.getElementById("skirmish-selected-unit-title");
+        const btnUpgrade = document.getElementById("btn-skirmish-upgrade-star");
+        const btnSell = document.getElementById("btn-skirmish-sell-unit");
+        if (!toolbar) return;
+
+        if (!unit) {
+            toolbar.classList.add("hidden");
+            return;
+        }
+
+        toolbar.classList.remove("hidden");
+        const def = window.CHESS_TFT_DATA.PIECES[unit.id];
+        const starsStr = unit.stars === 3 ? "⭐⭐⭐" : (unit.stars === 2 ? "⭐⭐" : "⭐");
+        titleEl.textContent = `${unit.name || def?.name} (${starsStr}) • Tọa độ [${unit.r}, ${unit.c}]`;
+
+        if (unit.isKing) {
+            btnUpgrade.classList.add("hidden");
+            btnSell.classList.add("hidden");
+        } else {
+            btnUpgrade.classList.remove("hidden");
+            btnSell.classList.remove("hidden");
+
+            // Upgrade star cost
+            const maxStars = def.cost <= 2 ? 3 : 2;
+            if (unit.stars >= maxStars) {
+                btnUpgrade.textContent = `⭐ Đã đạt tối đa (${unit.stars}⭐)`;
+                btnUpgrade.disabled = true;
+                btnUpgrade.style.opacity = "0.5";
+            } else {
+                const upgradeCost = def.cost;
+                btnUpgrade.textContent = `⭐ Nâng ${unit.stars + 1}⭐ (+${upgradeCost}g)`;
+                btnUpgrade.disabled = this.skirmishState.goldRemaining < upgradeCost;
+                btnUpgrade.style.opacity = this.skirmishState.goldRemaining < upgradeCost ? "0.5" : "1";
+            }
+
+            btnSell.textContent = `🗑️ Thu Hồi (Hoàn ${unit.cost}g)`;
+        }
+    }
+
+    upgradeSkirmishUnitStar() {
+        if (!this.skirmishState.selectedBoardPos) return;
+        const unit = this.skirmishState.units.find(u => u.r === this.skirmishState.selectedBoardPos.r && u.c === this.skirmishState.selectedBoardPos.c);
+        if (!unit || unit.isKing) return;
+
+        const def = window.CHESS_TFT_DATA.PIECES[unit.id];
+        const maxStars = def.cost <= 2 ? 3 : 2;
+        if (unit.stars >= maxStars) {
+            this.showToast(`Quân này đã đạt cấp sao tối đa (${maxStars}⭐)!`, "warn");
+            return;
+        }
+
+        const upgradeCost = def.cost;
+        if (this.skirmishState.goldRemaining < upgradeCost) {
+            this.showToast(`Không đủ Vàng để nâng sao (Cần thêm ${upgradeCost} Vàng)!`, "warn");
+            return;
+        }
+
+        unit.stars += 1;
+        unit.cost += upgradeCost;
+        this.sfx.upgrade();
+        this.showToast(`✨ Đã thăng cấp ${def.name} lên ${unit.stars}⭐!`, "success");
+
+        this.calculateSkirmishGold();
+        this.updateSkirmishToolbar(unit);
+        this.renderSkirmishBoard();
+        this.renderSkirmishRoster();
+        this.renderSkirmishSynergies();
+    }
+
+    sellSkirmishUnit() {
+        if (!this.skirmishState.selectedBoardPos) return;
+        const unitIdx = this.skirmishState.units.findIndex(u => u.r === this.skirmishState.selectedBoardPos.r && u.c === this.skirmishState.selectedBoardPos.c);
+        if (unitIdx === -1) return;
+        const unit = this.skirmishState.units[unitIdx];
+
+        if (unit.isKing) {
+            this.showToast("Quốc Vương là chỉ huy tối cao, không thể thu hồi khỏi chiến trường!", "error");
+            return;
+        }
+
+        const refund = unit.cost;
+        this.skirmishState.units.splice(unitIdx, 1);
+        this.skirmishState.selectedBoardPos = null;
+        this.sfx.sell();
+        this.showToast(`Đã thu hồi quân cờ và nhận lại +${refund} Vàng.`, "info");
+
+        this.calculateSkirmishGold();
+        this.updateSkirmishToolbar();
+        this.renderSkirmishBoard();
+        this.renderSkirmishRoster();
+        this.renderSkirmishSynergies();
+    }
+
+    resetSkirmishBoard() {
+        this.skirmishState.units = [
+            { uid: "skirmish_king", id: "king", r: 6, c: 2, stars: 1, cost: 0, isKing: true }
+        ];
+        this.skirmishState.selectedBoardPos = null;
+        this.skirmishState.selectedRosterPieceId = null;
+        this.calculateSkirmishGold();
+        this.updateSkirmishToolbar();
+        this.renderSkirmishBoard();
+        this.renderSkirmishRoster();
+        this.renderSkirmishSynergies();
+        this.showToast("Đã đặt lại bàn cờ về vị trí ban đầu (Hoàn đủ 30 Vàng).", "info");
+    }
+
+    autoGenerateSkirmishPreset() {
+        this.skirmishState.units = [
+            { uid: "sk_king", id: "king", r: 6, c: 2, stars: 1, cost: 0, isKing: true },
+            { uid: "sk_jug", id: "juggernaut", r: 4, c: 2, stars: 2, cost: 4, isKing: false },
+            { uid: "sk_arch", id: "archer", r: 5, c: 0, stars: 2, cost: 4, isKing: false },
+            { uid: "sk_fk", id: "frost_knight", r: 4, c: 4, stars: 2, cost: 4, isKing: false },
+            { uid: "sk_sp1", id: "shield_pawn", r: 4, c: 1, stars: 2, cost: 2, isKing: false },
+            { uid: "sk_sp2", id: "shield_pawn", r: 4, c: 3, stars: 2, cost: 2, isKing: false },
+            { uid: "sk_fm", id: "fire_mage", r: 5, c: 3, stars: 2, cost: 2, isKing: false },
+            { uid: "sk_pb", id: "pyro_bishop", r: 5, c: 5, stars: 2, cost: 6, isKing: false },
+            { uid: "sk_merc", id: "mercenary", r: 5, c: 1, stars: 2, cost: 2, isKing: false },
+            { uid: "sk_knt", id: "knight", r: 4, c: 0, stars: 2, cost: 4, isKing: false }
+        ];
+
+        this.skirmishState.selectedBoardPos = null;
+        this.skirmishState.selectedRosterPieceId = null;
+        this.sfx.upgrade();
+        this.calculateSkirmishGold();
+        this.updateSkirmishToolbar();
+        this.renderSkirmishBoard();
+        this.renderSkirmishRoster();
+        this.renderSkirmishSynergies();
+        this.showToast("🎲 Đã nạp Đội Hình Mẫu Cân Bằng (Đầy đủ 30 Vàng & 4 Tộc Hệ)!", "success");
+    }
+
+    generateBotSkirmishArmy(difficulty = "grandmaster", cols = 6, rows = 7) {
+        if (difficulty === "apprentice") {
+            return [
+                { id: "king", r: 6, c: 2, stars: 1, isKing: true },
+                { id: "shield_pawn", r: 4, c: 1, stars: 1, isKing: false },
+                { id: "shield_pawn", r: 4, c: 3, stars: 1, isKing: false },
+                { id: "mercenary", r: 4, c: 2, stars: 1, isKing: false },
+                { id: "archer", r: 5, c: 0, stars: 1, isKing: false },
+                { id: "knight", r: 5, c: 4, stars: 1, isKing: false }
+            ];
+        } else if (difficulty === "veteran") {
+            return [
+                { id: "king", r: 6, c: 3, stars: 1, isKing: true },
+                { id: "juggernaut", r: 4, c: 2, stars: 2, isKing: false },
+                { id: "shield_pawn", r: 4, c: 1, stars: 2, isKing: false },
+                { id: "frost_knight", r: 4, c: 4, stars: 2, isKing: false },
+                { id: "archer", r: 5, c: 0, stars: 2, isKing: false },
+                { id: "fire_mage", r: 5, c: 4, stars: 2, isKing: false }
+            ];
+        } else {
+            return [
+                { id: "king", r: 6, c: 1, stars: 1, isKing: true },
+                { id: "juggernaut", r: 4, c: 1, stars: 2, isKing: false },
+                { id: "frost_knight", r: 4, c: 4, stars: 2, isKing: false },
+                { id: "archer", r: 5, c: 0, stars: 2, isKing: false },
+                { id: "pyro_bishop", r: 5, c: 5, stars: 2, isKing: false },
+                { id: "shield_pawn", r: 4, c: 3, stars: 2, isKing: false },
+                { id: "knight", r: 4, c: 0, stars: 2, isKing: false },
+                { id: "fire_mage", r: 5, c: 2, stars: 2, isKing: false }
+            ];
+        }
+    }
+
+    startSkirmishBattle() {
+        const kingUnit = this.skirmishState.units.find(u => u.isKing || u.id === "king");
+        if (!kingUnit) {
+            this.showToast("Đội hình bắt buộc phải có 1 Quốc Vương (King)!", "error");
+            return;
+        }
+
+        this.isSkirmishMode = true;
+        this.isSandboxMode = false;
+        this.isTutorialMode = false;
+        this.isRankedMode = false;
+
+        document.getElementById("modal-skirmish-builder")?.classList.add("hidden");
+
+        this.showScreen("game");
+        document.body.classList.add("skirmish-active");
+
+        const shopHud = document.querySelector(".tft-bottom-hud");
+        if (shopHud) shopHud.classList.add("hidden");
+        const benchRow = document.querySelector(".bench-container");
+        if (benchRow) benchRow.classList.add("hidden");
+        const prepTimer = document.getElementById("prep-timer-badge");
+        if (prepTimer) prepTimer.classList.add("hidden");
+
+        const cols = 6;
+        const rows = 7;
+        const mapDef = window.CHESS_TFT_DATA.MAPS.find(m => m.id === this.skirmishState.mapId) || window.CHESS_TFT_DATA.MAPS[2];
+        const terrain = mapDef.generateTerrain(cols, rows);
+
+        const playerPieces = this.skirmishState.units.map(u => ({
+            ...u,
+            uid: `player_${u.id}_${u.r}_${u.c}`,
+            items: []
+        }));
+
+        const botArmy = this.generateBotSkirmishArmy(this.skirmishState.botDifficulty, cols, rows);
+        const enemyMirrored = botArmy.map(u => ({
+            ...u,
+            r: (rows - 1) - u.r,
+            c: (cols - 1) - u.c,
+            uid: `enemy_${u.id}_${(rows - 1) - u.r}_${(cols - 1) - u.c}`,
+            items: []
+        }));
+
+        const playerSyn = this.tft.calculateSynergies({ board: playerPieces });
+        const enemySyn = this.tft.calculateSynergies({ board: botArmy });
+
+        this.chess = new window.BlitzChessEngine({
+            cols,
+            rows,
+            terrain,
+            maxTurns: 55,
+            playerSynergies: playerSyn,
+            enemySynergies: enemySyn,
+            playerAugments: [],
+            enemyAugments: []
+        });
+
+        this.chess.setupBoard(playerPieces, enemyMirrored);
+
+        const tc = this.skirmishState.timeControl || "300_5";
+        const [clockSecs, clockInc] = tc.split("_").map(Number);
+        this.playerClock = clockSecs || 300;
+        this.enemyClock = clockSecs || 300;
+        this.skirmishClockIncrement = clockInc || 5;
+
+        // Setup Spectator mode state & bar if in spectator role
+        this.isSkirmishSpectator = (this.skirmishRole === "spectator");
+        this.skirmishSpecPaused = false;
+        this.skirmishSpecSpeed = 1;
+
+        const specBar = document.getElementById("skirmish-spec-control-bar");
+        const pauseBtn = document.getElementById("btn-skirmish-spec-pause");
+        if (pauseBtn) pauseBtn.textContent = "⏸️ Tạm Dừng";
+
+        if (this.isSkirmishSpectator) {
+            if (specBar) specBar.classList.remove("hidden");
+            const modeBadge = document.getElementById("game-mode-badge");
+            if (modeBadge) modeBadge.textContent = "👁️ KHÁN GIẢ • 2 BOT TỰ ĐẤU";
+            const statusText = document.getElementById("skirmish-spec-status-text");
+            if (statusText) statusText.textContent = `Đang theo dõi: 🤖 Bot Trắng vs 🤖 Bot Đen (${this.skirmishState.botDifficulty === 'grandmaster' ? 'Magnus' : 'AI'})`;
+        } else {
+            if (specBar) specBar.classList.add("hidden");
+            const modeBadge = document.getElementById("game-mode-badge");
+            if (modeBadge) modeBadge.textContent = "⚔️ ĐẤU TRÍ 1V1 (SKIRMISH)";
+        }
+
+        this.playCombatBgm();
+        this.sfx.combatStart();
+
+        this.renderAll();
+        this.renderDpsMeter();
+
+        this.stopCombatTimers();
+        this.clockInterval = setInterval(() => {
+            if (!this.chess || this.chess.gameOver) return;
+
+            if (this.chess.turn === "player") {
+                this.playerClock = Math.max(0, this.playerClock - 0.1);
+                if (this.playerClock <= 0) {
+                    this.chess.endMatch("enemy", "timeout", this.isSkirmishSpectator ? "Bot Trắng hết thời gian Cờ Chớp!" : "Bạn hết thời gian đồng hồ Cờ Chớp!");
+                    this.finishBlitzCombat();
+                }
+            } else {
+                this.enemyClock = Math.max(0, this.enemyClock - 0.1);
+                if (this.enemyClock <= 0) {
+                    this.chess.endMatch("player", "timeout", this.isSkirmishSpectator ? "Bot Đen hết thời gian Cờ Chớp!" : "Đối thủ hết thời gian đồng hồ Cờ Chớp!");
+                    this.finishBlitzCombat();
+                }
+            }
+            this.renderRightPanel();
+        }, 100);
+
+        if (this.isSkirmishSpectator) {
+            this.scheduleSkirmishSpectatorTurn();
+            this.showToast(`👁️ Bạn đang là Khán Giả theo dõi 2 Bot AI đấu trí trên bản đồ ${mapDef.name}!`, "info");
+        } else {
+            this.showToast(`⚔️ Đấu Trí 1v1 Bắt Đầu! Bản đồ: ${mapDef.name}`, "success");
+        }
+    }
+
+    scheduleSkirmishSpectatorTurn() {
+        if (!this.chess || this.chess.gameOver || !this.isSkirmishSpectator) return;
+        if (this.skirmishSpecPaused) return;
+
+        if (this.skirmishSpecTimeout) {
+            clearTimeout(this.skirmishSpecTimeout);
+            this.skirmishSpecTimeout = null;
+        }
+
+        const side = this.chess.turn; // "player" (Bot Trắng) or "enemy" (Bot Đen)
+        const speed = this.skirmishSpecSpeed || 1;
+        const delay = Math.max(140, Math.round(750 / speed));
+
+        this.skirmishSpecTimeout = setTimeout(() => {
+            if (!this.chess || this.chess.gameOver || !this.isSkirmishSpectator || this.skirmishSpecPaused) return;
+
+            const inc = this.skirmishClockIncrement || 5;
+            const diff = this.skirmishState.botDifficulty;
+            const blunder = side === "player" ? 0.15 : (diff === "apprentice" ? 0.35 : (diff === "veteran" ? 0.18 : 0.05));
+            const botAct = this.chess.chooseBotAction(side, blunder);
+
+            if (!botAct) {
+                const opp = side === "player" ? "enemy" : "player";
+                this.chess.endMatch(opp, "checkmate", `Không còn nước đi hợp lệ cho ${side === "player" ? "Bot Trắng" : "Bot Đen"}!`);
+                this.finishBlitzCombat();
+                return;
+            }
+
+            const res = this.chess.executeAction(botAct);
+            if (res) {
+                if (side === "player") this.playerClock += inc + (res.clockBonus || 0);
+                else this.enemyClock += inc + (res.clockBonus || 0);
+
+                if (botAct.type === "ranged") this.sfx.ranged();
+                else if (botAct.type === "melee") this.sfx.hitArmor();
+                else this.sfx.move();
+
+                this.renderAll();
+
+                if (res.combatHit) {
+                    this.triggerCombatHitFx(res.combatHit);
+                }
+
+                if (res.gameOver || this.chess.gameOver) {
+                    this.finishBlitzCombat();
+                    return;
+                }
+
+                this.scheduleSkirmishSpectatorTurn();
+            }
+        }, delay);
+    }
+
     bindAdminEvents() {
         document.getElementById("btn-open-admin").addEventListener("click", () => {
             this.openAdminDatabaseModal();
@@ -3721,11 +4609,13 @@ class ChessTFTApp {
                 </div>
                 ${augsHtml ? `<div class="lb-badges-cluster" style="margin:2px 0 4px;">${augsHtml}</div>` : ""}
                 <div class="spec-bot-units">${unitsHtml}</div>
+                ${this.currentUser && this.currentUser.role === "admin" ? `
                 <div class="spec-bot-admin-btns">
                     <button class="spec-mini-btn btn-buff-hp" title="Admin cộng +25 Máu cho Kỳ thủ này">+25 ❤️</button>
                     <button class="spec-mini-btn btn-buff-star" title="Admin nâng toàn bộ đội hình lên +1 Sao">⬆️ Nâng Sao</button>
                     <button class="spec-mini-btn btn-buff-item" title="Admin tặng thêm Trang bị">🎁 +Đồ</button>
                 </div>
+                ` : ""}
             `;
 
             row.querySelector(".btn-view-bot-pov")?.addEventListener("click", (e) => {
@@ -3733,33 +4623,35 @@ class ChessTFTApp {
                 this.setSpectatorMode("pov", bot.id);
             });
 
-            row.querySelector(".btn-buff-hp").addEventListener("click", () => {
-                bot.hp = Math.min(200, bot.hp + 25);
-                bot.eliminated = false;
-                this.showToast(`⚡ Admin đã bơm +25 Máu cho ${bot.name}!`, "success");
-                this.renderSpectatorLeaderboard();
-            });
-
-            row.querySelector(".btn-buff-star").addEventListener("click", () => {
-                for (const u of bot.board) {
-                    u.stars = Math.min(3, (u.stars || 1) + 1);
-                }
-                this.sfx.starUp();
-                this.showToast(`🌟 Admin đã nâng Sao toàn bộ đội hình của ${bot.name}!`, "success");
-                this.renderSpectatorLeaderboard();
-            });
-
-            row.querySelector(".btn-buff-item").addEventListener("click", () => {
-                const itemIds = Object.keys(window.CHESS_TFT_DATA.ITEMS);
-                const nonKings = bot.board.filter(u => u.id !== "king");
-                if (nonKings.length > 0) {
-                    const target = nonKings[Math.floor(Math.random() * nonKings.length)];
-                    const randItem = itemIds[Math.floor(Math.random() * itemIds.length)];
-                    target.items.push(randItem);
-                    this.showToast(`🎁 Admin đã trang bị ${window.CHESS_TFT_DATA.ITEMS[randItem].name} cho ${bot.name}!`, "success");
+            if (this.currentUser && this.currentUser.role === "admin") {
+                row.querySelector(".btn-buff-hp")?.addEventListener("click", () => {
+                    bot.hp = Math.min(200, bot.hp + 25);
+                    bot.eliminated = false;
+                    this.showToast(`⚡ Admin đã bơm +25 Máu cho ${bot.name}!`, "success");
                     this.renderSpectatorLeaderboard();
-                }
-            });
+                });
+
+                row.querySelector(".btn-buff-star")?.addEventListener("click", () => {
+                    for (const u of bot.board) {
+                        u.stars = Math.min(3, (u.stars || 1) + 1);
+                    }
+                    this.sfx.starUp();
+                    this.showToast(`🌟 Admin đã nâng Sao toàn bộ đội hình của ${bot.name}!`, "success");
+                    this.renderSpectatorLeaderboard();
+                });
+
+                row.querySelector(".btn-buff-item")?.addEventListener("click", () => {
+                    const itemIds = Object.keys(window.CHESS_TFT_DATA.ITEMS);
+                    const nonKings = bot.board.filter(u => u.id !== "king");
+                    if (nonKings.length > 0) {
+                        const target = nonKings[Math.floor(Math.random() * nonKings.length)];
+                        const randItem = itemIds[Math.floor(Math.random() * itemIds.length)];
+                        target.items.push(randItem);
+                        this.showToast(`🎁 Admin đã trang bị ${window.CHESS_TFT_DATA.ITEMS[randItem].name} cho ${bot.name}!`, "success");
+                        this.renderSpectatorLeaderboard();
+                    }
+                });
+            }
 
             lbEl.appendChild(row);
         });
@@ -4476,7 +5368,8 @@ class ChessTFTApp {
             if (res.ok) {
                 this.selectedPrepUnitUid = null;
                 this.sfx.move();
-                this.showToast(`Đã bán ${res.name} (+${res.refund} Vàng)`, "info");
+                const feeNote = (res.stars > 1 && res.feeDeducted) ? ` (Đã trừ ${res.feeDeducted}🪙 phí ghép)` : "";
+                this.showToast(`Đã bán ${res.name} (+${res.refund} Vàng)${feeNote}`, "info");
                 this.renderAll();
                 this.syncMyStateToRoom();
             } else {
@@ -4582,6 +5475,40 @@ class ChessTFTApp {
         if (btnPack2) btnPack2.addEventListener("click", onCycleSoundPack);
 
         updateBgmButtons();
+
+        // Mode Tân Thủ vs Mode Kỳ Thủ (Toggle in-game)
+        this.updateGuideButtons = () => {
+            const isBeginner = this.guideMode === "beginner";
+            const btn = document.getElementById("btn-toggle-guide-mode");
+            if (btn) {
+                btn.textContent = isBeginner ? "🎓 Trợ Giúp: BẬT" : "♟️ Trợ Giúp: TẮT";
+                btn.classList.toggle("guide-off", !isBeginner);
+                btn.style.borderColor = isBeginner ? "#22c55e" : "#ef4444";
+                btn.title = isBeginner 
+                    ? "Chế độ Tân Thủ đang BẬT: Rê chuột vào quân sẽ hiện nước đi và sơ đồ 5x5. Bấm để TẮT (Chế độ Kỳ Thủ)."
+                    : "Chế độ Kỳ Thủ đang BẬT: Đã tắt toàn bộ gợi ý khi rê chuột. Bấm để BẬT (Chế độ Tân Thủ).";
+            }
+            const sel = document.getElementById("skirmish-guide-select");
+            if (sel) sel.value = this.guideMode;
+        };
+
+        const onToggleGuideMode = () => {
+            this.guideMode = this.guideMode === "beginner" ? "veteran" : "beginner";
+            localStorage.setItem("chesstft_guide_mode", this.guideMode);
+            this.updateGuideButtons();
+            if (this.guideMode === "beginner") {
+                this.showToast("🎓 Đã bật Chế độ Tân Thủ: Rê chuột vào quân sẽ hiện nước đi và sơ đồ 5x5.", "success");
+            } else {
+                this.clearMovementPreview();
+                this.hidePieceMovementTooltip();
+                this.showToast("♟️ Đã bật Chế độ Kỳ Thủ: Tắt toàn bộ gợi ý khi rê chuột (Chuẩn cờ thi đấu)!", "info");
+            }
+        };
+
+        const btnGuideToggle = document.getElementById("btn-toggle-guide-mode");
+        if (btnGuideToggle) btnGuideToggle.addEventListener("click", onToggleGuideMode);
+
+        this.updateGuideButtons();
 
         window.addEventListener("keydown", (e) => {
             if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable)) return;
@@ -4741,6 +5668,16 @@ class ChessTFTApp {
     async handlePlayerSurrender() {
         this.stopCombatTimers();
         this.clearAllCountdowns();
+
+        if (this.isSkirmishMode) {
+            this.isSkirmishMode = false;
+            document.body.classList.remove("skirmish-active");
+            this.sfx.defeat();
+            this.showToast("Đã rời trận đấu Đấu Trí 1v1.", "info");
+            this.showScreen("lobby");
+            return;
+        }
+
         const res = this.tft.surrenderPlayer();
         this.sfx.defeat();
 
@@ -4853,7 +5790,9 @@ class ChessTFTApp {
         // CẬP NHẬT SỐ TƯỚNG TRÊN SÀN ĐẤU (WATERMARK CHUẨN TFT: 5/5)
         const watermark = document.getElementById("board-unit-watermark");
         if (watermark) {
-            if (this.tft.phase === "prep") {
+            if (this.isSkirmishMode) {
+                watermark.classList.add("hidden");
+            } else if (this.tft.phase === "prep") {
                 watermark.classList.remove("hidden");
                 watermark.textContent = `${deployed}/${maxAllowed}`;
                 watermark.classList.toggle("over-cap", deployed > maxAllowed);
@@ -4877,8 +5816,14 @@ class ChessTFTApp {
         }
 
         if (modeBadge) {
-            if (this.isSandboxMode) {
-                modeBadge.textContent = "🛠️ PHÒNG TẬP (GOD MODE)";
+            if (this.isSkirmishMode) {
+                modeBadge.textContent = "⚔️ ĐẤU TRÍ 1V1 (SKIRMISH)";
+                modeBadge.className = "badge-pill";
+                modeBadge.style.background = "linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)";
+                modeBadge.style.color = "#04060c";
+                modeBadge.style.fontWeight = "800";
+            } else if (this.isSandboxMode) {
+                modeBadge.textContent = "🛠️ PHÒNG TẬP CHIẾN THUẬT";
                 modeBadge.className = "badge-pill";
                 modeBadge.style.background = "linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)";
                 modeBadge.style.color = "#04060c";
@@ -4974,6 +5919,49 @@ class ChessTFTApp {
         if (!listEl) return;
         listEl.innerHTML = "";
 
+        if (this.isSkirmishMode) {
+            const botDiff = this.skirmishState.botDifficulty;
+            const botName = botDiff === "apprentice" ? "Bot Martin (Tập Sự)" : (botDiff === "veteran" ? "Bot Hikaru (Chiến Binh)" : "Đại Kiện Tướng Magnus AI");
+            const botAvatar = botDiff === "apprentice" ? "🎓" : (botDiff === "veteran" ? "⚡" : "👑");
+
+            const allPieces = this.chess ? this.chess.board.flat().filter(Boolean) : [];
+            const playerPieces = this.chess ? allPieces.filter(p => p.side === "player") : this.skirmishState.units;
+            const enemyPieces = this.chess ? allPieces.filter(p => p.side === "enemy") : [];
+
+            const fmtClock = (sec) => {
+                if (sec >= 60) {
+                    const m = Math.floor(sec / 60);
+                    const s = Math.floor(sec % 60);
+                    return `${m}:${s < 10 ? '0' : ''}${s}`;
+                }
+                return `${sec.toFixed(1)}s`;
+            };
+
+            listEl.innerHTML = `
+                <div class="leader-row leader-self" style="border-color:#38bdf8; background:rgba(56, 189, 248, 0.1);">
+                    <div class="leader-top">
+                        <span class="leader-avatar">${this.currentUser?.avatar || "👑"}</span>
+                        <div class="leader-info">
+                            <div class="leader-name" style="font-weight:800; color:#f8fafc;">${this.currentUser?.displayName || "Bạn (Kỳ Thủ)"}</div>
+                            <div class="leader-sub" style="color:#94a3b8;">Còn: <strong style="color:#38bdf8;">${playerPieces.length}</strong> Quân trên sân</div>
+                        </div>
+                        <span class="leader-hp-num" style="color:#38bdf8; font-family:'Rajdhani',sans-serif; font-size:1.05rem; font-weight:800;">${this.chess ? fmtClock(this.playerClock) : "5:00"} ⏱️</span>
+                    </div>
+                </div>
+                <div class="leader-row leader-current-opp" style="margin-top:6px; border-color:#f87171; background:rgba(239, 68, 68, 0.1);">
+                    <div class="leader-top">
+                        <span class="leader-avatar">${botAvatar}</span>
+                        <div class="leader-info">
+                            <div class="leader-name" style="font-weight:800; color:#f8fafc;">${botName} <span class="opponent-scout-badge" style="background:#ef4444; color:#fff; font-size:0.65rem;">⚔️ ĐỐI THỦ</span></div>
+                            <div class="leader-sub" style="color:#94a3b8;">Còn: <strong style="color:#f87171;">${enemyPieces.length}</strong> Quân trên sân</div>
+                        </div>
+                        <span class="leader-hp-num" style="color:#f87171; font-family:'Rajdhani',sans-serif; font-size:1.05rem; font-weight:800;">${this.chess ? fmtClock(this.enemyClock) : "5:00"} ⏱️</span>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
         const all = [...this.tft.getAllParticipants()].sort((a, b) => b.hp - a.hp);
         const potentialOpps = (this.tft.phase === "prep") ? this.tft.getPotentialOpponents() : [];
 
@@ -5051,9 +6039,17 @@ class ChessTFTApp {
         const container = document.getElementById("synergy-list");
         container.innerHTML = "";
 
-        const viewedParticipant = this.getViewedParticipant ? this.getViewedParticipant() : (this.tft.phase === "prep"
-            ? this.tft.getParticipantById(this.tft.scoutingPlayerId)
-            : this.tft.player);
+        let viewedParticipant;
+        if (this.isSkirmishMode) {
+            const playerPieces = this.chess 
+                ? this.chess.board.flat().filter(p => p && p.side === "player")
+                : this.skirmishState.units;
+            viewedParticipant = { board: playerPieces };
+        } else {
+            viewedParticipant = this.getViewedParticipant ? this.getViewedParticipant() : (this.tft.phase === "prep"
+                ? this.tft.getParticipantById(this.tft.scoutingPlayerId)
+                : this.tft.player);
+        }
 
         const synergies = this.tft.calculateSynergies(viewedParticipant);
         const entries = Object.values(synergies).sort((a, b) => (b.activeTier > 0 ? 1 : 0) - (a.activeTier > 0 ? 1 : 0) || b.count - a.count);
@@ -5375,6 +6371,21 @@ class ChessTFTApp {
         boardEl.style.gridTemplateRows = `repeat(${cfg.rows}, 1fr)`;
         boardEl.innerHTML = "";
 
+        if (this.isSkirmishMode && this.chess) {
+            const cols = this.chess.cols || 6;
+            const rows = this.chess.rows || 7;
+            boardEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            boardEl.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+            scoutBanner.classList.add("hidden");
+            const mapDef = window.CHESS_TFT_DATA.MAPS.find(m => m.id === this.skirmishState.mapId) || window.CHESS_TFT_DATA.MAPS[2];
+            mapInfoBar.innerHTML = `
+                <span class="map-active-pill" style="background:${mapDef.themeColor}">⚔️ Đấu Trí 1v1: ${mapDef.name}</span>
+                <span class="map-desc-text">${mapDef.desc}</span>
+            `;
+            this.renderCombatBoardCells(boardEl, { cols, rows });
+            return;
+        }
+
         if (this.isSpectatorPOV) {
             this.renderSpectatorPOVBoard(boardEl, cfg);
             return;
@@ -5676,16 +6687,29 @@ class ChessTFTApp {
                     cell.appendChild(pieceEl);
                 }
 
-                cell.addEventListener("mouseenter", () => {
-                    // If no piece is currently selected, hovering over any combat piece (player or enemy) previews its attack/move range
-                    if (!this.selectedCombatSquare && piece) {
+                cell.addEventListener("mouseenter", (e) => {
+                    // Hovering over any combat piece (player or enemy) previews its attack/move range and movement tooltip
+                    if (piece) {
                         cell.classList.add("cell-hover-target");
-                        this.highlightCombatPieceHover(r, c);
+                        // Only show in-combat hover preview & 5x5 floating tooltip if Beginner Mode is active!
+                        if (this.guideMode === "beginner") {
+                            if (!this.selectedCombatSquare) {
+                                this.highlightCombatPieceHover(r, c);
+                            }
+                            this.showPieceMovementTooltip(piece.id, e);
+                        }
+                    }
+                });
+
+                cell.addEventListener("mousemove", (e) => {
+                    if (piece && this.guideMode === "beginner") {
+                        this.movePieceMovementTooltip(e);
                     }
                 });
 
                 cell.addEventListener("mouseleave", () => {
                     cell.classList.remove("cell-hover-target");
+                    this.hidePieceMovementTooltip();
                     if (!this.selectedCombatSquare) {
                         this.clearMovementPreview();
                     }
@@ -6119,13 +7143,34 @@ class ChessTFTApp {
     renderRightPanel() {
         // 1. Blitz Clocks - Chỉ hiển thị khi Giao Tranh (Combat Phase) để tiết kiệm không gian!
         const clocksWrap = document.querySelector(".custom-clocks-box");
-        const isCombat = this.tft.phase === "combat" && this.chess && !this.chess.gameOver;
+        const isCombat = (this.isSkirmishMode || (this.tft && this.tft.phase === "combat")) && this.chess && !this.chess.gameOver;
         if (clocksWrap) {
             clocksWrap.style.display = isCombat ? "block" : "none";
         }
 
-        document.getElementById("clock-player").textContent = `${this.playerClock.toFixed(1)}s`;
-        document.getElementById("clock-enemy").textContent = `${this.enemyClock.toFixed(1)}s`;
+        const fmtClock = (sec) => {
+            if (sec >= 60) {
+                const m = Math.floor(sec / 60);
+                const s = Math.floor(sec % 60);
+                return `${m}:${s < 10 ? '0' : ''}${s}`;
+            }
+            return `${sec.toFixed(1)}s`;
+        };
+
+        document.getElementById("clock-player").textContent = fmtClock(this.playerClock);
+        document.getElementById("clock-enemy").textContent = fmtClock(this.enemyClock);
+
+        const pLabel = document.getElementById("label-clock-player");
+        const eLabel = document.getElementById("label-clock-enemy");
+        if (pLabel && eLabel) {
+            if (this.isSkirmishSpectator) {
+                pLabel.textContent = "BOT TRẮNG";
+                eLabel.textContent = this.skirmishState.botDifficulty === "grandmaster" ? "BOT ĐEN (MAGNUS)" : "BOT ĐEN";
+            } else {
+                pLabel.textContent = "BẠN";
+                eLabel.textContent = "ĐỐI THỦ";
+            }
+        }
 
         const pClockBox = document.getElementById("clock-box-player");
         const eClockBox = document.getElementById("clock-box-enemy");
@@ -6282,11 +7327,12 @@ class ChessTFTApp {
 
         if (this.tft.phase === "prep" && !def.isKing) {
             const refund = this.tft.getUnitSellValue(unit);
-            sellBtn.innerHTML = `💰 Bán (+${refund} 🪙)`;
+            const feeNote = unit.stars > 1 ? ` <span style="font-size:0.7em; opacity:0.8;">(-${unit.stars === 2 ? 1 : 2}🪙 phí ghép)</span>` : "";
+            sellBtn.innerHTML = `💰 Bán (+${refund} 🪙)${feeNote}`;
             sellBtn.classList.remove("hidden");
             if (directSellBtn) {
                 directSellBtn.style.opacity = "1";
-                if (hudSellLabel) hudSellLabel.textContent = `💰 BÁN (+${refund}🪙)`;
+                if (hudSellLabel) hudSellLabel.textContent = `💰 BÁN (+${refund}🪙)${unit.stars > 1 ? ` [-${unit.stars === 2 ? 1 : 2}🪙 phí]` : ""}`;
             }
 
             // Unequip button
@@ -6351,26 +7397,28 @@ class ChessTFTApp {
         this.sfx.move();
         this.renderAll();
 
-        // Start 100ms Blitz Clock Interval
+        // Start Blitz Clock Interval with speed multiplier
         this.stopCombatTimers();
+        const tickRateMs = Math.round(100 / (this.combatSpeed || 1));
         this.clockInterval = setInterval(() => {
             if (!this.chess || this.chess.gameOver) return;
 
+            const dt = 0.1;
             if (this.chess.turn === "player") {
-                this.playerClock = Math.max(0, this.playerClock - 0.1);
+                this.playerClock = Math.max(0, this.playerClock - dt);
                 if (this.playerClock <= 0) {
                     this.chess.endMatch("enemy", "timeout", "Bạn hết thời gian đồng hồ Cờ Chớp!");
                     this.finishBlitzCombat();
                 }
             } else {
-                this.enemyClock = Math.max(0, this.enemyClock - 0.1);
+                this.enemyClock = Math.max(0, this.enemyClock - dt);
                 if (this.enemyClock <= 0) {
                     this.chess.endMatch("player", "timeout", "Đối thủ hết thời gian đồng hồ Cờ Chớp!");
                     this.finishBlitzCombat();
                 }
             }
             this.renderRightPanel();
-        }, 100);
+        }, tickRateMs);
     }
 
     stopCombatTimers() {
@@ -6382,10 +7430,20 @@ class ChessTFTApp {
             clearTimeout(this.botMoveTimeout);
             this.botMoveTimeout = null;
         }
+        if (this.skirmishSpecTimeout) {
+            clearTimeout(this.skirmishSpecTimeout);
+            this.skirmishSpecTimeout = null;
+        }
     }
 
     handleCombatBoardClick(r, c, pieceOnCell, matchedAction) {
         if (!this.chess || this.chess.gameOver) return;
+        if (this.isSkirmishSpectator) {
+            if (pieceOnCell) {
+                this.showPieceMovementTooltip(pieceOnCell, r, c);
+            }
+            return;
+        }
         if (this.chess.turn !== "player") {
             this.showToast("Đang là lượt đi của Đối Thủ!", "warn");
             return;
@@ -6393,14 +7451,14 @@ class ChessTFTApp {
 
         // 1. Execute matched action if player clicked a highlighted valid destination
         if (matchedAction) {
-            const cfg = this.tft.getStageConfig();
+            const inc = this.isSkirmishMode ? (this.skirmishClockIncrement || 5) : this.tft.getStageConfig().increment;
             const res = this.chess.executeAction(matchedAction);
             this.selectedCombatSquare = null;
             this.validCombatActions = [];
 
             if (res) {
                 // Clock increment + Cavalry bonus
-                this.playerClock += cfg.increment + (res.clockBonus || 0);
+                this.playerClock += inc + (res.clockBonus || 0);
 
                 if (matchedAction.type === "ranged") this.sfx.ranged();
                 else if (matchedAction.type === "melee") this.sfx.capture();
@@ -6455,13 +7513,19 @@ class ChessTFTApp {
             return;
         }
 
-        // Bot suy nghĩ nhanh gọn 180ms - 380ms để nhịp độ cờ chớp dồn dập
-        const thinkMs = 180 + Math.floor(Math.random() * 200);
+        // Bot suy nghĩ nhanh gọn (tùy chỉnh theo combatSpeed)
+        const speed = (this.combatSpeed || 1);
+        const thinkMs = Math.round((180 + Math.floor(Math.random() * 200)) / speed);
         this.botMoveTimeout = setTimeout(() => {
             if (!this.chess || this.chess.gameOver || this.chess.turn !== "enemy") return;
 
-            const cfg = this.tft.getStageConfig();
-            const botAct = this.chess.chooseBotAction("enemy", 0.22);
+            const inc = this.isSkirmishMode ? (this.skirmishClockIncrement || 5) : this.tft.getStageConfig().increment;
+            let blunder = 0.22;
+            if (this.isSkirmishMode) {
+                const diff = this.skirmishState.botDifficulty;
+                blunder = diff === "apprentice" ? 0.35 : (diff === "veteran" ? 0.18 : 0.05);
+            }
+            const botAct = this.chess.chooseBotAction("enemy", blunder);
             if (!botAct) {
                 this.chess.endMatch("player", "checkmate", "Đối thủ không còn nước đi hợp lệ!");
                 this.finishBlitzCombat();
@@ -6470,7 +7534,7 @@ class ChessTFTApp {
 
             const res = this.chess.executeAction(botAct);
             if (res) {
-                this.enemyClock += cfg.increment + (res.clockBonus || 0);
+                this.enemyClock += inc + (res.clockBonus || 0);
                 if (botAct.type === "ranged") this.sfx.ranged();
                 else if (botAct.type === "melee") this.sfx.hitArmor();
                 else this.sfx.move();
@@ -6511,6 +7575,15 @@ class ChessTFTApp {
         const res = this.chess.result;
         if (res.winner === "player") this.sfx.victory();
         else this.sfx.defeat();
+
+        if (this.isSkirmishMode) {
+            this.renderAll();
+            this.renderDpsMeter();
+            setTimeout(() => {
+                this.showRoundResultModal(res);
+            }, 450);
+            return;
+        }
 
         this.tft.resolveRoundResults(res, this.chess.goldEarnedPlayer);
 
@@ -6557,6 +7630,69 @@ class ChessTFTApp {
         const titleEl = document.getElementById("round-result-title");
         const reasonEl = document.getElementById("round-result-reason");
         const logsEl = document.getElementById("round-match-logs");
+
+        if (this.isSkirmishMode) {
+            this.clearRoundResultCountdown();
+            if (this.isSkirmishSpectator) {
+                if (res.winner === "player") {
+                    titleEl.textContent = "👑 BOT TRẮNG CHIẾN THẮNG!";
+                    titleEl.className = "modal-title text-win";
+                } else if (res.winner === "enemy") {
+                    titleEl.textContent = "👑 BOT ĐEN CHIẾN THẮNG!";
+                    titleEl.className = "modal-title text-win";
+                } else {
+                    titleEl.textContent = "⚖️ HÒA CỜ CHIẾN THUẬT!";
+                    titleEl.className = "modal-title";
+                }
+                reasonEl.textContent = `${res.reasonLabel || "Ván đấu kết thúc"} • Bot Trắng: ${res.playerPiecesLeft} quân • Bot Đen: ${res.enemyPiecesLeft} quân`;
+            } else {
+                if (res.winner === "player") {
+                    titleEl.textContent = "🏆 CHIẾN THẮNG TUYỆT ĐỐI!";
+                    titleEl.className = "modal-title text-win";
+                } else if (res.winner === "enemy") {
+                    titleEl.textContent = "💀 THẤT BẠI TRONG ĐẤU TRÍ!";
+                    titleEl.className = "modal-title text-loss";
+                } else {
+                    titleEl.textContent = "⚖️ HÒA CỜ CHIẾN THUẬT!";
+                    titleEl.className = "modal-title";
+                }
+                reasonEl.textContent = `${res.reasonLabel || "Ván đấu kết thúc"} • Bạn còn: ${res.playerPiecesLeft} quân • Đối thủ còn: ${res.enemyPiecesLeft} quân`;
+            }
+
+            const timerEl = document.getElementById("round-result-timer");
+            if (timerEl) timerEl.textContent = this.isSkirmishSpectator ? "🎙️ Trận Đấu Giữa 2 Bot Đã Hoàn Tất" : "⚔️ Đấu Trí 1v1: Thách Đấu Kỳ Thủ AI";
+
+            logsEl.innerHTML = `
+                <div style="background: rgba(0,0,0,0.5); padding: 12px; border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.3); text-align: left;">
+                    <div style="font-size: 0.82rem; color: #fbbf24; font-weight: 700; margin-bottom: 6px;">📊 Thống kê trận đấu:</div>
+                    <div style="font-size: 0.75rem; color: #cbd5e1; line-height: 1.6;">
+                        • Tổng số lượt đi: <strong>${this.chess ? this.chess.turnCount : 0} nước</strong><br>
+                        • Đồng hồ còn lại: <strong>${this.isSkirmishSpectator ? "Bot Trắng" : "Bạn"} ${this.playerClock.toFixed(1)}s</strong> • <strong>${this.isSkirmishSpectator ? "Bot Đen" : "Đối thủ"} ${this.enemyClock.toFixed(1)}s</strong>
+                    </div>
+                </div>
+            `;
+
+            const btnNext = document.getElementById("btn-next-round");
+            const btnSpec = document.getElementById("btn-spectate-other-boards");
+            if (btnSpec) {
+                btnSpec.textContent = "🛠️ Đổi Đội Hình & Map";
+                btnSpec.onclick = () => {
+                    modal.classList.add("hidden");
+                    this.showScreen("lobby");
+                    this.openSkirmishBuilderModal();
+                };
+            }
+            if (btnNext) {
+                btnNext.textContent = this.isSkirmishSpectator ? "🔄 Xem Lại / Ván Mới" : "🔄 Tái Đấu Ngay";
+                btnNext.onclick = () => {
+                    modal.classList.add("hidden");
+                    this.startSkirmishBattle();
+                };
+            }
+
+            modal.classList.remove("hidden");
+            return;
+        }
 
         if (res.winner === "player") {
             titleEl.textContent = "🏆 CHIẾN THẮNG VÁN CỜ CHỚP!";

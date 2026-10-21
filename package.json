@@ -4,7 +4,8 @@
   "description": "Chess TFT — Cờ Vua Đấu Trường Chân Lý Online (Auth, Lobby, Codex, Custom DB & Admin Panel)",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "capture": "node capture_screenshots.js"
   },
   "dependencies": {
     "express": "^4.19.2",
