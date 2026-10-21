@@ -7,7 +7,13 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👑</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;500;600;700;800;900&family=Rajdhani:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Outfit:wght@400;500;600;700;800&family=Rajdhani:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <!-- STUDIO GAME LIBRARIES: LUCIDE VECTOR ICONS, GSAP CINEMATICS, TIPPY TOOLTIPS -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
+    <script src="https://unpkg.com/tippy.js@6"></script>
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/animations/shift-away.css"/>
     <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -16,12 +22,12 @@
          ==================================================================== -->
     <div id="screen-auth" class="screen-container">
         <div class="auth-card">
-            <div class="auth-logo">♟️ CHESS TFT ONLINE</div>
+            <div class="auth-logo"><i data-lucide="crown" class="icon-gold"></i> CHESS <span class="cc-brand-gold">TFT</span> ONLINE</div>
             <p class="auth-subtitle">Sự kết hợp hoàn hảo giữa Cờ Vua Chiến Thuật & Đấu Trường Chân Lý</p>
 
             <div class="auth-tabs">
-                <button id="tab-btn-login" class="auth-tab active">Đăng Nhập</button>
-                <button id="tab-btn-register" class="auth-tab">Đăng Ký Tài Khoản</button>
+                <button id="tab-btn-login" class="auth-tab active"><i data-lucide="log-in"></i> Đăng Nhập</button>
+                <button id="tab-btn-register" class="auth-tab"><i data-lucide="user-plus"></i> Đăng Ký Tài Khoản</button>
             </div>
 
             <!-- LOGIN FORM -->
@@ -34,7 +40,7 @@
                     <label>Mật khẩu</label>
                     <input type="password" id="login-password" placeholder="Nhập mật khẩu..." required />
                 </div>
-                <button type="submit" class="btn-combat-go" style="width:100%; margin-top:8px;">🚀 Đăng Nhập Vào Sảnh</button>
+                <button type="submit" class="btn-combat-go" style="width:100%; margin-top:8px;"><i data-lucide="arrow-right"></i> Đăng Nhập Vào Sảnh</button>
             </form>
 
             <!-- REGISTER FORM -->
@@ -64,7 +70,7 @@
                         <span class="av-option" data-av="🏹">🏹</span>
                     </div>
                 </div>
-                <button type="submit" class="btn-primary" style="width:100%; margin-top:8px;">✨ Tạo Tài Khoản & Vào Game</button>
+                <button type="submit" class="btn-primary" style="width:100%; margin-top:8px;"><i data-lucide="sparkles"></i> Tạo Tài Khoản & Vào Game</button>
             </form>
         </div>
     </div>
@@ -77,7 +83,7 @@
         <aside class="cc-sidebar">
             <div class="cc-brand">
                 <div class="cc-brand-crest">
-                    <span class="crest-crown">👑</span>
+                    <i data-lucide="crown" class="crest-svg icon-gold"></i>
                 </div>
                 <div class="cc-brand-text">
                     <div class="cc-brand-title">CHESS<span class="cc-brand-gold">TFT</span></div>
@@ -88,23 +94,23 @@
             <!-- SIDEBAR NAV LINKS -->
             <nav class="cc-nav-menu">
                 <button id="nav-item-play" class="cc-nav-link active" title="Đấu Trường Cờ Vua TFT">
-                    <span class="cc-nav-icon">⚔️</span>
+                    <span class="cc-nav-icon"><i data-lucide="swords"></i></span>
                     <span class="cc-nav-label">Xuất Trận</span>
                 </button>
                 <button id="nav-item-tutorial" class="cc-nav-link" title="Học Viện & Huấn Luyện Tân Thủ">
-                    <span class="cc-nav-icon">🎓</span>
+                    <span class="cc-nav-icon"><i data-lucide="graduation-cap"></i></span>
                     <span class="cc-nav-label">Học Viện</span>
                 </button>
                 <button id="nav-item-codex" class="cc-nav-link" title="Cẩm Nang Quân Cờ & Tộc Hệ">
-                    <span class="cc-nav-icon">📖</span>
+                    <span class="cc-nav-icon"><i data-lucide="book-marked"></i></span>
                     <span class="cc-nav-label">Cẩm Nang</span>
                 </button>
                 <button id="nav-item-rooms" class="cc-nav-link" title="Phòng So Tài Bạn Bè">
-                    <span class="cc-nav-icon">👥</span>
+                    <span class="cc-nav-icon"><i data-lucide="users"></i></span>
                     <span class="cc-nav-label">Phòng Riêng</span>
                 </button>
                 <button id="btn-open-admin" class="cc-nav-link cc-nav-admin hidden" title="Quản Trị Database">
-                    <span class="cc-nav-icon">🛠️</span>
+                    <span class="cc-nav-icon"><i data-lucide="sliders-horizontal"></i></span>
                     <span class="cc-nav-label">Quản Trị DB</span>
                 </button>
             </nav>
@@ -112,10 +118,10 @@
             <!-- SIDEBAR FOOTER (USER & AUDIO) -->
             <div class="cc-sidebar-footer">
                 <button id="btn-toggle-bgm" class="cc-audio-btn" title="Bật/Tắt Nhạc Nền">
-                    <span>🎵 Nhạc BẬT</span>
+                    <span><i data-lucide="volume-2" class="audio-svg-icon icon-gold"></i> Nhạc BẬT</span>
                 </button>
                 <button id="btn-sound-pack" class="cc-audio-btn btn-sound-pack-sidebar" title="Chuyển Đổi Gói Nhạc: Expedition 33 ↔ Cổ Điển">
-                    <span id="label-sound-pack">🎼 OST: Expedition 33</span>
+                    <span id="label-sound-pack"><i data-lucide="disc" class="audio-svg-icon icon-cyan"></i> OST: Expedition 33</span>
                 </button>
                 <div class="cc-user-pill">
                     <div id="lobby-user-avatar" class="cc-user-avatar">👑</div>
@@ -124,7 +130,7 @@
                         <div id="lobby-user-rank-tier" class="cc-user-elo">1000 ELO</div>
                     </div>
                 </div>
-                <button id="btn-logout" class="cc-logout-btn" title="Đăng Xuất">🚪 Đăng Xuất</button>
+                <button id="btn-logout" class="cc-logout-btn" title="Đăng Xuất"><i data-lucide="log-out"></i> Đăng Xuất</button>
             </div>
         </aside>
 
@@ -133,18 +139,18 @@
             <!-- TOP STATS BAR -->
             <div class="cc-topbar">
                 <div class="cc-topbar-left">
-                    <span class="cc-arena-tag">👑 ĐẤU TRƯỜNG KỲ VƯƠNG</span>
+                    <span class="cc-arena-tag"><i data-lucide="crown" class="icon-gold"></i> ĐẤU TRƯỜNG KỲ VƯƠNG</span>
                     <span id="lobby-user-role-badge" class="badge-role-tag">VIP</span>
-                    <span id="lobby-user-record" class="cc-record-tag">Top 1: 0/0</span>
-                    <span id="lobby-online-status" class="badge-pill online-pulse">🟢 Máy Chủ Sẵn Sàng</span>
+                    <span id="lobby-user-record" class="cc-record-tag"><i data-lucide="trophy" class="icon-amber"></i> Top 1: 0/0</span>
+                    <span id="lobby-online-status" class="badge-pill online-pulse"><span class="pulse-dot"></span> Máy Chủ Sẵn Sàng</span>
                 </div>
                 <div class="cc-topbar-right">
-                    <span class="cc-stat-chip"><span class="chip-icon">🏆</span> <span id="lobby-topbar-rank">Bạc Bất Khuất</span></span>
-                    <span class="cc-stat-chip" title="Chỉ số xuất phát mỗi ván cờ"><span class="chip-icon">⚔️</span> <span id="lobby-perks-val">Khởi Đầu: 100 HP • 6🪙</span></span>
+                    <span class="cc-stat-chip"><i data-lucide="shield" class="icon-cyan"></i> <span id="lobby-topbar-rank">Bạc Bất Khuất</span></span>
+                    <span class="cc-stat-chip" title="Chỉ số xuất phát mỗi ván cờ"><i data-lucide="sparkles" class="icon-gold"></i> <span id="lobby-perks-val">Khởi Đầu: 100 HP • 6🪙</span></span>
                     <span id="lobby-hp-val" class="hidden">100 HP</span>
                     <span id="lobby-gold-val" class="hidden">6 Vàng</span>
-                    <span id="lobby-user-streak" class="cc-stat-chip streak-chip">🔥 0 Ngày Chuỗi Thắng</span>
-                    <button id="btn-open-guide-lobby" class="btn-game btn-game-gold" style="padding:4px 12px; font-size:0.75rem; font-weight:bold;">♟️ Hướng Dẫn Tướng</button>
+                    <span id="lobby-user-streak" class="cc-stat-chip streak-chip"><i data-lucide="flame" class="icon-red"></i> 0 Ngày Chuỗi Thắng</span>
+                    <button id="btn-open-guide-lobby" class="btn-game btn-game-gold" style="padding:4px 12px; font-size:0.75rem; font-weight:bold;"><i data-lucide="help-circle"></i> Hướng Dẫn Tướng</button>
                 </div>
             </div>
 
@@ -159,23 +165,23 @@
                     <!-- HERO COMMAND BATTLE BOX -->
                     <div class="cc-quickplay-card">
                         <div class="cc-time-tabs">
-                            <button class="cc-time-tab active" data-mode="ranked">🏆 Đấu Xếp Hạng</button>
-                            <button class="cc-time-tab" data-mode="skirmish">⚔️ Đấu Trí 1v1</button>
-                            <button class="cc-time-tab" data-mode="solo">🤖 Luyện Bot AI</button>
-                            <button class="cc-time-tab" data-mode="sandbox">🎯 Phòng Tập (Sandbox)</button>
-                            <button class="cc-time-tab" data-mode="tutorial">🎓 Tân Thủ</button>
-                            <button class="cc-time-tab" data-mode="custom">👥 Bạn Bè</button>
+                            <button class="cc-time-tab active" data-mode="ranked"><i data-lucide="trophy"></i> Đấu Xếp Hạng</button>
+                            <button class="cc-time-tab" data-mode="skirmish"><i data-lucide="swords"></i> Đấu Trí 1v1</button>
+                            <button class="cc-time-tab" data-mode="solo"><i data-lucide="bot"></i> Luyện Bot AI</button>
+                            <button class="cc-time-tab" data-mode="sandbox"><i data-lucide="hammer"></i> Phòng Tập</button>
+                            <button class="cc-time-tab" data-mode="tutorial"><i data-lucide="graduation-cap"></i> Tân Thủ</button>
+                            <button class="cc-time-tab" data-mode="custom"><i data-lucide="users"></i> Bạn Bè</button>
                         </div>
 
                         <!-- MAJESTIC ROYAL BATTLE CTA BUTTON (CHẤT RIÊNG ĐỘC BẢN) -->
                         <div class="cc-cta-wrap">
                             <button id="btn-hero-play-main" class="cc-btn-green-giant cc-btn-royal-warcrest">
                                 <span class="warcrest-shine"></span>
-                                <span class="cc-play-icon">⚔️</span>
+                                <i data-lucide="swords" class="cc-play-svg icon-gold"></i>
                                 <span id="hero-btn-label" class="cc-btn-label">XUẤT TRẬN CHIẾN ĐẤU</span>
                             </button>
                             <div class="cc-mode-desc-wrap">
-                                <span class="desc-badge">⚡</span>
+                                <i data-lucide="zap" class="desc-svg-icon icon-amber"></i>
                                 <p id="hero-mode-desc" class="cc-mode-desc">Tự động ghép cùng kỳ thủ online thật. Ghế trống tự động thêm 7 Bot AI sau 4s!</p>
                             </div>
                         </div>
@@ -183,27 +189,27 @@
                         <!-- QUICK ACTIONS BELOW -->
                         <div class="cc-quick-actions-row">
                             <button id="btn-start-matchmaking" class="cc-action-item">
-                                <span class="action-icon">🎯</span>
+                                <i data-lucide="crosshair" class="action-svg-icon icon-gold"></i>
                                 <span>Tìm Trận Rank</span>
                             </button>
                             <button id="btn-quick-skirmish" class="cc-action-item" style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.08);">
-                                <span class="action-icon">⚔️</span>
+                                <i data-lucide="swords" class="action-svg-icon icon-amber"></i>
                                 <span style="color:#f59e0b; font-weight:700;">Đấu Trí 1v1</span>
                             </button>
                             <button id="btn-quick-solo" class="cc-action-item">
-                                <span class="action-icon">🤖</span>
+                                <i data-lucide="bot" class="action-svg-icon icon-cyan"></i>
                                 <span>Đấu Với Bot</span>
                             </button>
                             <button id="btn-quick-sandbox" class="cc-action-item" style="border-color: rgba(56, 189, 248, 0.4); background: rgba(56, 189, 248, 0.08);">
-                                <span class="action-icon">🛠️</span>
+                                <i data-lucide="hammer" class="action-svg-icon icon-cyan"></i>
                                 <span style="color:#38bdf8; font-weight:700;">Phòng Tập</span>
                             </button>
                             <button id="btn-quick-tutorial" class="cc-action-item">
-                                <span class="action-icon">🎓</span>
+                                <i data-lucide="graduation-cap" class="action-svg-icon icon-emerald"></i>
                                 <span>Học Viện Cờ</span>
                             </button>
                             <button id="btn-quick-friends" class="cc-action-item">
-                                <span class="action-icon">👥</span>
+                                <i data-lucide="users" class="action-svg-icon icon-purple"></i>
                                 <span>Phòng Riêng</span>
                             </button>
                         </div>
@@ -215,18 +221,18 @@
                         <div class="cc-feature-card card-tutorial" id="card-feature-tutorial">
                             <div class="cc-board-preview preview-arcane">
                                 <div class="tactical-board-frame">
-                                    <div class="tactical-glyph-cell glyph-coach">🎓</div>
+                                    <div class="tactical-glyph-cell"><i data-lucide="graduation-cap" class="tactical-preview-svg icon-cyan"></i></div>
                                     <div class="tactical-rune-path"></div>
-                                    <div class="tactical-glyph-cell glyph-pawn">♟️</div>
+                                    <div class="tactical-glyph-cell"><i data-lucide="shield" class="tactical-preview-svg icon-gold"></i></div>
                                 </div>
                                 <span class="preview-corner-badge">HỌC VIỆN</span>
                             </div>
                             <div class="cc-feature-body">
                                 <div class="cc-feature-head">
-                                    <span class="cc-feature-tag">🎓 HUẤN LUYỆN 1-KÈM-1</span>
+                                    <span class="cc-feature-tag"><i data-lucide="book-open"></i> HUẤN LUYỆN 1-KÈM-1</span>
                                     <div class="cc-feature-title">Học Viện Kỳ Thủ Martin</div>
                                 </div>
-                                <button id="btn-start-tutorial" class="cc-feature-btn btn-feature-cyan">Vào Lớp Học</button>
+                                <button id="btn-start-tutorial" class="cc-feature-btn btn-feature-cyan"><i data-lucide="play"></i> Vào Lớp Học</button>
                             </div>
                         </div>
 
@@ -234,18 +240,18 @@
                         <div class="cc-feature-card card-bot" id="card-feature-bot">
                             <div class="cc-board-preview preview-crimson">
                                 <div class="tactical-board-frame">
-                                    <div class="tactical-glyph-cell glyph-bot">🤖</div>
+                                    <div class="tactical-glyph-cell"><i data-lucide="bot" class="tactical-preview-svg icon-amber"></i></div>
                                     <div class="tactical-rune-vs">VS</div>
-                                    <div class="tactical-glyph-cell glyph-swords">⚔️</div>
+                                    <div class="tactical-glyph-cell"><i data-lucide="swords" class="tactical-preview-svg icon-red"></i></div>
                                 </div>
                                 <span class="preview-corner-badge">7 AI GRANDMASTER</span>
                             </div>
                             <div class="cc-feature-body">
                                 <div class="cc-feature-head">
-                                    <span class="cc-feature-tag">🤖 THỰC CHIẾN 7 BOT</span>
+                                    <span class="cc-feature-tag"><i data-lucide="bot"></i> THỰC CHIẾN 7 BOT</span>
                                     <div class="cc-feature-title">Đại Kiện Tướng AI Magnus</div>
                                 </div>
-                                <button id="btn-play-bot-feature" class="cc-feature-btn btn-feature-amber">Đấu Với Bot</button>
+                                <button id="btn-play-bot-feature" class="cc-feature-btn btn-feature-amber"><i data-lucide="play"></i> Đấu Với Bot</button>
                             </div>
                         </div>
 
@@ -253,18 +259,18 @@
                         <div class="cc-feature-card card-rank" id="card-feature-rank">
                             <div class="cc-board-preview preview-royal">
                                 <div class="tactical-board-frame">
-                                    <div class="tactical-glyph-cell glyph-trophy">🏆</div>
+                                    <div class="tactical-glyph-cell"><i data-lucide="trophy" class="tactical-preview-svg icon-gold"></i></div>
                                     <div class="tactical-rune-glow"></div>
-                                    <div class="tactical-glyph-cell glyph-king">👑</div>
+                                    <div class="tactical-glyph-cell"><i data-lucide="crown" class="tactical-preview-svg icon-amber"></i></div>
                                 </div>
                                 <span class="preview-corner-badge">LEO RANK ELO</span>
                             </div>
                             <div class="cc-feature-body">
                                 <div class="cc-feature-head">
-                                    <span class="cc-feature-tag">🔥 ĐẤU TRƯỜNG KỲ VƯƠNG</span>
+                                    <span class="cc-feature-tag"><i data-lucide="flame"></i> ĐẤU TRƯỜNG KỲ VƯƠNG</span>
                                     <div class="cc-feature-title">Xếp Hạng Bảng Vàng</div>
                                 </div>
-                                <button id="btn-play-rank-feature" class="cc-feature-btn btn-feature-gold">Tìm Trận Rank</button>
+                                <button id="btn-play-rank-feature" class="cc-feature-btn btn-feature-gold"><i data-lucide="crosshair"></i> Tìm Trận Rank</button>
                             </div>
                         </div>
 
@@ -272,18 +278,18 @@
                         <div class="cc-feature-card card-sandbox" id="card-feature-sandbox">
                             <div class="cc-board-preview preview-sandbox">
                                 <div class="tactical-board-frame">
-                                    <div class="tactical-glyph-cell glyph-target">🎯</div>
+                                    <div class="tactical-glyph-cell"><i data-lucide="target" class="tactical-preview-svg icon-cyan"></i></div>
                                     <div class="tactical-rune-path" style="background:rgba(56,189,248,0.4);"></div>
-                                    <div class="tactical-glyph-cell glyph-tools">🛠️</div>
+                                    <div class="tactical-glyph-cell"><i data-lucide="hammer" class="tactical-preview-svg icon-cyan"></i></div>
                                 </div>
                                 <span class="preview-corner-badge" style="background:rgba(56,189,248,0.25); color:#38bdf8; border-color:#38bdf8;">VÔ HẠN TEST</span>
                             </div>
                             <div class="cc-feature-body">
                                 <div class="cc-feature-head">
-                                    <span class="cc-feature-tag" style="color:#38bdf8;">🛠️ PHÒNG TẬP CHIẾN THUẬT</span>
+                                    <span class="cc-feature-tag" style="color:#38bdf8;"><i data-lucide="wrench"></i> PHÒNG TẬP CHIẾN THUẬT</span>
                                     <div class="cc-feature-title">Đấu Trường Sandbox</div>
                                 </div>
-                                <button id="btn-play-sandbox-feature" class="cc-feature-btn btn-feature-cyan" style="background:linear-gradient(135deg, #0284c7 0%, #38bdf8 100%); color:#04060c; font-weight:800;">Vào Phòng Tập</button>
+                                <button id="btn-play-sandbox-feature" class="cc-feature-btn btn-feature-cyan" style="background:linear-gradient(135deg, #0284c7 0%, #38bdf8 100%); color:#04060c; font-weight:800;"><i data-lucide="hammer"></i> Vào Phòng Tập</button>
                             </div>
                         </div>
                     </div>
@@ -297,10 +303,10 @@
                     <button id="btn-back-from-codex" class="btn-game btn-game-gold" style="padding:4px 12px; font-size:0.75rem; font-weight:800;">⬅️ Quay Về Sảnh</button>
                 </div>
                 <div class="codex-tabs">
-                    <button class="codex-tab active" data-tab="pieces">♟️ Quân Cờ (15)</button>
-                    <button class="codex-tab" data-tab="synergies">✨ Tộc / Hệ (8)</button>
-                    <button class="codex-tab" data-tab="items">🎒 Trang Bị & Bản Đồ</button>
-                    <button class="codex-tab" data-tab="rules">📖 Luật Chơi & Trừ Máu</button>
+                    <button class="codex-tab active" data-tab="pieces"><i data-lucide="shield"></i> Quân Cờ (15)</button>
+                    <button class="codex-tab" data-tab="synergies"><i data-lucide="sparkles"></i> Tộc / Hệ (8)</button>
+                    <button class="codex-tab" data-tab="items"><i data-lucide="package"></i> Trang Bị & Bản Đồ</button>
+                    <button class="codex-tab" data-tab="rules"><i data-lucide="book-open"></i> Luật Chơi & Trừ Máu</button>
                 </div>
                 <div id="codex-content" class="codex-content"></div>
             </div>
@@ -309,38 +315,38 @@
             <div id="view-hub-rooms" class="cc-tab-view hidden">
                 <div id="lobby-room-controls" class="cc-room-box">
                     <div class="panel-section-title" style="display:flex; justify-content:space-between; align-items:center;">
-                        <span>👥 TẠO PHÒNG & GHÉP TRẬN BẠN BÈ</span>
-                        <button id="btn-back-from-rooms" class="btn-game btn-game-gold" style="padding:4px 12px; font-size:0.75rem; font-weight:800;">⬅️ Quay Về Sảnh</button>
+                        <span><i data-lucide="users"></i> TẠO PHÒNG & GHÉP TRẬN BẠN BÈ</span>
+                        <button id="btn-back-from-rooms" class="btn-game btn-game-gold" style="padding:4px 12px; font-size:0.75rem; font-weight:800;"><i data-lucide="arrow-left"></i> Quay Về Sảnh</button>
                     </div>
                     <p class="cc-sub">Tạo phòng riêng hoặc nhập mã để so tài cùng bạn bè. Ghế trống tự động thêm Bot AI!</p>
                     <div class="room-create-row" style="margin-top:10px;">
                         <div class="form-group" style="flex:1;">
-                            <label style="font-size:0.75rem; color:#989795; font-weight:700;">⏱️ Thời Gian Cờ Chớp:</label>
+                            <label style="font-size:0.75rem; color:#989795; font-weight:700;"><i data-lucide="clock"></i> Thời Gian Cờ Chớp:</label>
                             <select id="select-room-timemode" class="lobby-select">
-                                <option value="standard" selected>⏱️ Tiêu Chuẩn (45s/60s/75s + 3s/nước) — Cân bằng</option>
-                                <option value="relaxed">☕ Thư Thả (70s/95s/120s + 4s/nước) — Tập chơi</option>
-                                <option value="blitz">⚡ Siêu Chớp (28s/38s/48s + 2s/nước) — Căng não</option>
+                                <option value="standard" selected>Tiêu Chuẩn (45s/60s/75s + 3s/nước) — Cân bằng</option>
+                                <option value="relaxed">Thư Thả (70s/95s/120s + 4s/nước) — Tập chơi</option>
+                                <option value="blitz">Siêu Chớp (28s/38s/48s + 2s/nước) — Căng não</option>
                             </select>
                         </div>
-                        <button id="btn-create-room" class="btn-game btn-game-gold" style="height:38px; align-self:flex-end;">➕ Tạo Phòng Mới</button>
-                        <button id="btn-create-spectator-room" class="btn-game btn-game-cyan" style="height:38px; align-self:flex-end;" title="Tạo phòng với tư cách Khán Giả, 8 ghế tự động thêm Bot AI">👁️ Tạo Phòng Khán Giả</button>
+                        <button id="btn-create-room" class="btn-game btn-game-gold" style="height:38px; align-self:flex-end;"><i data-lucide="plus"></i> Tạo Phòng Mới</button>
+                        <button id="btn-create-spectator-room" class="btn-game btn-game-cyan" style="height:38px; align-self:flex-end;" title="Tạo phòng với tư cách Khán Giả, 8 ghế tự động thêm Bot AI"><i data-lucide="eye"></i> Tạo Phòng Khán Giả</button>
                     </div>
 
                     <div class="room-options-row" style="margin-top:8px; display:flex; align-items:center;">
                         <label class="checkbox-label" style="font-size:0.82rem; cursor:pointer;">
                             <input type="checkbox" id="chk-host-as-spectator" />
-                            <span style="color:#38bdf8; font-weight:700;">👁️ Tạo phòng với tư cách Khán Giả / Trọng Tài (Caster Mode: Xem 4 bàn cờ 8 người cùng lúc)</span>
+                            <span style="color:#38bdf8; font-weight:700;"><i data-lucide="eye"></i> Tạo phòng với tư cách Khán Giả / Trọng Tài (Caster Mode: Xem 4 bàn cờ 8 người cùng lúc)</span>
                         </label>
                     </div>
 
                     <div class="room-join-row" style="margin-top:10px;">
                         <input type="text" id="input-room-code" class="lobby-input" placeholder="NHẬP MÃ PHÒNG (VD: TFT888)..." maxlength="8" />
-                        <button id="btn-join-code" class="btn-game btn-game-cyan">🔑 Vào Phòng</button>
+                        <button id="btn-join-code" class="btn-game btn-game-cyan"><i data-lucide="key"></i> Vào Phòng</button>
                     </div>
 
                     <div class="panel-section-title" style="margin-top:14px; display:flex; justify-content:space-between; align-items:center;">
-                        <span>🌐 Danh Sách Phòng Đang Mở:</span>
-                        <button id="btn-refresh-rooms" class="btn-secondary" style="padding:2px 8px; font-size:0.7rem;">🔄 Làm mới</button>
+                        <span><i data-lucide="globe"></i> Danh Sách Phòng Đang Mở:</span>
+                        <button id="btn-refresh-rooms" class="btn-secondary" style="padding:2px 8px; font-size:0.7rem;"><i data-lucide="refresh-cw"></i> Làm mới</button>
                     </div>
                     <div id="open-rooms-list" class="open-rooms-list"></div>
                 </div>
@@ -430,16 +436,16 @@
                 <span id="player-streak" class="hidden">Chuỗi: 0</span>
                 <button id="btn-rules-modal" class="hidden"></button>
                 <button id="btn-close-rules" class="hidden"></button>
-                <span id="fortune-chest-badge" class="stat-chip stat-fortune hidden">🎰 0đ</span>
-                <button id="btn-toggle-bgm-game" class="btn-audio-pill" title="Bật/Tắt Nhạc Nền">🎵 Nhạc</button>
-                <button id="btn-toggle-dps-meter" class="btn-audio-pill" title="Mở Biểu Đồ Sát Thương DPS">📊 DPS</button>
-                <button id="btn-combat-speed" class="btn-audio-pill" title="Tốc độ trận đấu Solo Bot (1x / 2x)">⏩ 1x</button>
-                <button id="btn-toggle-guide-mode" class="btn-audio-pill" title="Chuyển chế độ: Tân Thủ (hiện gợi ý nước đi khi rê chuột) / Kỳ Thủ (tắt gợi ý)">🎓 Trợ Giúp: BẬT</button>
-                <button id="btn-piece-guide-modal" class="btn-primary" style="padding:4px 10px; font-size:0.75rem;">♟️ Tra Tướng</button>
-                <button id="btn-sandbox-panel-toggle" class="btn-game btn-game-cyan hidden" style="margin:0; padding:4px 10px; font-size:0.74rem; font-weight:800; border-color:#38bdf8;">🛠️ PHÒNG TẬP</button>
+                <span id="fortune-chest-badge" class="stat-chip stat-fortune hidden"><i data-lucide="dices"></i> 0đ</span>
+                <button id="btn-toggle-bgm-game" class="btn-audio-pill" title="Bật/Tắt Nhạc Nền"><i data-lucide="volume-2"></i> Nhạc</button>
+                <button id="btn-toggle-dps-meter" class="btn-audio-pill" title="Mở Biểu Đồ Sát Thương DPS"><i data-lucide="bar-chart-3"></i> DPS</button>
+                <button id="btn-combat-speed" class="btn-audio-pill" title="Tốc độ trận đấu Solo Bot (1x / 2x)"><i data-lucide="fast-forward"></i> 1x</button>
+                <button id="btn-toggle-guide-mode" class="btn-audio-pill" title="Chuyển chế độ: Tân Thủ (hiện gợi ý nước đi khi rê chuột) / Kỳ Thủ (tắt gợi ý)"><i data-lucide="compass"></i> Trợ Giúp: BẬT</button>
+                <button id="btn-piece-guide-modal" class="btn-primary" style="padding:4px 10px; font-size:0.75rem;"><i data-lucide="book-open"></i> Tra Tướng</button>
+                <button id="btn-sandbox-panel-toggle" class="btn-game btn-game-cyan hidden" style="margin:0; padding:4px 10px; font-size:0.74rem; font-weight:800; border-color:#38bdf8;"><i data-lucide="wrench"></i> PHÒNG TẬP</button>
                 <div class="hud-btn-divider"></div>
-                <button id="btn-back-lobby" class="btn-game btn-game-gold" style="margin:0; padding:4px 10px; font-size:0.74rem; font-weight:700;" title="Quay về Sảnh Chờ">⬅️ Sảnh</button>
-                <button id="btn-surrender-game" class="btn-surrender-hud" style="margin:0; margin-left:4px; padding:4px 8px; font-size:0.72rem;" title="Xác nhận đầu hàng và nhận kết quả thua">🏳️ Đầu Hàng</button>
+                <button id="btn-back-lobby" class="btn-game btn-game-gold" style="margin:0; padding:4px 10px; font-size:0.74rem; font-weight:700;" title="Quay về Sảnh Chờ"><i data-lucide="arrow-left"></i> Sảnh</button>
+                <button id="btn-surrender-game" class="btn-surrender-hud" style="margin:0; margin-left:4px; padding:4px 8px; font-size:0.72rem;" title="Xác nhận đầu hàng và nhận kết quả thua"><i data-lucide="flag"></i> Đầu Hàng</button>
             </div>
         </header>
 
@@ -618,24 +624,24 @@
 
                             <button id="btn-buy-xp" class="btn-tft-xp hud-btn-full" title="Mua 4 XP với 4 vàng (Phím tắt: F)">
                                 <div class="hud-btn-main">
-                                    <span class="xp-btn-title">⬆️ MUA XP</span>
+                                    <span class="xp-btn-title"><i data-lucide="arrow-up-circle"></i> MUA XP</span>
                                     <span class="hud-keybind-badge">F</span>
                                 </div>
-                                <span class="xp-btn-cost">4 🪙</span>
+                                <span class="xp-btn-cost">4 <i data-lucide="coins" class="icon-gold"></i></span>
                             </button>
 
                             <button id="btn-reroll" class="btn-tft-reroll hud-btn-full" title="Đổi lại 5 quân cờ (Phím tắt: D)">
                                 <div class="hud-btn-main">
-                                    <span class="reroll-btn-title">🎲 ROLL SHOP</span>
+                                    <span class="reroll-btn-title"><i data-lucide="dices"></i> ROLL SHOP</span>
                                     <span class="hud-keybind-badge">D</span>
                                 </div>
-                                <span id="reroll-cost-label" class="reroll-btn-cost">2 🪙</span>
+                                <span id="reroll-cost-label" class="reroll-btn-cost">2 <i data-lucide="coins" class="icon-gold"></i></span>
                             </button>
 
                             <!-- NÚT BÁN TƯỚNG TRỰC TIẾP TRÊN HUD -->
                             <button id="btn-sell-hud-direct" class="btn-danger hud-btn-full" title="Bán quân cờ đang chọn hoặc kéo/trỏ chuột vào để bán (Phím tắt: E)" style="margin-top:2px;">
                                 <div class="hud-btn-main">
-                                    <span id="hud-sell-label" style="font-weight:800; font-size:0.7rem;">💰 BÁN TƯỚNG</span>
+                                    <span id="hud-sell-label" style="font-weight:800; font-size:0.7rem;"><i data-lucide="banknote"></i> BÁN TƯỚNG</span>
                                     <span class="hud-keybind-badge" style="background:#ef4444; color:#fff;">E</span>
                                 </div>
                             </button>
@@ -645,7 +651,7 @@
                         <div id="shop-cards" class="shop-cards custom-shop-cards"></div>
 
                         <!-- NÚT VÀO TRẬN ĐẶT CẠNH SHOP -->
-                        <button id="btn-start-combat" class="btn-combat-go hud-btn-combat-ready" title="Bắt đầu giao tranh ngay lập tức">⚔️ VÀO TRẬN</button>
+                        <button id="btn-start-combat" class="btn-combat-go hud-btn-combat-ready" title="Bắt đầu giao tranh ngay lập tức"><i data-lucide="swords"></i> VÀO TRẬN</button>
                     </div>
                 </div>
             </section>
@@ -720,10 +726,10 @@
 
             <!-- SANDBOX TABS -->
             <div class="sandbox-tabs-nav">
-                <button class="sandbox-tab-btn active" data-tab="champions">♟️ Tướng & Sao</button>
-                <button class="sandbox-tab-btn" data-tab="items">🎒 Trang Bị & Lõi</button>
-                <button class="sandbox-tab-btn" data-tab="enemy">🤖 Đội Hình Địch</button>
-                <button class="sandbox-tab-btn" data-tab="cheats">⚡ Công Cụ Thử Nghiệm</button>
+                <button class="sandbox-tab-btn active" data-tab="champions"><i data-lucide="shield"></i> Tướng & Sao</button>
+                <button class="sandbox-tab-btn" data-tab="items"><i data-lucide="package"></i> Trang Bị & Lõi</button>
+                <button class="sandbox-tab-btn" data-tab="enemy"><i data-lucide="bot"></i> Đội Hình Địch</button>
+                <button class="sandbox-tab-btn" data-tab="cheats"><i data-lucide="wrench"></i> Công Cụ Thử Nghiệm</button>
             </div>
 
             <div class="sandbox-tab-content-area">

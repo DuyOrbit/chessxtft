@@ -2,6 +2,37 @@
 // CHESS TFT - MAIN UI CONTROLLER, AUDIO SYNTHESIZER & BLITZ CLOCK LOOP
 // ============================================================================
 
+// STUDIO GAME UI HELPERS: LUCIDE VECTOR ICONS & HEXTECH TOOLTIPS
+window.renderLucideIcons = function(targetEl = null) {
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
+        try {
+            if (targetEl && targetEl instanceof HTMLElement) {
+                window.lucide.createIcons({ root: targetEl });
+            } else {
+                window.lucide.createIcons();
+            }
+        } catch (e) {
+            console.warn("Lucide render warning:", e);
+        }
+    }
+};
+
+window.initGameTooltips = function(targetEl = null) {
+    if (window.tippy) {
+        try {
+            const selector = targetEl ? targetEl.querySelectorAll("[data-tippy-content]") : document.querySelectorAll("[data-tippy-content]");
+            if (selector.length > 0) {
+                window.tippy(selector, {
+                    theme: 'hextech',
+                    animation: 'shift-away',
+                    arrow: true,
+                    duration: [150, 100],
+                });
+            }
+        } catch (e) {}
+    }
+};
+
 class SoundFX {
     constructor() {
         this.ctx = null;
@@ -548,6 +579,7 @@ class ChessTFTApp {
         if (pushToHistory && window.history && window.history.pushState) {
             window.history.pushState({ screen: screenName, tab: this.currentLobbyTab || "play" }, "");
         }
+        window.renderLucideIcons();
     }
 
     playCombatBgm() {
@@ -1737,19 +1769,19 @@ class ChessTFTApp {
                     </div>
                     <div class="hero-card-stats-grid">
                         <div class="hero-stat-cell">
-                            <span class="hero-stat-label">🛡️ Máu (★ / ★★ / ★★★)</span>
+                            <span class="hero-stat-label"><i data-lucide="shield" class="icon-emerald"></i> Máu (★ / ★★ / ★★★)</span>
                             <span class="hero-stat-val">${p.baseHp.join(" / ")}</span>
                         </div>
                         <div class="hero-stat-cell">
-                            <span class="hero-stat-label">🎯 Tầm Đánh</span>
+                            <span class="hero-stat-label"><i data-lucide="crosshair" class="icon-red"></i> Tầm Đánh</span>
                             <span class="hero-stat-val">${p.range.join(" / ")} ô</span>
                         </div>
                     </div>
                     <div class="hero-card-desc">
-                        <span class="hero-desc-icon">⚡</span>
+                        <span class="hero-desc-icon"><i data-lucide="zap" class="icon-amber"></i></span>
                         <span>${p.desc}</span>
                     </div>
-                    <button class="btn-game btn-game-cyan codex-view-guide-btn" data-piece-id="${p.id}" style="font-size:0.75rem; padding:6px 10px; margin-top:6px; font-weight:700; width:100%; border-radius:6px; cursor:pointer;">♟️ Xem Bàn Cờ Nước Đi & Mẹo Chơi</button>
+                    <button class="btn-game btn-game-cyan codex-view-guide-btn" data-piece-id="${p.id}" style="font-size:0.75rem; padding:6px 10px; margin-top:6px; font-weight:700; width:100%; border-radius:6px; cursor:pointer;"><i data-lucide="compass" class="icon-cyan"></i> Xem Bàn Cờ Nước Đi & Mẹo Chơi</button>
                 `;
 
                 const guideBtn = card.querySelector(".codex-view-guide-btn");
@@ -1765,7 +1797,7 @@ class ChessTFTApp {
             for (const syn of Object.values(window.CHESS_TFT_DATA.SYNERGIES)) {
                 const unitBadges = Object.values(window.CHESS_TFT_DATA.PIECES)
                     .filter(p => p.traits && p.traits.includes(syn.id))
-                    .map(p => `<span class="syn-unit-chip cost-tier-${p.cost}">${p.icon} ${p.name} (${p.isKing ? "Vua" : p.cost + "🪙"})</span>`)
+                    .map(p => `<span class="syn-unit-chip cost-tier-${p.cost}">${p.icon} ${p.name} (${p.isKing ? "Vua" : p.cost + " Vàng"})</span>`)
                     .join(" ");
 
                 const tiersHtml = syn.thresholds.map(th => `
@@ -1790,7 +1822,7 @@ class ChessTFTApp {
                     <div class="synergy-card-desc">${syn.desc}</div>
                     <div class="synergy-thresholds-container">${tiersHtml}</div>
                     <div class="synergy-units-list">
-                        <span class="synergy-units-title">♟️ Danh sách quân cờ:</span>
+                        <span class="synergy-units-title"><i data-lucide="shield" class="icon-cyan"></i> Danh sách quân cờ:</span>
                         <div class="synergy-units-flex">${unitBadges}</div>
                     </div>
                 `;
@@ -1817,7 +1849,7 @@ class ChessTFTApp {
                 card.className = "game-item-card game-map-card";
                 card.innerHTML = `
                     <div class="item-card-head">
-                        <div class="item-icon-frame">🗺️</div>
+                        <div class="item-icon-frame"><i data-lucide="map" class="icon-cyan"></i></div>
                         <div class="item-title-wrap">
                             <h4 class="item-name">${mp.name}</h4>
                             <span class="item-type-badge map-type-badge">Đấu Trường Chiến Thuật</span>
@@ -1833,7 +1865,7 @@ class ChessTFTApp {
             container.style.gridTemplateColumns = "1fr";
             container.innerHTML = `
                 <div class="game-rule-card">
-                    <div class="rule-card-title">⏱️ 1. Thời Gian Đồng Hồ Cờ Chớp & Mở Rộng Bàn Cờ</div>
+                    <div class="rule-card-title"><i data-lucide="clock" class="icon-cyan"></i> 1. Thời Gian Đồng Hồ Cờ Chớp & Mở Rộng Bàn Cờ</div>
                     <div class="rule-card-content">
                         <div class="rule-row">
                             <span class="rule-badge">Stage 1</span>
@@ -1848,13 +1880,13 @@ class ChessTFTApp {
                             <span>Bàn cờ <code>${st[3].cols}x${st[3].rows}</code> — Đồng hồ <strong>${st[3].blitzTime}s + ${st[3].increment}s/nước</strong>.</span>
                         </div>
                         <div class="rule-note">
-                            👁️ <strong>Soi Bài Bảo Mật:</strong> Khi bấm xem nhà đối thủ lúc Chuẩn Bị, toàn bộ địa hình bản đồ bị ẩn đi để bạn không biết trước mình sắp gặp ai!
+                            <i data-lucide="eye-off" class="icon-cyan"></i> <strong>Soi Bài Bảo Mật:</strong> Khi bấm xem nhà đối thủ lúc Chuẩn Bị, toàn bộ địa hình bản đồ bị ẩn đi để bạn không biết trước mình sắp gặp ai!
                         </div>
                     </div>
                 </div>
 
                 <div class="game-rule-card">
-                    <div class="rule-card-title">💥 2. Công Thức Tính Sát Thương Máu Linh Hồn (Player HP)</div>
+                    <div class="rule-card-title"><i data-lucide="swords" class="icon-red"></i> 2. Công Thức Tính Sát Thương Máu Linh Hồn (Player HP)</div>
                     <div class="rule-card-content">
                         <div class="rule-row rule-row-danger">
                             <span class="rule-badge badge-danger">Chiếu Hết (Checkmate) / Hết Giờ</span>
@@ -1872,48 +1904,60 @@ class ChessTFTApp {
                 </div>
 
                 <div class="game-rule-card">
-                    <div class="rule-card-title">🔥 3. Cơ Chế Chuỗi Thắng / Thua & Lội Ngược Dòng (Comeback)</div>
+                    <div class="rule-card-title"><i data-lucide="flame" class="icon-amber"></i> 3. Cơ Chế Chuỗi Thắng / Thua & Lội Ngược Dòng (Comeback)</div>
                     <div class="rule-card-content">
                         <div class="rule-row">
                             <span class="rule-badge badge-gold">Thưởng Chuỗi Vàng</span>
-                            <span>Chuỗi 2-3 trận: <strong>+1🪙</strong> | Chuỗi 4 trận: <strong>+2🪙</strong> | Chuỗi 5+ trận: <strong>+3🪙</strong> mỗi vòng.</span>
+                            <span>Chuỗi 2-3 trận: <strong>+1 Vàng</strong> | Chuỗi 4 trận: <strong>+2 Vàng</strong> | Chuỗi 5+ trận: <strong>+3 Vàng</strong> mỗi vòng.</span>
                         </div>
                         <div class="rule-row">
-                            <span class="rule-badge badge-purple">🎲 Hỗ Trợ Chuỗi Thua (≥ 3 trận)</span>
+                            <span class="rule-badge badge-purple"><i data-lucide="refresh-cw" class="icon-cyan"></i> Hỗ Trợ Chuỗi Thua (≥ 3 trận)</span>
                             <span>Mỗi vòng nhận <strong>+1 Lượt Đổi Shop Miễn Phí</strong> giúp người có bài yếu dễ dàng lật kèo.</span>
                         </div>
                         <div class="rule-row">
-                            <span class="rule-badge badge-purple">📦 Hòm Cứu Trợ (Chuỗi Thua ≥ 4 trận)</span>
+                            <span class="rule-badge badge-purple"><i data-lucide="package" class="icon-amber"></i> Hòm Cứu Trợ (Chuỗi Thua ≥ 4 trận)</span>
                             <span>Tặng ngay <strong>+10 Vàng</strong> và <strong>1 Trang Bị Hoàn Chỉnh</strong> ngẫu nhiên!</span>
                         </div>
                         <div class="rule-row rule-row-danger">
-                            <span class="rule-badge badge-danger">🛡️ Ý Chí Phục Thù (Máu ≤ 25 HP)</span>
+                            <span class="rule-badge badge-danger"><i data-lucide="shield-alert" class="icon-red"></i> Ý Chí Phục Thù (Máu ≤ 25 HP)</span>
                             <span>Khi máu rơi xuống ≤ 25 lần đầu tiên: Lập tức nhận <strong>+15 Vàng</strong>, Quốc Vương được tăng vĩnh viễn <strong>+1 Lớp Máu</strong> và <strong>+15s</strong> thời gian đồng hồ cờ chớp!</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="game-rule-card">
-                    <div class="rule-card-title">🪙 4. Cơ Chế Bán Tướng & Phí Ghép Sao</div>
+                    <div class="rule-card-title"><i data-lucide="coins" class="icon-gold"></i> 4. Cơ Chế Bán Tướng & Phí Ghép Sao</div>
                     <div class="rule-card-content">
                         <div class="rule-row">
                             <span class="rule-badge badge-gold">Tướng 1⭐</span>
-                            <span>Bán hoàn lại <strong>100%</strong> giá mua ban đầu (1🪙 ➔ 1🪙, 2🪙 ➔ 2🪙...).</span>
+                            <span>Bán hoàn lại <strong>100%</strong> giá mua ban đầu (1 Vàng ➔ 1 Vàng, 2 Vàng ➔ 2 Vàng...).</span>
                         </div>
                         <div class="rule-row">
                             <span class="rule-badge badge-purple">Tướng 2⭐ (Ghép từ 3 con)</span>
-                            <span>Bán hoàn lại: <code>(Giá gốc × 3) - 1🪙 Phí Ghép</code> (Tướng 1🪙 hoàn 2🪙; Tướng 2🪙 hoàn 5🪙; Tướng 3🪙 hoàn 8🪙...). Toàn bộ trang bị trên người sẽ an toàn rơi về kho!</span>
+                            <span>Bán hoàn lại: <code>(Giá gốc × 3) - 1 Vàng Phí Ghép</code> (Tướng 1 Vàng hoàn 2 Vàng; Tướng 2 Vàng hoàn 5 Vàng; Tướng 3 Vàng hoàn 8 Vàng...). Toàn bộ trang bị trên người sẽ an toàn rơi về kho!</span>
                         </div>
                         <div class="rule-row">
                             <span class="rule-badge badge-gold">Tướng 3⭐ (Ghép từ 9 con)</span>
-                            <span>Bán hoàn lại: <code>(Giá gốc × 9) - 2🪙 Phí Ghép</code>.</span>
+                            <span>Bán hoàn lại: <code>(Giá gốc × 9) - 2 Vàng Phí Ghép</code>.</span>
                         </div>
                     </div>
                 </div>
             `;
+            window.renderLucideIcons(container);
             return;
         }
         container.style.gridTemplateColumns = "repeat(auto-fill, minmax(280px, 1fr))";
+        window.renderLucideIcons(container);
+        if (window.gsap) {
+            window.gsap.from(container.children, {
+                y: 12,
+                opacity: 0,
+                duration: 0.22,
+                stagger: 0.02,
+                ease: "power1.out",
+                clearProps: "transform,opacity"
+            });
+        }
     }
 
     // ========================================================================
@@ -5725,6 +5769,7 @@ class ChessTFTApp {
         this.renderShop();
         this.renderRightPanel();
         this.renderSelectedUnitInspector();
+        window.renderLucideIcons();
     }
 
     renderStageRoundTracker() {
@@ -6751,20 +6796,44 @@ class ChessTFTApp {
             }, 250);
         }
 
-        // 2. Hiệu ứng số sát thương nảy lên (-25 ❤️ hoặc -50 💥) bay lên rồi mờ dần (@keyframes floatDamage)
+        // 2. Hiệu ứng số sát thương nảy lên (-25 DMG hoặc -50 CRIT!) với GSAP Cinematics
         const dmgBadge = document.createElement("div");
         dmgBadge.className = `floating-damage ${hit.isCrit ? "damage-crit" : "damage-normal"}`;
-        dmgBadge.textContent = hit.damageText || (hit.isCrit ? "-50 💥" : "-25 ❤️");
+        dmgBadge.textContent = hit.damageText || (hit.isCrit ? `-${hit.damage || 50} CRIT!` : `-${hit.damage || 25}`);
         cell.appendChild(dmgBadge);
 
         // Update real-time DPS meter
         this.renderDpsMeter();
 
-        setTimeout(() => {
-            if (dmgBadge.parentNode) {
-                dmgBadge.parentNode.removeChild(dmgBadge);
-            }
-        }, 900);
+        if (window.gsap) {
+            window.gsap.fromTo(dmgBadge, 
+                { y: 0, scale: 0.6, opacity: 0 },
+                { 
+                    y: -36, 
+                    scale: hit.isCrit ? 1.4 : 1.15, 
+                    opacity: 1, 
+                    duration: 0.35, 
+                    ease: "back.out(2)",
+                    onComplete: () => {
+                        window.gsap.to(dmgBadge, {
+                            y: -54,
+                            opacity: 0,
+                            duration: 0.45,
+                            ease: "power2.in",
+                            onComplete: () => {
+                                if (dmgBadge.parentNode) dmgBadge.parentNode.removeChild(dmgBadge);
+                            }
+                        });
+                    }
+                }
+            );
+        } else {
+            setTimeout(() => {
+                if (dmgBadge.parentNode) {
+                    dmgBadge.parentNode.removeChild(dmgBadge);
+                }
+            }, 900);
+        }
     }
 
     createPieceDOM(piece) {
@@ -6784,15 +6853,15 @@ class ChessTFTApp {
         // Status badges (Stun / Stun Immunity / Reload / Burn)
         let statusHtml = "";
         if (piece.stunnedTurns > 0) {
-            statusHtml += `<span class="status-pill status-stun" title="Đang bị Choáng (Khóa di chuyển)">💫</span>`;
+            statusHtml += `<span class="status-pill status-stun" title="Đang bị Choáng (Khóa di chuyển)"><i data-lucide="zap" class="icon-amber"></i></span>`;
         } else if ((piece.stunImmuneTurns || 0) > 0) {
-            statusHtml += `<span class="status-pill status-immune" title="Đang Kháng Choáng (Miễn nhiễm choáng liên tiếp)">🛡️</span>`;
+            statusHtml += `<span class="status-pill status-immune" title="Đang Kháng Choáng (Miễn nhiễm choáng liên tiếp)"><i data-lucide="shield" class="icon-cyan"></i></span>`;
         }
         if ((piece.reloadTurns || 0) > 0) {
-            statusHtml += `<span class="status-pill status-reload" title="Đang Nạp Đạn (Lượt này chỉ di chuyển/cận chiến, lượt sau mới bắn xa tiếp)">⏳</span>`;
+            statusHtml += `<span class="status-pill status-reload" title="Đang Nạp Đạn (Lượt này chỉ di chuyển/cận chiến, lượt sau mới bắn xa tiếp)"><i data-lucide="hourglass" class="icon-purple"></i></span>`;
         }
         if (piece.burnTurns > 0) {
-            statusHtml += `<span class="status-pill status-burn" title="Đang bị Thiêu Đốt (Nổ lan 8 ô sau ${piece.burnTurns} lượt)">🔥${piece.burnTurns}</span>`;
+            statusHtml += `<span class="status-pill status-burn" title="Đang bị Thiêu Đốt (Nổ lan 8 ô sau ${piece.burnTurns} lượt)"><i data-lucide="flame" class="icon-red"></i>${piece.burnTurns}</span>`;
         }
 
         // Equipped items icons (TFT Mini Icons)
@@ -6997,7 +7066,7 @@ class ChessTFTApp {
 
             const lockIcon = document.getElementById("btn-lock-icon");
             if (lockIcon) {
-                lockIcon.textContent = isLocked ? "🔒" : "🔓";
+                lockIcon.innerHTML = isLocked ? `<i data-lucide="lock" class="icon-amber"></i>` : `<i data-lucide="unlock"></i>`;
             }
             const lockLabel = document.getElementById("btn-lock-label");
             if (lockLabel) {
@@ -7011,7 +7080,7 @@ class ChessTFTApp {
             if (freeCount > 0) {
                 rerollBtn.innerHTML = `
                     <div class="hud-btn-main">
-                        <span class="reroll-btn-title">🎲 ĐỔI MIỄN PHÍ</span>
+                        <span class="reroll-btn-title"><i data-lucide="sparkles" class="icon-gold"></i> ĐỔI FREE</span>
                         <span class="hud-keybind-badge">D</span>
                     </div>
                     <span class="reroll-btn-cost badge-free-reroll">FREE (${freeCount})</span>
@@ -7021,10 +7090,10 @@ class ChessTFTApp {
             } else {
                 rerollBtn.innerHTML = `
                     <div class="hud-btn-main">
-                        <span class="reroll-btn-title">🎲 ĐỔI LẠI</span>
+                        <span class="reroll-btn-title"><i data-lucide="refresh-cw" class="icon-cyan"></i> ĐỔI LẠI</span>
                         <span class="hud-keybind-badge">D</span>
                     </div>
-                    <span id="reroll-cost-label" class="reroll-btn-cost">2 🪙</span>
+                    <span id="reroll-cost-label" class="reroll-btn-cost">2 <i data-lucide="coins" class="icon-amber"></i></span>
                 `;
                 rerollBtn.classList.remove("btn-free-reroll");
                 rerollBtn.title = "Đổi mới 5 quân cờ trong Cửa Hàng (Tốn 2 Vàng - Phím tắt: D)";
@@ -7043,14 +7112,14 @@ class ChessTFTApp {
             if (isLocked) {
                 const lockPill = document.createElement("span");
                 lockPill.className = "shop-card-locked-icon";
-                lockPill.textContent = "🔒";
+                lockPill.innerHTML = `<i data-lucide="lock" class="icon-amber"></i>`;
                 lockPill.title = "Thẻ bài này đang được khóa cho vòng sau";
                 card.appendChild(lockPill);
             }
 
             const def = window.CHESS_TFT_DATA.PIECES[slot.id];
             const copiesOwned = this.tft.countMatchingUnits(this.tft.player, slot.id, 1);
-            const canUpgradeHint = copiesOwned >= 2 ? "✨ GHÉP 2 SAO!" : (copiesOwned === 1 ? "Đã có 1/3" : "");
+            const canUpgradeHint = copiesOwned >= 2 ? `<i data-lucide="sparkles" class="icon-gold"></i> GHÉP 2 SAO!` : (copiesOwned === 1 ? "Đã có 1/3" : "");
 
             const traitsHtml = def.traits.map(tId => {
                 const sDef = window.CHESS_TFT_DATA.SYNERGIES[tId];
@@ -7059,13 +7128,13 @@ class ChessTFTApp {
 
             card.className = `shop-card cost-tier-${def.cost} ${copiesOwned >= 2 ? "shop-merge-glow" : ""}`;
             card.setAttribute("data-piece-id", def.id);
-            card.title = `${def.name} (${def.cost}🪙) — Bấm ℹ️ hoặc phím [H] để xem hướng dẫn nước đi`;
+            card.title = `${def.name} (${def.cost} Vàng) — Bấm ℹ️ hoặc phím [H] để xem hướng dẫn nước đi`;
             card.innerHTML = `
                 <div class="shop-card-top">
                     <span class="shop-unit-name">${def.name}</span>
                     <div class="shop-top-right">
-                        <span class="shop-unit-cost">${def.cost} 🪙</span>
-                        <button class="shop-guide-btn" title="Xem hướng dẫn cách đi & mẹo chơi của ${def.name}" data-piece-id="${def.id}">ℹ️</button>
+                        <span class="shop-unit-cost">${def.cost} <i data-lucide="coins" class="icon-amber"></i></span>
+                        <button class="shop-guide-btn" title="Xem hướng dẫn cách đi & mẹo chơi của ${def.name}" data-piece-id="${def.id}"><i data-lucide="help-circle"></i></button>
                     </div>
                 </div>
                 <div class="shop-card-body">
@@ -7077,8 +7146,8 @@ class ChessTFTApp {
                     <div class="shop-traits">${traitsHtml}</div>
                 </div>
                 <div class="shop-unit-stats">
-                    <span>🛡️ ${def.baseHp[0]} HP</span>
-                    <span>🎯 Tầm: ${def.range[0]}</span>
+                    <span><i data-lucide="shield" class="icon-emerald"></i> ${def.baseHp[0]} HP</span>
+                    <span><i data-lucide="crosshair" class="icon-red"></i> Tầm: ${def.range[0]}</span>
                 </div>
                 ${canUpgradeHint ? `<div class="shop-merge-tag">${canUpgradeHint}</div>` : ""}
             `;
@@ -7137,6 +7206,19 @@ class ChessTFTApp {
             });
 
             shopEl.appendChild(card);
+        }
+
+        window.renderLucideIcons(shopEl);
+        if (window.gsap) {
+            window.gsap.from(shopEl.querySelectorAll(".shop-card:not(.shop-sold)"), {
+                y: -14,
+                scale: 0.94,
+                opacity: 0.25,
+                duration: 0.28,
+                stagger: 0.04,
+                ease: "power2.out",
+                clearProps: "transform,opacity"
+            });
         }
     }
 
@@ -8173,4 +8255,6 @@ class ChessTFTApp {
 
 window.addEventListener("DOMContentLoaded", () => {
     window.app = new ChessTFTApp();
+    window.renderLucideIcons();
+    window.initGameTooltips();
 });
