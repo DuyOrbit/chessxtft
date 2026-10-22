@@ -570,6 +570,9 @@ class TFTGameManager {
         if (targetR < minR || targetR >= cfg.rows || targetC < 0 || targetC >= cfg.cols) {
             return { ok: false, msg: `Chỉ được đặt quân trong ${cfg.deployRows} hàng sân nhà của bạn!` };
         }
+        if (this.currentTerrain && this.currentTerrain[`${targetR},${targetC}`] === "wall") {
+            return { ok: false, msg: "Không thể đặt quân cờ lên ô Đá Cản!" };
+        }
 
         const existingOnTarget = this.player.board.find(u => u.r === targetR && u.c === targetC);
         const boardUnit = this.player.board.find(u => u.uid === uid);

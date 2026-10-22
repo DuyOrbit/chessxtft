@@ -1,86 +1,84 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56" width="256" height="256" shape-rendering="crispEdges">
   <defs>
-    <!-- Background Gradient -->
-    <radialGradient id="bgGrad" cx="50%" cy="40%" r="65%">
-      <stop offset="0%" stop-color="#0369a1" />
-      <stop offset="100%" stop-color="#082f49" />
-    </radialGradient>
-    
-    <!-- Shaders & Metallic Gradients -->
-    <linearGradient id="gradGold" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fef08a" />
-      <stop offset="50%" stop-color="#eab308" />
-      <stop offset="100%" stop-color="#854d0e" />
-    </linearGradient>
-
-    <linearGradient id="gradFire" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#fef08a" />
-      <stop offset="40%" stop-color="#f97316" />
-      <stop offset="100%" stop-color="#b91c1c" />
-    </linearGradient>
-
-    <linearGradient id="gradFrost" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f0f9ff" />
-      <stop offset="50%" stop-color="#38bdf8" />
-      <stop offset="100%" stop-color="#0369a1" />
-    </linearGradient>
-
-    <linearGradient id="gradSteel" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f8fafc" />
-      <stop offset="50%" stop-color="#94a3b8" />
-      <stop offset="100%" stop-color="#334155" />
-    </linearGradient>
-
-    <linearGradient id="gradKnight" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#93c5fd" />
-      <stop offset="60%" stop-color="#2563eb" />
-      <stop offset="100%" stop-color="#1e1b4b" />
-    </linearGradient>
-
-    <!-- Outer Glow Filter -->
-    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="6" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    <filter id="iceGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="1.5" flood-color="#7dd3fc" flood-opacity="0.95"/>
     </filter>
-
-    <!-- Holographic Shine Filter -->
-    <linearGradient id="foilShine" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="rgba(255,255,255,0.4)" />
-      <stop offset="50%" stop-color="rgba(255,255,255,0.0)" />
-      <stop offset="100%" stop-color="rgba(255,255,255,0.2)" />
-    </linearGradient>
   </defs>
 
-  <!-- Background Base -->
-  <rect width="256" height="256" rx="28" fill="url(#bgGrad)" />
+  <!-- DUELYST II: GLACIAL FROST GOLEM (FROST ROOK - VANAR FACTION) - HI-BIT PIXEL SPRITE -->
 
-  <!-- Outer Arena Frame -->
-  <rect x="8" y="8" width="240" height="240" rx="22" fill="none" stroke="#7dd3fc" stroke-width="4" opacity="0.85" />
-  <rect x="14" y="14" width="228" height="228" rx="18" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" />
-
-  <!-- Themed Halo Behind Character -->
-  <circle cx="128" cy="120" r="76" fill="#38bdf8" opacity="0.18" filter="url(#glow)" />
-  <circle cx="128" cy="120" r="54" fill="none" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="4,6" opacity="0.45" />
-
-  <!-- Hero Art Illustration -->
-  <g transform="translate(0, -6)">
-    <path d="M80 65 L95 65 L95 85 L115 85 L115 65 L141 65 L141 85 L161 85 L161 65 L176 65 L170 185 L86 185 Z" fill="url(#gradFrost)" stroke="#e0f2fe" stroke-width="6" filter="url(#glow)"/>
-                  <rect x="110" y="115" width="36" height="50" rx="18" fill="#0c4a6e" stroke="#38bdf8" stroke-width="4"/>
+  <!-- Ice Spikes on Shoulders -->
+  <g fill="#bae6fd" filter="url(#iceGlow)">
+    <polygon points="10,16 12,9 14,16"/>
+    <polygon points="7,18 8,12 11,18"/>
+    <polygon points="34,16 36,9 38,16"/>
+    <polygon points="37,18 40,12 41,18"/>
   </g>
 
-  <!-- Title & Symbol Badges -->
-  <g transform="translate(0, 198)">
-    <!-- Plate -->
-    <rect x="24" y="0" width="208" height="38" rx="8" fill="rgba(15, 23, 42, 0.85)" stroke="#7dd3fc" stroke-width="1.5" />
-    <!-- Text -->
-    <text x="128" y="24" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="900" font-size="14" fill="#ffffff" letter-spacing="1.5" text-anchor="middle">XE BĂNG GIÁ</text>
+  <!-- Giant Glacial Shoulders (Pauldrons) -->
+  <g fill="#0284c7">
+    <rect x="8" y="16" width="9" height="9"/>
+    <rect x="9" y="15" width="7" height="11"/>
+    <rect x="10" y="17" width="5" height="7" fill="#38bdf8"/>
+  </g>
+  <g fill="#0284c7">
+    <rect x="31" y="16" width="9" height="9"/>
+    <rect x="32" y="15" width="7" height="11"/>
+    <rect x="33" y="17" width="5" height="7" fill="#38bdf8"/>
   </g>
 
-  <!-- Top Corner Class Crest -->
-  <circle cx="40" cy="40" r="18" fill="rgba(15, 23, 42, 0.88)" stroke="#7dd3fc" stroke-width="2" />
-  <text x="40" y="47" font-size="18" text-anchor="middle">❄️</text>
+  <!-- Glacial Ice Torso -->
+  <g fill="#0369a1">
+    <rect x="16" y="16" width="16" height="18"/>
+    <rect x="18" y="15" width="12" height="20"/>
+    <rect x="17" y="17" width="14" height="16" fill="#0284c7"/>
+  </g>
 
-  <!-- Subtle Foil Reflection Layer -->
-  <rect width="256" height="256" rx="28" fill="url(#foilShine)" pointer-events="none" />
+  <!-- Glowing Frost Runes & Crystalline Heart -->
+  <g fill="#e0f2fe" filter="url(#iceGlow)">
+    <!-- Central Power Core Gem -->
+    <rect x="22" y="22" width="4" height="5"/>
+    <rect x="23" y="23" width="2" height="3" fill="#ffffff"/>
+    <!-- Ice Channels -->
+    <rect x="20" y="24" width="2" height="1"/>
+    <rect x="26" y="24" width="2" height="1"/>
+    <rect x="19" y="22" width="1" height="4"/>
+    <rect x="28" y="22" width="1" height="4"/>
+    <rect x="23" y="27" width="2" height="4"/>
+  </g>
+
+  <!-- Heavy Glacial Arms & Fists -->
+  <g fill="#0369a1">
+    <rect x="9" y="25" width="6" height="12"/>
+    <rect x="8" y="34" width="8" height="9" fill="#0284c7"/>
+    <rect x="7" y="36" width="10" height="6" fill="#075985"/>
+  </g>
+  <g fill="#0369a1">
+    <rect x="33" y="25" width="6" height="12"/>
+    <rect x="32" y="34" width="8" height="9" fill="#0284c7"/>
+    <rect x="31" y="36" width="10" height="6" fill="#075985"/>
+  </g>
+
+  <!-- Ice Legs & Solid Stance -->
+  <g fill="#0c4a6e">
+    <rect x="16" y="34" width="6" height="15"/>
+    <rect x="15" y="45" width="8" height="6" fill="#0369a1"/>
+    <rect x="14" y="49" width="10" height="4"/>
+    <rect x="26" y="34" width="6" height="15"/>
+    <rect x="25" y="45" width="8" height="6" fill="#0369a1"/>
+    <rect x="24" y="49" width="10" height="4"/>
+  </g>
+
+  <!-- Glacial Head & Glowing Blue Eyes -->
+  <g fill="#0284c7">
+    <rect x="20" y="8" width="8" height="8"/>
+    <rect x="19" y="9" width="10" height="6"/>
+    <rect x="21" y="7" width="6" height="9" fill="#38bdf8"/>
+  </g>
+  <!-- Icy Glowing Eyes -->
+  <g fill="#ffffff" filter="url(#iceGlow)">
+    <rect x="21" y="11" width="2" height="1.5"/>
+    <rect x="25" y="11" width="2" height="1.5"/>
+  </g>
 </svg>

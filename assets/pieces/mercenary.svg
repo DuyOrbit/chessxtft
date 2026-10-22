@@ -1,87 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56" width="256" height="256" shape-rendering="crispEdges">
   <defs>
-    <!-- Background Gradient -->
-    <radialGradient id="bgGrad" cx="50%" cy="40%" r="65%">
-      <stop offset="0%" stop-color="#14532d" />
-      <stop offset="100%" stop-color="#0f172a" />
-    </radialGradient>
-    
-    <!-- Shaders & Metallic Gradients -->
-    <linearGradient id="gradGold" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fef08a" />
-      <stop offset="50%" stop-color="#eab308" />
-      <stop offset="100%" stop-color="#854d0e" />
-    </linearGradient>
-
-    <linearGradient id="gradFire" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#fef08a" />
-      <stop offset="40%" stop-color="#f97316" />
-      <stop offset="100%" stop-color="#b91c1c" />
-    </linearGradient>
-
-    <linearGradient id="gradFrost" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f0f9ff" />
-      <stop offset="50%" stop-color="#38bdf8" />
-      <stop offset="100%" stop-color="#0369a1" />
-    </linearGradient>
-
-    <linearGradient id="gradSteel" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f8fafc" />
-      <stop offset="50%" stop-color="#94a3b8" />
-      <stop offset="100%" stop-color="#334155" />
-    </linearGradient>
-
-    <linearGradient id="gradKnight" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#93c5fd" />
-      <stop offset="60%" stop-color="#2563eb" />
-      <stop offset="100%" stop-color="#1e1b4b" />
-    </linearGradient>
-
-    <!-- Outer Glow Filter -->
-    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="6" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    <filter id="roninGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="1.5" flood-color="#f59e0b" flood-opacity="0.95"/>
     </filter>
-
-    <!-- Holographic Shine Filter -->
-    <linearGradient id="foilShine" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="rgba(255,255,255,0.4)" />
-      <stop offset="50%" stop-color="rgba(255,255,255,0.0)" />
-      <stop offset="100%" stop-color="rgba(255,255,255,0.2)" />
-    </linearGradient>
   </defs>
 
-  <!-- Background Base -->
-  <rect width="256" height="256" rx="28" fill="url(#bgGrad)" />
+  <!-- DUELYST II: RONIN BLADEMASTER (MERCENARY) - HI-BIT PIXEL BATTLE SPRITE -->
 
-  <!-- Outer Arena Frame -->
-  <rect x="8" y="8" width="240" height="240" rx="22" fill="none" stroke="#4ade80" stroke-width="4" opacity="0.85" />
-  <rect x="14" y="14" width="228" height="228" rx="18" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" />
-
-  <!-- Themed Halo Behind Character -->
-  <circle cx="128" cy="120" r="76" fill="#22c55e" opacity="0.18" filter="url(#glow)" />
-  <circle cx="128" cy="120" r="54" fill="none" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="4,6" opacity="0.45" />
-
-  <!-- Hero Art Illustration -->
-  <g transform="translate(0, -6)">
-    <path d="M70 70 L186 186 M186 70 L70 186" stroke="#4ade80" stroke-width="12" stroke-linecap="round" filter="url(#glow)"/>
-                  <circle cx="128" cy="128" r="28" fill="#eab308" stroke="#fef08a" stroke-width="4"/>
-                  <text x="128" y="137" font-size="26" font-family="sans-serif" font-weight="900" text-anchor="middle" fill="#713f12">🪙</text>
+  <!-- Colossal Energy Greatsword rested on shoulder -->
+  <g filter="url(#roninGlow)">
+    <polygon points="10,6 16,4 32,22 28,26" fill="#1e293b"/>
+    <polygon points="12,8 15,6 30,22 27,25" fill="#f59e0b"/>
+    <polygon points="13,9 14,7 28,22 26,24" fill="#ffffff"/>
+    <line x1="28" y1="26" x2="34" y2="34" stroke="#ca8a04" stroke-width="2.5"/>
   </g>
 
-  <!-- Title & Symbol Badges -->
-  <g transform="translate(0, 198)">
-    <!-- Plate -->
-    <rect x="24" y="0" width="208" height="38" rx="8" fill="rgba(15, 23, 42, 0.85)" stroke="#4ade80" stroke-width="1.5" />
-    <!-- Text -->
-    <text x="128" y="24" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="900" font-size="14" fill="#ffffff" letter-spacing="1.5" text-anchor="middle">LÍNH ĐÁNH THUÊ</text>
+  <!-- Flowing Ronin Cloak & High Scarf -->
+  <g fill="#334155">
+    <rect x="18" y="22" width="12" height="20"/>
+    <rect x="16" y="32" width="16" height="16"/>
   </g>
+  <!-- Scarf covering lower face -->
+  <rect x="20" y="16" width="8" height="5" fill="#f59e0b"/>
+  <rect x="21" y="17" width="6" height="3" fill="#ca8a04"/>
 
-  <!-- Top Corner Class Crest -->
-  <circle cx="40" cy="40" r="18" fill="rgba(15, 23, 42, 0.88)" stroke="#4ade80" stroke-width="2" />
-  <text x="40" y="47" font-size="18" text-anchor="middle">🪙</text>
+  <!-- Ronin Head & Glowing Lone Eye -->
+  <rect x="20" y="12" width="8" height="6" fill="#1e293b"/>
+  <!-- Glowing Amber Eye Slit -->
+  <rect x="24" y="15" width="2" height="1.5" fill="#fde047" filter="url(#roninGlow)"/>
 
-  <!-- Subtle Foil Reflection Layer -->
-  <rect width="256" height="256" rx="28" fill="url(#foilShine)" pointer-events="none" />
+  <!-- Armored Greaves & Stance -->
+  <g fill="#1e293b">
+    <rect x="19" y="36" width="4" height="13"/>
+    <rect x="18" y="47" width="6" height="4" fill="#0f172a"/>
+    <rect x="25" y="36" width="4" height="13"/>
+    <rect x="24" y="47" width="6" height="4" fill="#0f172a"/>
+  </g>
 </svg>

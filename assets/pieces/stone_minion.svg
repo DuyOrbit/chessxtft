@@ -1,30 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56" width="256" height="256" shape-rendering="crispEdges">
   <defs>
-    <radialGradient id="bgGrad" cx="50%" cy="40%" r="65%">
-      <stop offset="0%" stop-color="#292524" />
-      <stop offset="100%" stop-color="#0c0a09" />
-    </radialGradient>
-    <linearGradient id="gradStone" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#cbd5e1" />
-      <stop offset="50%" stop-color="#64748b" />
-      <stop offset="100%" stop-color="#334155" />
-    </linearGradient>
-    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="6" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    <filter id="shardGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="1.5" flood-color="#38bdf8" flood-opacity="0.95"/>
     </filter>
   </defs>
-  <rect width="256" height="256" rx="28" fill="url(#bgGrad)" />
-  <rect x="8" y="8" width="240" height="240" rx="22" fill="none" stroke="#78716c" stroke-width="4" opacity="0.85" />
-  <circle cx="128" cy="115" r="50" fill="url(#gradStone)" stroke="#94a3b8" stroke-width="5" filter="url(#glow)" />
-  <ellipse cx="112" cy="110" rx="6" ry="8" fill="#38bdf8" filter="url(#glow)" />
-  <ellipse cx="144" cy="110" rx="6" ry="8" fill="#38bdf8" filter="url(#glow)" />
-  <path d="M100 135 Q128 150 156 135" stroke="#1e293b" stroke-width="4" fill="none" />
-  <g transform="translate(0, 198)">
-    <rect x="24" y="0" width="208" height="38" rx="8" fill="rgba(15, 23, 42, 0.85)" stroke="#78716c" stroke-width="1.5" />
-    <text x="128" y="24" font-family="'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="13" fill="#ffffff" letter-spacing="1" text-anchor="middle">QUÁI ĐÁ TIỀN TUYẾN</text>
+
+  <!-- DUELYST II: ARCANITE SHARD DRONE (STONE MINION) - HOVERING PIXEL SPRITE -->
+
+  <!-- Floating Crystalline Shards around Core -->
+  <g fill="#38bdf8" filter="url(#shardGlow)">
+    <!-- Top Crystal Horn -->
+    <polygon points="24,10 21,18 27,18"/>
+    <!-- Left Wing Shard -->
+    <polygon points="12,24 18,22 18,28"/>
+    <!-- Right Wing Shard -->
+    <polygon points="36,24 30,22 30,28"/>
+    <!-- Bottom Floating Point -->
+    <polygon points="24,44 21,38 27,38"/>
   </g>
-  <circle cx="40" cy="40" r="18" fill="rgba(15, 23, 42, 0.88)" stroke="#78716c" stroke-width="2" />
-  <text x="40" y="47" font-size="18" text-anchor="middle">🗿</text>
+
+  <!-- Heavy Stone Core Body -->
+  <g fill="#334155">
+    <polygon points="24,16 34,26 24,38 14,26" fill="#1e293b"/>
+    <polygon points="24,18 32,26 24,36 16,26" fill="#334155"/>
+    <polygon points="24,20 30,26 24,34 18,26" fill="#475569"/>
+  </g>
+
+  <!-- Central Glowing Arcanite Eye / Power Reactor -->
+  <g filter="url(#shardGlow)">
+    <circle cx="24" cy="27" r="4.5" fill="#0284c7"/>
+    <circle cx="24" cy="27" r="3" fill="#38bdf8"/>
+    <circle cx="24" cy="27" r="1.5" fill="#ffffff"/>
+  </g>
+
+  <!-- Dual Floating Spiked Claws -->
+  <g fill="#64748b">
+    <polygon points="13,32 15,42 17,34"/>
+    <polygon points="35,32 33,42 31,34"/>
+  </g>
 </svg>

@@ -5,3 +5,15 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 *.log
+
+# Temporary test captures & QA reports
+artifacts/
+qa_screenshots/*
+!qa_screenshots/01_auth_screen.png
+!qa_screenshots/02_lobby_hub.png
+!qa_screenshots/03_codex_synergies.png
+!qa_screenshots/04_gameplay_prep_phase.png
+!qa_screenshots/05_tactical_range_preview.png
+!qa_screenshots/06_gameplay_combat_dps.png
+!qa_screenshots/07_sandbox_godmode.png
+!qa_screenshots/08_spectator_caster_4boards.png

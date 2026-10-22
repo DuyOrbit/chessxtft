@@ -1,88 +1,54 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56" width="256" height="256" shape-rendering="crispEdges">
   <defs>
-    <!-- Background Gradient -->
-    <radialGradient id="bgGrad" cx="50%" cy="40%" r="65%">
-      <stop offset="0%" stop-color="#4c0519" />
-      <stop offset="100%" stop-color="#18181b" />
-    </radialGradient>
-    
-    <!-- Shaders & Metallic Gradients -->
-    <linearGradient id="gradGold" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fef08a" />
-      <stop offset="50%" stop-color="#eab308" />
-      <stop offset="100%" stop-color="#854d0e" />
-    </linearGradient>
-
-    <linearGradient id="gradFire" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#fef08a" />
-      <stop offset="40%" stop-color="#f97316" />
-      <stop offset="100%" stop-color="#b91c1c" />
-    </linearGradient>
-
-    <linearGradient id="gradFrost" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f0f9ff" />
-      <stop offset="50%" stop-color="#38bdf8" />
-      <stop offset="100%" stop-color="#0369a1" />
-    </linearGradient>
-
-    <linearGradient id="gradSteel" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f8fafc" />
-      <stop offset="50%" stop-color="#94a3b8" />
-      <stop offset="100%" stop-color="#334155" />
-    </linearGradient>
-
-    <linearGradient id="gradKnight" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#93c5fd" />
-      <stop offset="60%" stop-color="#2563eb" />
-      <stop offset="100%" stop-color="#1e1b4b" />
-    </linearGradient>
-
-    <!-- Outer Glow Filter -->
-    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="6" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    <filter id="goldGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="1.5" flood-color="#f59e0b" flood-opacity="0.95"/>
     </filter>
-
-    <!-- Holographic Shine Filter -->
-    <linearGradient id="foilShine" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="rgba(255,255,255,0.4)" />
-      <stop offset="50%" stop-color="rgba(255,255,255,0.0)" />
-      <stop offset="100%" stop-color="rgba(255,255,255,0.2)" />
-    </linearGradient>
   </defs>
 
-  <!-- Background Base -->
-  <rect width="256" height="256" rx="28" fill="url(#bgGrad)" />
+  <!-- DUELYST II: SHADOW TRICKSTER (GAMBLER) - HI-BIT PIXEL BATTLE SPRITE -->
 
-  <!-- Outer Arena Frame -->
-  <rect x="8" y="8" width="240" height="240" rx="22" fill="none" stroke="#f43f5e" stroke-width="4" opacity="0.85" />
-  <rect x="14" y="14" width="228" height="228" rx="18" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" />
-
-  <!-- Themed Halo Behind Character -->
-  <circle cx="128" cy="120" r="76" fill="#fb7185" opacity="0.18" filter="url(#glow)" />
-  <circle cx="128" cy="120" r="54" fill="none" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="4,6" opacity="0.45" />
-
-  <!-- Hero Art Illustration -->
-  <g transform="translate(0, -6)">
-    <rect x="85" y="65" width="60" height="90" rx="8" transform="rotate(-15 115 110)" fill="#f1f5f9" stroke="#e11d48" stroke-width="4"/>
-                  <rect x="110" y="65" width="60" height="90" rx="8" transform="rotate(15 140 110)" fill="#f8fafc" stroke="#2563eb" stroke-width="4"/>
-                  <circle cx="128" cy="155" r="22" fill="#fbbf24" stroke="#78350f" stroke-width="3"/>
-                  <text x="128" y="163" font-size="22" text-anchor="middle">🎲</text>
+  <!-- Floating Golden Lucky Dices spinning in hand -->
+  <g transform="translate(8, 22)" filter="url(#goldGlow)">
+    <rect x="0" y="0" width="7" height="7" fill="#fde047"/>
+    <rect x="1" y="1" width="5" height="5" fill="#f59e0b"/>
+    <rect x="2" y="2" width="1" height="1" fill="#78350f"/>
+    <rect x="4" y="4" width="1" height="1" fill="#78350f"/>
+  </g>
+  <g transform="translate(13, 14)" filter="url(#goldGlow)">
+    <rect x="0" y="0" width="5" height="5" fill="#fef08a"/>
+    <rect x="1" y="1" width="3" height="3" fill="#ca8a04"/>
   </g>
 
-  <!-- Title & Symbol Badges -->
-  <g transform="translate(0, 198)">
-    <!-- Plate -->
-    <rect x="24" y="0" width="208" height="38" rx="8" fill="rgba(15, 23, 42, 0.85)" stroke="#f43f5e" stroke-width="1.5" />
-    <!-- Text -->
-    <text x="128" y="24" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="900" font-size="14" fill="#ffffff" letter-spacing="1.5" text-anchor="middle">CON BẠC GIAN LẬN</text>
+  <!-- Shrouded Rogue Cowl & Mask -->
+  <g fill="#1e1b4b">
+    <rect x="20" y="13" width="9" height="9"/>
+    <rect x="19" y="14" width="11" height="7"/>
+    <rect x="22" y="11" width="5" height="3" fill="#312e81"/>
+  </g>
+  <!-- Glowing Amber Rogue Eyes -->
+  <rect x="22" y="17" width="2" height="1.5" fill="#f59e0b" filter="url(#goldGlow)"/>
+  <rect x="25" y="17" width="2" height="1.5" fill="#f59e0b" filter="url(#goldGlow)"/>
+
+  <!-- Leather Tunic with Throwing Daggers -->
+  <g fill="#312e81">
+    <rect x="20" y="22" width="9" height="12"/>
+    <rect x="21" y="23" width="7" height="10" fill="#4338ca"/>
+    <!-- Gold Dagger Sheaths -->
+    <rect x="22" y="28" width="2" height="6" fill="#f59e0b"/>
+    <rect x="25" y="28" width="2" height="6" fill="#f59e0b"/>
   </g>
 
-  <!-- Top Corner Class Crest -->
-  <circle cx="40" cy="40" r="18" fill="rgba(15, 23, 42, 0.88)" stroke="#f43f5e" stroke-width="2" />
-  <text x="40" y="47" font-size="18" text-anchor="middle">🎲</text>
+  <!-- Right Hand with Gilded Throwing Dagger -->
+  <rect x="31" y="25" width="4" height="6" fill="#4338ca"/>
+  <rect x="32" y="20" width="2" height="12" fill="#e2e8f0"/>
+  <rect x="32" y="18" width="2" height="3" fill="#ffffff" filter="url(#goldGlow)"/>
 
-  <!-- Subtle Foil Reflection Layer -->
-  <rect width="256" height="256" rx="28" fill="url(#foilShine)" pointer-events="none" />
+  <!-- Stealth Boots & Stance -->
+  <g fill="#1e1b4b">
+    <rect x="20" y="34" width="4" height="14"/>
+    <rect x="19" y="46" width="6" height="4"/>
+    <rect x="26" y="34" width="4" height="14"/>
+    <rect x="25" y="46" width="6" height="4"/>
+  </g>
 </svg>

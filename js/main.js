@@ -3131,7 +3131,7 @@ class ChessTFTApp {
 
             card.className = `skirmish-roster-card ${isSelected ? "selected" : ""} ${!canAfford && !isSelected ? "disabled" : ""}`;
             card.innerHTML = `
-                <span class="roster-card-icon">${def.icon}</span>
+                <div class="roster-card-icon"><img src="assets/pieces/${def.id}.svg" class="roster-svg" alt="${def.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" /><span class="roster-fallback" style="display:none;">${def.icon}</span></div>
                 <div class="roster-card-info">
                     <span class="roster-card-name">${def.name}</span>
                     <div class="roster-card-meta">
@@ -4628,7 +4628,7 @@ class ChessTFTApp {
 
             const unitsHtml = bot.board.map(u => {
                 const def = window.CHESS_TFT_DATA.PIECES[u.id];
-                return `<span class="spec-bot-unit-pill" title="${def.name}">${def.icon}${"★".repeat(u.stars || 1)}</span>`;
+                return `<span class="spec-bot-unit-pill" title="${def.name}"><img src="assets/pieces/${def.id}.svg" class="spec-unit-svg" alt="${def.name}" />${"★".repeat(u.stars || 1)}</span>`;
             }).join("");
 
             const realTag = isReal
@@ -6191,7 +6191,7 @@ class ChessTFTApp {
 
             return `
                 <div class="syn-unit-chip ${stateClass}">
-                    <span class="syn-unit-icon">${p.icon}</span>
+                    <span class="syn-unit-icon"><img src="assets/pieces/${p.id}.svg" class="syn-unit-svg" alt="${p.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" /><span class="syn-unit-fallback" style="display:none;">${p.icon}</span></span>
                     <div class="syn-unit-meta">
                         <span class="syn-unit-name">${p.name}</span>
                         <span class="syn-unit-cost">${costLabel}${statusTag}</span>
@@ -6354,7 +6354,7 @@ class ChessTFTApp {
 
         tipEl.innerHTML = `
             <div class="pmt-header">
-                <div class="pmt-icon">${def.icon}</div>
+                <div class="pmt-icon"><img src="assets/pieces/${def.id}.svg" class="pmt-svg" alt="${def.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" /><span class="pmt-fallback" style="display:none;">${def.icon}</span></div>
                 <div>
                     <div class="pmt-title">${def.name}</div>
                     <div class="pmt-sub">🎯 Tầm: ${def.range[0]} ô • 🛡️ ${def.baseHp[0]} HP</div>
@@ -6414,6 +6414,7 @@ class ChessTFTApp {
 
         boardEl.style.gridTemplateColumns = `repeat(${cfg.cols}, 1fr)`;
         boardEl.style.gridTemplateRows = `repeat(${cfg.rows}, 1fr)`;
+        boardEl.style.aspectRatio = `${cfg.cols} / ${cfg.rows}`;
         boardEl.innerHTML = "";
 
         if (this.isSkirmishMode && this.chess) {
@@ -6421,6 +6422,7 @@ class ChessTFTApp {
             const rows = this.chess.rows || 7;
             boardEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
             boardEl.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+            boardEl.style.aspectRatio = `${cols} / ${rows}`;
             scoutBanner.classList.add("hidden");
             const mapDef = window.CHESS_TFT_DATA.MAPS.find(m => m.id === this.skirmishState.mapId) || window.CHESS_TFT_DATA.MAPS[2];
             mapInfoBar.innerHTML = `
@@ -6552,7 +6554,7 @@ class ChessTFTApp {
                         cell.classList.add("cell-selected");
                     }
                     cell.appendChild(pieceEl);
-                } else if (!isScoutingOther && isDeployZone && this.selectedPrepUnitUid) {
+                } else if (!isScoutingOther && isDeployZone && (!homeTerrain || homeTerrain[`${r},${c}`] !== "wall") && this.selectedPrepUnitUid) {
                     cell.classList.add("cell-can-place");
                 }
 
@@ -6883,7 +6885,6 @@ class ChessTFTApp {
             <div class="piece-main-icon">
                 <img src="assets/pieces/${piece.id}.svg" class="piece-svg-art" alt="${piece.name || ''}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
                 <span class="piece-fallback-icon" style="display:none;">${piece.icon}</span>
-                ${piece.badge ? `<span class="piece-sub-badge">${piece.badge}</span>` : ""}
             </div>
             <div class="piece-hp-bar" title="Lớp Máu: ${piece.hp}/${piece.maxHp} (Phải bị ăn ${piece.hp} lần mới chết)">
                 ${hpHtml}
@@ -7141,7 +7142,6 @@ class ChessTFTApp {
                     <div class="shop-unit-icon">
                         <img src="assets/pieces/${def.id}.svg" class="shop-svg-art" alt="${def.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
                         <span class="shop-fallback-icon" style="display:none;">${def.icon}</span>
-                        <span class="shop-badge">${def.badge || ""}</span>
                     </div>
                     <div class="shop-traits">${traitsHtml}</div>
                 </div>
@@ -7389,7 +7389,7 @@ class ChessTFTApp {
 
         box.innerHTML = `
             <div class="insp-head">
-                <span class="insp-icon">${def.icon}</span>
+                <div class="insp-icon-wrap"><img src="assets/pieces/${def.id}.svg" class="insp-svg" alt="${def.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" /><span class="insp-fallback" style="display:none;">${def.icon}</span></div>
                 <div>
                     <div class="insp-title">${def.name} ${"★".repeat(unit.stars || 1)}</div>
                     <div class="insp-meta">🛡️ Lớp Máu: <strong>${hpDisplay}</strong> • 🎯 Tầm: <strong>${def.range[starIdx]}</strong></div>
@@ -8014,7 +8014,7 @@ class ChessTFTApp {
             const card = document.createElement("div");
             card.className = "choice-card carousel-card";
             card.innerHTML = `
-                <div class="choice-icon">${pDef.icon} <span class="carousel-plus">+</span> ${iDef.icon}</div>
+                <div class="choice-icon"><img src="assets/pieces/${pDef.id}.svg" class="carousel-choice-svg" alt="${pDef.name}" /><span class="carousel-plus">+</span><span class="carousel-item-icon">${iDef.icon}</span></div>
                 <div class="choice-title">${pDef.name} (${pDef.cost}🪙)</div>
                 <div class="choice-sub">Kèm trang bị: <strong>${iDef.name}</strong></div>
                 <div class="choice-desc">${iDef.desc}</div>

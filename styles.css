@@ -222,6 +222,13 @@ i[data-lucide] {
 .stat-cap { color: #38bdf8; }
 
 /* MAIN 3-COLUMN LAYOUT */
+#screen-game {
+    position: relative;
+    min-height: 100vh;
+    background: radial-gradient(circle at 50% 30%, rgba(30, 20, 60, 0.35), rgba(10, 12, 24, 0.94) 80%),
+                url('assets/duelyst2_demo.jpg') center top / cover no-repeat fixed;
+}
+
 .main-workspace {
     display: grid;
     grid-template-columns: 270px 1fr 300px;
@@ -466,12 +473,14 @@ i[data-lucide] {
 
 .chess-board {
     display: grid;
-    width: min(500px, 52vh);
-    height: min(460px, 48vh);
-    border: 3px solid #475569;
-    border-radius: 10px;
+    width: auto;
+    height: min(550px, 55vh);
+    max-height: 560px;
+    border: 2px solid rgba(56, 189, 248, 0.45);
+    border-radius: 0;
     overflow: hidden;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85), 0 0 20px rgba(56, 189, 248, 0.2);
+    background: #0b0f1a;
 }
 
 .board-cell {
@@ -480,29 +489,44 @@ i[data-lucide] {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: background 0.12s ease;
-    border: 1px solid rgba(255, 255, 255, 0.04);
+    transition: background 0.15s ease;
+    border: 1px solid rgba(245, 158, 11, 0.12);
+    border-radius: 0 !important;
+    aspect-ratio: 1;
 }
 
-.cell-light { background: #334155; }
-.cell-dark { background: #1e293b; }
+.cell-light {
+    background: linear-gradient(135deg, #242d44 0%, #1a2133 100%);
+    border-color: rgba(56, 189, 248, 0.16);
+}
 
-/* Prep deploy zone vs enemy zone */
-.cell-deploy-zone.cell-light { background: #2b4257; }
-.cell-deploy-zone.cell-dark { background: #1b2e42; }
-.cell-enemy-zone { opacity: 0.82; }
+.cell-dark {
+    background: linear-gradient(135deg, #151a2a 0%, #0d101b 100%);
+    border-color: rgba(245, 158, 11, 0.1);
+}
+
+/* Prep deploy zone vs enemy zone (Hào quang thần thánh Lyonar Faction) */
+.cell-deploy-zone.cell-light {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.22), #1e2638);
+    box-shadow: inset 0 0 10px rgba(245, 158, 11, 0.15);
+}
+.cell-deploy-zone.cell-dark {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), #131826);
+    box-shadow: inset 0 0 10px rgba(245, 158, 11, 0.12);
+}
+.cell-enemy-zone { opacity: 0.94; }
 
 .cell-can-place {
-    box-shadow: inset 0 0 0 2px rgba(34, 197, 94, 0.55);
+    box-shadow: inset 0 0 0 2.5px #38bdf8, 0 0 12px rgba(56, 189, 248, 0.5);
 }
 
 .cell-selected {
-    background: rgba(251, 191, 36, 0.35) !important;
-    box-shadow: inset 0 0 0 3px var(--accent-gold);
+    background: rgba(245, 158, 11, 0.35) !important;
+    box-shadow: inset 0 0 0 3px #fbbf24, 0 0 20px rgba(251, 191, 36, 0.6);
 }
 
 .cell-last-move {
-    box-shadow: inset 0 0 0 2px rgba(56, 189, 248, 0.65);
+    box-shadow: inset 0 0 0 2.5px #38bdf8, 0 0 12px rgba(56, 189, 248, 0.4);
 }
 
 /* Valid combat action highlights: Green for pure move, Yellow/Amber for attacks/abilities */
@@ -721,46 +745,78 @@ i[data-lucide] {
 
 /* CHESS PIECE VISUALS */
 .chess-piece {
-    width: 90%;
-    height: 90%;
-    border-radius: 8px;
+    width: 95%;
+    height: 95%;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
-    padding: 2px;
+    padding: 1px 2px;
     position: relative;
     z-index: 2;
-    transition: transform 0.12s ease;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.piece-player {
-    background: linear-gradient(180deg, rgba(30, 64, 175, 0.88), rgba(15, 23, 42, 0.92));
-    border: 2px solid #60a5fa;
+/* Floor Shadow under standing battle sprite */
+.chess-piece::before {
+    content: "";
+    position: absolute;
+    bottom: 4px;
+    width: 70%;
+    height: 12px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0) 75%);
+    z-index: 1;
+    pointer-events: none;
 }
 
-.piece-enemy {
-    background: linear-gradient(180deg, rgba(153, 27, 27, 0.88), rgba(15, 23, 42, 0.92));
-    border: 2px solid #f87171;
+/* Faction Aura Ring around feet (Player = Divine Gold / Cyan Lyonar, Enemy = Void Abyssian Purple) */
+.piece-player::after {
+    content: "";
+    position: absolute;
+    bottom: 2px;
+    width: 78%;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid rgba(56, 189, 248, 0.85);
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.7), inset 0 0 6px rgba(56, 189, 248, 0.4);
+    z-index: 1;
+    pointer-events: none;
 }
 
-.star-2 {
-    border-color: #fbbf24 !important;
-    box-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+.piece-enemy::after {
+    content: "";
+    position: absolute;
+    bottom: 2px;
+    width: 78%;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid rgba(192, 132, 252, 0.9);
+    box-shadow: 0 0 10px rgba(192, 132, 252, 0.7), inset 0 0 6px rgba(192, 132, 252, 0.4);
+    z-index: 1;
+    pointer-events: none;
 }
 
-.star-3 {
-    border-color: #f472b6 !important;
-    box-shadow: 0 0 12px rgba(244, 114, 182, 0.8);
+.star-2::after {
+    border-color: #f59e0b !important;
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.85), inset 0 0 8px rgba(251, 191, 36, 0.5) !important;
+}
+
+.star-3::after {
+    border-color: #f43f5e !important;
+    box-shadow: 0 0 18px rgba(244, 63, 94, 0.9), inset 0 0 10px rgba(244, 63, 94, 0.6) !important;
 }
 
 .piece-stunned {
-    filter: saturate(0.4) brightness(0.85);
+    filter: saturate(0.35) brightness(0.85);
     border-style: dashed !important;
 }
 
 .piece-burning {
-    box-shadow: 0 0 10px #f97316 !important;
+    box-shadow: 0 0 12px #f97316 !important;
 }
 
 .piece-top-row {
@@ -773,7 +829,7 @@ i[data-lucide] {
 }
 
 .piece-stars {
-    color: var(--accent-gold);
+    color: #e09f3e;
     font-weight: 900;
 }
 
@@ -799,32 +855,37 @@ i[data-lucide] {
 }
 
 .piece-svg-art {
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
-    object-fit: cover;
+    width: 46px;
+    height: 52px;
+    border-radius: 0;
+    object-fit: contain;
     display: block;
-    filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.7));
-    transition: transform 0.15s ease;
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.9));
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 2;
+    image-rendering: pixelated;
 }
 
 .chess-piece:hover .piece-svg-art {
-    transform: scale(1.1);
+    transform: scale(1.15) translateY(-3px);
 }
 
 .shop-svg-art {
-    width: 42px;
-    height: 42px;
-    border-radius: 8px;
-    object-fit: cover;
+    width: 48px;
+    height: 54px;
+    border-radius: 4px;
+    object-fit: contain;
     display: block;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    transition: transform 0.15s ease;
+    box-shadow: none;
+    border: none;
+    background: transparent;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.9));
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+    image-rendering: pixelated;
 }
 
 .shop-card:hover .shop-svg-art {
-    transform: scale(1.08);
+    transform: scale(1.15) translateY(-2px);
 }
 
 .guide-avatar-img {
@@ -969,9 +1030,9 @@ i[data-lucide] {
 
 .bench-slot {
     height: 68px;
-    background: var(--bg-panel-alt);
-    border: 1px dashed #475569;
-    border-radius: 7px;
+    background: rgba(18, 24, 42, 0.85);
+    border: 1px dashed rgba(56, 189, 248, 0.35);
+    border-radius: 8px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -982,12 +1043,14 @@ i[data-lucide] {
 }
 
 .bench-slot:hover {
-    border-color: var(--accent-blue);
+    border-color: #38bdf8;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
 }
 
 .bench-selected {
-    border: 2px solid var(--accent-gold) !important;
-    background: rgba(251, 191, 36, 0.14);
+    border: 2px solid #f59e0b !important;
+    background: rgba(245, 158, 11, 0.15);
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
 }
 
 .bench-empty-label {
@@ -1005,12 +1068,13 @@ i[data-lucide] {
     max-width: 100%;
 }
 
-/* SHOP AREA */
+/* SHOP AREA: ARCANITE GLASS DOCK */
 .shop-container {
     width: 100%;
-    background: rgba(19, 27, 46, 0.95);
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
+    background: rgba(10, 14, 26, 0.94);
+    border: 1.5px solid rgba(245, 158, 11, 0.35);
+    box-shadow: 0 -8px 25px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(245, 158, 11, 0.3);
+    border-radius: 12px;
     padding: 8px 10px;
     display: flex;
     flex-direction: column;
@@ -1038,8 +1102,8 @@ i[data-lucide] {
 }
 
 .shop-card {
-    background: linear-gradient(180deg, rgba(23, 32, 54, 0.95) 0%, rgba(13, 18, 30, 0.98) 100%);
-    border: 1.5px solid #475569;
+    background: linear-gradient(180deg, #182035 0%, #0b0f1a 100%);
+    border: 1.5px solid rgba(245, 158, 11, 0.35);
     border-radius: 9px;
     padding: 6px 8px;
     cursor: pointer;
@@ -1048,35 +1112,36 @@ i[data-lucide] {
     justify-content: space-between;
     min-height: 82px;
     position: relative;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.15);
     transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
 }
 
 .shop-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    transform: translateY(-4px);
+    border-color: #f59e0b;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.8), 0 0 14px rgba(245, 158, 11, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 .cost-tier-1 {
-    border-color: #64748b;
+    border-color: rgba(148, 163, 184, 0.45);
     background: linear-gradient(180deg, #182235 0%, #0d131f 100%);
 }
 .cost-tier-2 {
-    border-color: #10b981;
-    background: linear-gradient(180deg, rgba(6, 78, 59, 0.35) 0%, #0d131f 100%);
+    border-color: rgba(16, 185, 129, 0.6);
+    background: linear-gradient(180deg, rgba(6, 78, 59, 0.4) 0%, #0d131f 100%);
 }
 .cost-tier-3 {
-    border-color: #0284c7;
-    background: linear-gradient(180deg, rgba(7, 89, 133, 0.35) 0%, #0d131f 100%);
+    border-color: rgba(2, 132, 199, 0.6);
+    background: linear-gradient(180deg, rgba(7, 89, 133, 0.4) 0%, #0d131f 100%);
 }
 .cost-tier-4 {
-    border-color: #9333ea;
-    background: linear-gradient(180deg, rgba(88, 28, 135, 0.35) 0%, #0d131f 100%);
+    border-color: rgba(168, 85, 247, 0.6);
+    background: linear-gradient(180deg, rgba(88, 28, 135, 0.4) 0%, #0d131f 100%);
 }
 .cost-tier-5 {
-    border-color: #eab308;
-    background: linear-gradient(180deg, rgba(161, 98, 7, 0.4) 0%, #0d131f 100%);
-    box-shadow: 0 0 15px rgba(234, 179, 8, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    border-color: rgba(234, 179, 8, 0.75);
+    background: linear-gradient(180deg, rgba(161, 98, 7, 0.45) 0%, #0d131f 100%);
+    box-shadow: 0 0 18px rgba(234, 179, 8, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .shop-merge-glow {
@@ -6033,9 +6098,12 @@ button {
         width: 100% !important;
     }
     .chess-board {
-        width: min(520px, 54vh) !important;
-        height: min(440px, 45vh) !important;
-        max-height: 440px !important;
+        width: auto !important;
+        height: min(550px, 55vh) !important;
+        max-height: 560px !important;
+        border-radius: 0 !important;
+        border: 2px solid rgba(56, 189, 248, 0.45) !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85), 0 0 20px rgba(56, 189, 248, 0.2) !important;
         margin: 0 auto !important;
     }
     .board-unit-watermark {
@@ -7859,6 +7927,257 @@ body.skirmish-active .chess-board {
     color: #ffffff !important;
     box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
 }
+
+/* ============================================================================
+   DUELYST II UI REFINEMENTS & RESPONSIVE PERFECTION
+   ============================================================================ */
+
+/* Tooltip & Inspector SVG Sprites */
+.syn-unit-svg {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.7));
+}
+
+.pmt-svg {
+    width: 38px;
+    height: 38px;
+    object-fit: contain;
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.8));
+}
+
+.insp-icon-wrap {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.2), rgba(15, 23, 42, 0.9));
+    border: 1.5px solid rgba(56, 189, 248, 0.5);
+    border-radius: 8px;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+}
+
+.insp-svg {
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.8));
+}
+
+.roster-svg {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}
+
+.carousel-choice-svg {
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+    filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.8));
+}
+
+.spec-unit-svg {
+    width: 20px;
+    height: 20px;
+    vertical-align: middle;
+    object-fit: contain;
+    margin-right: 2px;
+}
+
+/* ============================================================================
+   MOBILE PORTRAIT ORIENTATION LOCK OVERLAY (ÉP XOAY NGANG)
+   ============================================================================ */
+.mobile-rotate-overlay {
+    display: none;
+}
+
+@media screen and (max-width: 600px) and (orientation: portrait) {
+    .mobile-rotate-overlay {
+        display: flex !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        background: radial-gradient(circle at center, rgba(15, 23, 42, 0.98), rgba(2, 6, 23, 1)) !important;
+        backdrop-filter: blur(14px) !important;
+        z-index: 9999999 !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        align-items: center !important;
+        padding: 24px !important;
+        box-sizing: border-box !important;
+        text-align: center !important;
+    }
+
+    .rotate-card {
+        background: rgba(15, 23, 42, 0.92) !important;
+        border: 1.5px solid rgba(56, 189, 248, 0.45) !important;
+        border-radius: 20px !important;
+        padding: 36px 24px !important;
+        max-width: 330px !important;
+        box-shadow: 0 0 40px rgba(56, 189, 248, 0.3), inset 0 0 25px rgba(56, 189, 248, 0.1) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 16px !important;
+    }
+
+    .rotate-phone-icon {
+        width: 72px !important;
+        height: 72px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 50% !important;
+        background: rgba(56, 189, 248, 0.18) !important;
+        border: 2px solid rgba(56, 189, 248, 0.6) !important;
+        box-shadow: 0 0 25px rgba(56, 189, 248, 0.5) !important;
+        animation: rotatePhoneAnim 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
+    }
+
+    .icon-phone-rotate {
+        width: 36px !important;
+        height: 36px !important;
+        color: #38bdf8 !important;
+    }
+
+    .rotate-title {
+        font-family: 'Cinzel', serif !important;
+        font-size: 1.15rem !important;
+        font-weight: 900 !important;
+        letter-spacing: 1.5px !important;
+        color: #f8fafc !important;
+        text-shadow: 0 0 12px rgba(56, 189, 248, 0.8) !important;
+    }
+
+    .rotate-desc {
+        font-size: 0.85rem !important;
+        color: #cbd5e1 !important;
+        line-height: 1.5 !important;
+        margin: 0 !important;
+    }
+
+    .rotate-badge {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        padding: 8px 16px !important;
+        border-radius: 999px !important;
+        background: rgba(245, 158, 11, 0.2) !important;
+        border: 1px solid rgba(245, 158, 11, 0.5) !important;
+        color: #fbbf24 !important;
+        font-size: 0.78rem !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.8px !important;
+    }
+}
+
+@keyframes rotatePhoneAnim {
+    0%, 15% { transform: rotate(0deg); }
+    50%, 85% { transform: rotate(-90deg); }
+    100% { transform: rotate(0deg); }
+}
+
+/* ============================================================================
+   RESPONSIVE TABLET & LANDSCAPE LAYOUT FIX
+   ============================================================================ */
+@media screen and (max-width: 1024px) {
+    .tft-layout-grid {
+        grid-template-columns: 140px 1fr 145px !important;
+        gap: 6px !important;
+        padding: 0 6px 4px !important;
+    }
+
+    .center-stage {
+        min-width: 0 !important;
+        width: 100% !important;
+        overflow: hidden !important;
+    }
+
+    .side-panel-left, .side-panel-right {
+        min-width: 0 !important;
+        overflow-y: auto !important;
+    }
+
+    .board-wrapper {
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+
+    .chess-board {
+        width: min(100%, 50vh) !important;
+        height: min(100%, 48vh) !important;
+        max-width: 100% !important;
+        border-radius: 0 !important;
+        border: 2px solid rgba(56, 189, 248, 0.45) !important;
+    }
+
+    .shop-container {
+        padding: 4px 6px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .bench-container {
+        padding: 2px 6px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .side-panel-left .syn-chip {
+        padding: 3px 4px !important;
+    }
+
+    .side-panel-left .syn-chip-name {
+        font-size: 0.68rem !important;
+    }
+}
+
+@media screen and (max-width: 860px) {
+    .tft-layout-grid {
+        grid-template-columns: 80px 1fr 85px !important;
+        gap: 4px !important;
+        padding: 0 4px 2px !important;
+        height: calc(100vh - 46px) !important;
+    }
+
+    .center-stage {
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+
+    .side-panel-left, .side-panel-right {
+        min-width: 0 !important;
+    }
+
+    .side-panel-left .syn-chip-desc, .side-panel-right .lb-row-details {
+        display: none !important;
+    }
+
+    .chess-board {
+        width: min(100%, 46vh) !important;
+        height: min(100%, 42vh) !important;
+        border-radius: 0 !important;
+        border: 2px solid rgba(56, 189, 248, 0.45) !important;
+    }
+
+    .bench-slot {
+        height: 40px !important;
+        min-height: 40px !important;
+    }
+
+    .shop-card {
+        min-height: 56px !important;
+        padding: 3px 4px !important;
+    }
+}
+
 
 
 

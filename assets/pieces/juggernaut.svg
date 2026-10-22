@@ -1,88 +1,62 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56" width="256" height="256" shape-rendering="crispEdges">
   <defs>
-    <!-- Background Gradient -->
-    <radialGradient id="bgGrad" cx="50%" cy="40%" r="65%">
-      <stop offset="0%" stop-color="#1c1917" />
-      <stop offset="100%" stop-color="#0c0a09" />
-    </radialGradient>
-    
-    <!-- Shaders & Metallic Gradients -->
-    <linearGradient id="gradGold" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fef08a" />
-      <stop offset="50%" stop-color="#eab308" />
-      <stop offset="100%" stop-color="#854d0e" />
-    </linearGradient>
-
-    <linearGradient id="gradFire" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#fef08a" />
-      <stop offset="40%" stop-color="#f97316" />
-      <stop offset="100%" stop-color="#b91c1c" />
-    </linearGradient>
-
-    <linearGradient id="gradFrost" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f0f9ff" />
-      <stop offset="50%" stop-color="#38bdf8" />
-      <stop offset="100%" stop-color="#0369a1" />
-    </linearGradient>
-
-    <linearGradient id="gradSteel" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f8fafc" />
-      <stop offset="50%" stop-color="#94a3b8" />
-      <stop offset="100%" stop-color="#334155" />
-    </linearGradient>
-
-    <linearGradient id="gradKnight" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#93c5fd" />
-      <stop offset="60%" stop-color="#2563eb" />
-      <stop offset="100%" stop-color="#1e1b4b" />
-    </linearGradient>
-
-    <!-- Outer Glow Filter -->
-    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="6" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    <filter id="primalGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="1.5" flood-color="#84cc16" flood-opacity="0.95"/>
     </filter>
-
-    <!-- Holographic Shine Filter -->
-    <linearGradient id="foilShine" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="rgba(255,255,255,0.4)" />
-      <stop offset="50%" stop-color="rgba(255,255,255,0.0)" />
-      <stop offset="100%" stop-color="rgba(255,255,255,0.2)" />
-    </linearGradient>
   </defs>
 
-  <!-- Background Base -->
-  <rect width="256" height="256" rx="28" fill="url(#bgGrad)" />
+  <!-- DUELYST II: PRIMAL BEHEMOTH (JUGGERNAUT - MAGMAR FACTION) - HI-BIT PIXEL SPRITE -->
 
-  <!-- Outer Arena Frame -->
-  <rect x="8" y="8" width="240" height="240" rx="22" fill="none" stroke="#d6d3d1" stroke-width="4" opacity="0.85" />
-  <rect x="14" y="14" width="228" height="228" rx="18" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" />
-
-  <!-- Themed Halo Behind Character -->
-  <circle cx="128" cy="120" r="76" fill="#a8a29e" opacity="0.18" filter="url(#glow)" />
-  <circle cx="128" cy="120" r="54" fill="none" stroke="#a8a29e" stroke-width="1.5" stroke-dasharray="4,6" opacity="0.45" />
-
-  <!-- Hero Art Illustration -->
-  <g transform="translate(0, -6)">
-    <rect x="75" y="65" width="106" height="120" rx="16" fill="url(#gradSteel)" stroke="#e7e5e4" stroke-width="7" filter="url(#glow)"/>
-                  <rect x="95" y="85" width="66" height="20" rx="6" fill="#0369a1" filter="url(#glow)"/>
-                  <path d="M75 125 L181 125 M128 65 L128 185" stroke="#44403c" stroke-width="5"/>
-                  <circle cx="128" cy="155" r="14" fill="#0284c7" filter="url(#glow)"/>
+  <!-- Armored Reptilian Spikes along Back -->
+  <g fill="#14532d" filter="url(#primalGlow)">
+    <polygon points="12,18 8,12 14,14"/>
+    <polygon points="36,18 40,12 34,14"/>
+    <polygon points="24,8 24,2 26,8"/>
   </g>
 
-  <!-- Title & Symbol Badges -->
-  <g transform="translate(0, 198)">
-    <!-- Plate -->
-    <rect x="24" y="0" width="208" height="38" rx="8" fill="rgba(15, 23, 42, 0.85)" stroke="#d6d3d1" stroke-width="1.5" />
-    <!-- Text -->
-    <text x="128" y="24" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="900" font-size="14" fill="#ffffff" letter-spacing="1.5" text-anchor="middle">THIẾT GIÁP KHỔNG LỒ</text>
+  <!-- Massive Armored Dinosaur Shoulders -->
+  <g fill="#166534">
+    <rect x="8" y="18" width="9" height="9"/>
+    <rect x="9" y="19" width="7" height="7" fill="#22c55e"/>
+    <rect x="31" y="18" width="9" height="9"/>
+    <rect x="32" y="19" width="7" height="7" fill="#22c55e"/>
   </g>
 
-  <!-- Top Corner Class Crest -->
-  <circle cx="40" cy="40" r="18" fill="rgba(15, 23, 42, 0.88)" stroke="#d6d3d1" stroke-width="2" />
-  <text x="40" y="47" font-size="18" text-anchor="middle">🛡️</text>
+  <!-- Primal Carapace Chest with Glowing Magmar Heart -->
+  <g fill="#14532d">
+    <rect x="16" y="16" width="16" height="18"/>
+    <rect x="18" y="15" width="12" height="20" fill="#166534"/>
+  </g>
+  <!-- Glowing Primal Acid / Magma Core -->
+  <g fill="#84cc16" filter="url(#primalGlow)">
+    <rect x="22" y="22" width="4" height="6"/>
+    <rect x="23" y="23" width="2" height="4" fill="#facc15"/>
+  </g>
 
-  <!-- Subtle Foil Reflection Layer -->
-  <rect width="256" height="256" rx="28" fill="url(#foilShine)" pointer-events="none" />
+  <!-- Heavy Saurian Claws -->
+  <g fill="#166534">
+    <rect x="9" y="27" width="5" height="10"/>
+    <rect x="8" y="36" width="7" height="6" fill="#14532d"/>
+    <rect x="34" y="27" width="5" height="10"/>
+    <rect x="33" y="36" width="7" height="6" fill="#14532d"/>
+  </g>
+
+  <!-- Horned Lizard Skull Head & Flaming Green Eyes -->
+  <g fill="#15803d">
+    <rect x="20" y="8" width="8" height="9"/>
+    <rect x="19" y="9" width="10" height="7" fill="#166534"/>
+    <polygon points="18,8 14,4 19,6" fill="#14532d"/>
+    <polygon points="30,8 34,4 29,6" fill="#14532d"/>
+  </g>
+  <rect x="21" y="11" width="2" height="1.5" fill="#a3e635" filter="url(#primalGlow)"/>
+  <rect x="25" y="11" width="2" height="1.5" fill="#a3e635" filter="url(#primalGlow)"/>
+
+  <!-- Heavy Dinosaur Stomp Feet -->
+  <g fill="#14532d">
+    <rect x="16" y="34" width="6" height="14"/>
+    <rect x="15" y="46" width="8" height="5"/>
+    <rect x="26" y="34" width="6" height="14"/>
+    <rect x="25" y="46" width="8" height="5"/>
+  </g>
 </svg>

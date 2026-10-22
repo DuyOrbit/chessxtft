@@ -7,7 +7,7 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👑</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Outfit:wght@400;500;600;700;800&family=Rajdhani:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;600;800&family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
     <!-- STUDIO GAME LIBRARIES: LUCIDE VECTOR ICONS, GSAP CINEMATICS, TIPPY TOOLTIPS -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
@@ -1263,6 +1263,20 @@
 
     <!-- FLOATING PIECE MOVEMENT MINI-GRID TOOLTIP (HÀNG CHỜ & CỬA HÀNG) -->
     <div id="piece-movement-tooltip" class="piece-movement-tooltip hidden"></div>
+
+    <!-- MOBILE PORTRAIT ROTATE DEVICE OVERLAY (ÉP XOAY NGANG ĐIỆN THOẠI) -->
+    <div id="mobile-rotate-overlay" class="mobile-rotate-overlay">
+        <div class="rotate-card">
+            <div class="rotate-phone-icon">
+                <i data-lucide="smartphone" class="icon-phone-rotate"></i>
+            </div>
+            <div class="rotate-title">VUI LÒNG XOAY NGANG THIẾT BỊ</div>
+            <p class="rotate-desc">Đấu Trường Cờ Vua Chess TFT được thiết kế trải nghiệm tối ưu ở màn hình ngang (Landscape). Vui lòng xoay ngang điện thoại để xuất trận!</p>
+            <div class="rotate-badge">
+                <i data-lucide="rotate-cw"></i> Xoay ngang màn hình để chơi
+            </div>
+        </div>
+    </div>
 
     <div id="toast-container" class="toast-container"></div>
 

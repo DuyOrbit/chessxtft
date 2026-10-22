@@ -1,1 +1,10 @@
-[]
+[
+  {
+    "id": "match_1792585964880",
+    "timestamp": "2026-10-21T12:32:44.880Z",
+    "roomCode": "SOLO",
+    "winnerName": "Đối thủ",
+    "playerRank": 8,
+    "totalPlayers": 8
+  }
+]

@@ -8,8 +8,8 @@
     "role": "admin",
     "createdAt": "2026-10-19T19:00:00.000Z",
     "stats": {
-      "elo": 1500,
-      "gamesPlayed": 5,
+      "elo": 1485,
+      "gamesPlayed": 6,
       "top1Count": 3,
       "wins": 18,
       "losses": 4

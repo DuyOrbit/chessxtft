@@ -1,89 +1,108 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56" width="256" height="256" shape-rendering="crispEdges">
   <defs>
-    <!-- Background Gradient -->
-    <radialGradient id="bgGrad" cx="50%" cy="40%" r="65%">
-      <stop offset="0%" stop-color="#581c87" />
-      <stop offset="100%" stop-color="#1e1b4b" />
-    </radialGradient>
-    
-    <!-- Shaders & Metallic Gradients -->
-    <linearGradient id="gradGold" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fef08a" />
-      <stop offset="50%" stop-color="#eab308" />
-      <stop offset="100%" stop-color="#854d0e" />
-    </linearGradient>
-
-    <linearGradient id="gradFire" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#fef08a" />
-      <stop offset="40%" stop-color="#f97316" />
-      <stop offset="100%" stop-color="#b91c1c" />
-    </linearGradient>
-
-    <linearGradient id="gradFrost" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f0f9ff" />
-      <stop offset="50%" stop-color="#38bdf8" />
-      <stop offset="100%" stop-color="#0369a1" />
-    </linearGradient>
-
-    <linearGradient id="gradSteel" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f8fafc" />
-      <stop offset="50%" stop-color="#94a3b8" />
-      <stop offset="100%" stop-color="#334155" />
-    </linearGradient>
-
-    <linearGradient id="gradKnight" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#93c5fd" />
-      <stop offset="60%" stop-color="#2563eb" />
-      <stop offset="100%" stop-color="#1e1b4b" />
-    </linearGradient>
-
-    <!-- Outer Glow Filter -->
-    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="6" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    <filter id="voidGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#c084fc" flood-opacity="0.95"/>
     </filter>
-
-    <!-- Holographic Shine Filter -->
-    <linearGradient id="foilShine" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="rgba(255,255,255,0.4)" />
-      <stop offset="50%" stop-color="rgba(255,255,255,0.0)" />
-      <stop offset="100%" stop-color="rgba(255,255,255,0.2)" />
-    </linearGradient>
+    <filter id="orbGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="0" stdDeviation="2.5" flood-color="#a855f7" flood-opacity="1"/>
+    </filter>
   </defs>
 
-  <!-- Background Base -->
-  <rect width="256" height="256" rx="28" fill="url(#bgGrad)" />
+  <!-- DUELYST II: VOID EMPRESS QUEEN (ABYSSIAN FACTION) - LEVITATING HI-BIT PIXEL SPRITE -->
 
-  <!-- Outer Arena Frame -->
-  <rect x="8" y="8" width="240" height="240" rx="22" fill="none" stroke="#fbbf24" stroke-width="4" opacity="0.85" />
-  <rect x="14" y="14" width="228" height="228" rx="18" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" />
-
-  <!-- Themed Halo Behind Character -->
-  <circle cx="128" cy="120" r="76" fill="#c084fc" opacity="0.18" filter="url(#glow)" />
-  <circle cx="128" cy="120" r="54" fill="none" stroke="#c084fc" stroke-width="1.5" stroke-dasharray="4,6" opacity="0.45" />
-
-  <!-- Hero Art Illustration -->
-  <g transform="translate(0, -6)">
-    <path d="M72 80 L90 175 L166 175 L184 80 L148 115 L128 65 L108 115 Z" fill="url(#gradGold)" stroke="#fef08a" stroke-width="6" filter="url(#glow)"/>
-                  <circle cx="72" cy="75" r="8" fill="#f43f5e" filter="url(#glow)"/>
-                  <circle cx="128" cy="60" r="10" fill="#38bdf8" filter="url(#glow)"/>
-                  <circle cx="184" cy="75" r="8" fill="#f43f5e" filter="url(#glow)"/>
-                  <circle cx="128" cy="140" r="16" fill="#a855f7" stroke="#ffffff" stroke-width="3" filter="url(#glow)"/>
+  <!-- 3 Swirling Void Singularity Orbs -->
+  <!-- Left Floating Orb -->
+  <g transform="translate(6, 18)" filter="url(#orbGlow)">
+    <circle cx="4" cy="4" r="3.5" fill="#581c87"/>
+    <circle cx="4" cy="4" r="2.2" fill="#9333ea"/>
+    <circle cx="4" cy="4" r="1.2" fill="#f3e8ff"/>
+  </g>
+  <!-- Right Upper Floating Orb -->
+  <g transform="translate(36, 12)" filter="url(#orbGlow)">
+    <circle cx="4" cy="4" r="4" fill="#581c87"/>
+    <circle cx="4" cy="4" r="2.6" fill="#a855f7"/>
+    <circle cx="4" cy="4" r="1.3" fill="#ffffff"/>
+  </g>
+  <!-- Lower Right Floating Orb -->
+  <g transform="translate(35, 30)" filter="url(#orbGlow)">
+    <circle cx="3.5" cy="3.5" r="3" fill="#581c87"/>
+    <circle cx="3.5" cy="3.5" r="1.8" fill="#9333ea"/>
+    <circle cx="3.5" cy="3.5" r="0.8" fill="#f3e8ff"/>
   </g>
 
-  <!-- Title & Symbol Badges -->
-  <g transform="translate(0, 198)">
-    <!-- Plate -->
-    <rect x="24" y="0" width="208" height="38" rx="8" fill="rgba(15, 23, 42, 0.85)" stroke="#fbbf24" stroke-width="1.5" />
-    <!-- Text -->
-    <text x="128" y="24" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="900" font-size="14" fill="#ffffff" letter-spacing="1.5" text-anchor="middle">HẬU TỐI THƯỢNG</text>
+  <!-- Flowing Void Robes (Trailing ethereal mist) -->
+  <g fill="#2e1065">
+    <rect x="18" y="24" width="12" height="18"/>
+    <rect x="16" y="32" width="16" height="12"/>
+    <rect x="14" y="42" width="20" height="6"/>
+  </g>
+  <!-- Dark Purple Ribbons / Tendrils floating down -->
+  <g fill="#581c87">
+    <rect x="19" y="28" width="10" height="18"/>
+    <rect x="15" y="46" width="4" height="4"/>
+    <rect x="22" y="46" width="5" height="5"/>
+    <rect x="29" y="46" width="4" height="3"/>
+  </g>
+  <!-- Crimson / Magenta Robe Interior Accent -->
+  <g fill="#be185d">
+    <rect x="22" y="26" width="4" height="14"/>
+    <rect x="21" y="34" width="6" height="6"/>
   </g>
 
-  <!-- Top Corner Class Crest -->
-  <circle cx="40" cy="40" r="18" fill="rgba(15, 23, 42, 0.88)" stroke="#fbbf24" stroke-width="2" />
-  <text x="40" y="47" font-size="18" text-anchor="middle">👑</text>
+  <!-- Floating Silhouette Body (No feet touching ground) -->
+  <!-- Corset & Chest Armor -->
+  <rect x="20" y="22" width="8" height="8" fill="#1e1b4b"/>
+  <rect x="21" y="23" width="6" height="6" fill="#4338ca"/>
+  <!-- Glowing Violet Core Crystal -->
+  <rect x="23" y="25" width="2" height="2" fill="#c084fc" filter="url(#voidGlow)"/>
+  <rect x="23.5" y="25.5" width="1" height="1" fill="#ffffff"/>
 
-  <!-- Subtle Foil Reflection Layer -->
-  <rect width="256" height="256" rx="28" fill="url(#foilShine)" pointer-events="none" />
+  <!-- High Collars / Spiked Obsidian Shoulder Mantle -->
+  <g fill="#09090b">
+    <polygon points="17,20 20,24 18,26" fill="#18181b"/>
+    <polygon points="31,20 28,24 30,26" fill="#18181b"/>
+  </g>
+
+  <!-- Slender Ghostly Pale Face -->
+  <rect x="21" y="14" width="6" height="8" fill="#f1f5f9"/>
+  <rect x="20" y="16" width="8" height="5" fill="#e2e8f0"/>
+  <!-- Glowing Violet Eyes (Duelyst Void Eyes) -->
+  <rect x="22" y="17" width="1.5" height="1.5" fill="#c084fc" filter="url(#voidGlow)"/>
+  <rect x="24.5" y="17" width="1.5" height="1.5" fill="#c084fc" filter="url(#voidGlow)"/>
+  <!-- Dark Lips -->
+  <rect x="23" y="20" width="2" height="1" fill="#4a044e"/>
+
+  <!-- Flowing White / Silver Hair drifting upwards -->
+  <g fill="#cbd5e1">
+    <rect x="19" y="13" width="2" height="10"/>
+    <rect x="27" y="13" width="2" height="10"/>
+    <rect x="18" y="15" width="2" height="6"/>
+    <rect x="28" y="15" width="2" height="6"/>
+  </g>
+
+  <!-- Horned Obsidian Crown / Tiara -->
+  <g fill="#09090b" filter="url(#voidGlow)">
+    <rect x="20" y="12" width="8" height="2" fill="#18181b"/>
+    <!-- Left Horn curving out -->
+    <rect x="18" y="10" width="2" height="3"/>
+    <rect x="17" y="7" width="2" height="4"/>
+    <rect x="16" y="5" width="2" height="3"/>
+    <!-- Right Horn curving out -->
+    <rect x="28" y="10" width="2" height="3"/>
+    <rect x="29" y="7" width="2" height="4"/>
+    <rect x="30" y="5" width="2" height="3"/>
+    <!-- Center Violet Gem -->
+    <rect x="23" y="11" width="2" height="2" fill="#d946ef"/>
+  </g>
+
+  <!-- Slender Levitating Arms -->
+  <g fill="#e2e8f0">
+    <!-- Left Arm raised towards upper orb -->
+    <rect x="16" y="22" width="3" height="6"/>
+    <rect x="13" y="20" width="3" height="4"/>
+    <!-- Right Arm casting downwards -->
+    <rect x="29" y="22" width="3" height="6"/>
+    <rect x="32" y="26" width="3" height="4"/>
+  </g>
 </svg>

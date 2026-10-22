@@ -658,32 +658,41 @@ window.CHESS_TFT_DATA = {
         {
             id: "classic",
             name: "Đấu Trường Tốc Chiến",
-            desc: "Mặt sân thông thoáng với 2 Ô Cường Hóa ở trung tâm giúp tăng tầm đánh và tốc độ nhập cuộc.",
+            desc: "Mặt sân thông thoáng với 2 Ô Cường Hóa đối xứng ở trung tâm giúp tăng tầm đánh và tốc độ nhập cuộc.",
             themeColor: "#334155",
             generateTerrain: function(cols, rows) {
                 const grid = {};
-                const midR = Math.floor(rows / 2);
-                const c1 = Math.floor(cols / 2) - 1;
-                const c2 = Math.ceil(cols / 2);
-                grid[`${midR - 1},${c1}`] = "rune";
-                grid[`${midR},${c2}`] = "rune";
+                function addSym(r, c, type) {
+                    grid[`${r},${c}`] = type;
+                    grid[`${rows - 1 - r},${cols - 1 - c}`] = type;
+                }
+                const rTop = Math.floor(rows / 2) - 1;
+                const cLeft = Math.max(1, Math.floor(cols / 3));
+                addSym(rTop, cLeft, "rune");
                 return grid;
             }
         },
         {
             id: "river_crossing",
             name: "Thung Lũng Sông Băng",
-            desc: "Dòng sông cắt ngang giữa bàn cờ. Quân bộ binh bước xuống Sông bị Làm Chậm (nghỉ 1 lượt), hai bên cánh có Cầu Đá đi thường.",
+            desc: "Dòng sông cắt ngang giữa sân đối xứng hoàn hảo. Bộ binh bước xuống Sông bị Làm Chậm, hai bên cánh có Cầu Đá thông thoáng.",
             themeColor: "#0284c7",
             generateTerrain: function(cols, rows) {
                 const grid = {};
-                const midR = Math.floor(rows / 2);
-                for (let c = 0; c < cols; c++) {
-                    // Leave bridges on left and right edges for fast flanking
-                    if (c === 0 || c === cols - 1) continue;
-                    grid[`${midR},${c}`] = "river";
-                    if (rows >= 7 && c === Math.floor(cols / 2)) {
-                        grid[`${midR - 1},${c}`] = "river";
+                function addSym(r, c, type) {
+                    grid[`${r},${c}`] = type;
+                    grid[`${rows - 1 - r},${cols - 1 - c}`] = type;
+                }
+                const isEven = (rows % 2 === 0);
+                if (isEven) {
+                    const r1 = (rows / 2) - 1;
+                    for (let c = 1; c < cols - 1; c++) {
+                        addSym(r1, c, "river");
+                    }
+                } else {
+                    const midR = Math.floor(rows / 2);
+                    for (let c = 1; c < cols - 1; c++) {
+                        grid[`${midR},${c}`] = "river";
                     }
                 }
                 return grid;
@@ -692,40 +701,41 @@ window.CHESS_TFT_DATA = {
         {
             id: "stone_fortress",
             name: "Pháo Đài Đá Cổ",
-            desc: "Các khối Tường Đá chặn đường đi và tầm bắn thẳng. Quân Mã, Pháo hoặc Giày Tốc Biến có thể nhảy xuyên qua!",
+            desc: "Các khối Tường Đá đối xứng chia cắt đường bắn thẳng. Quân Mã, Pháo hoặc Giày Tốc Biến có thể nhảy xuyên qua!",
             themeColor: "#64748b",
             generateTerrain: function(cols, rows) {
                 const grid = {};
-                const midR = Math.floor(rows / 2);
-                if (cols <= 5) {
-                    grid[`${midR},1`] = "wall";
-                    grid[`${midR - 1},3`] = "wall";
-                } else if (cols === 6) {
-                    grid[`${midR},1`] = "wall";
-                    grid[`${midR},4`] = "wall";
-                } else {
-                    grid[`${midR - 1},2`] = "wall";
-                    grid[`${midR},5`] = "wall";
-                    grid[`${midR},3`] = "rune";
-                    grid[`${midR - 1},4`] = "rune";
+                function addSym(r, c, type) {
+                    grid[`${r},${c}`] = type;
+                    grid[`${rows - 1 - r},${cols - 1 - c}`] = type;
                 }
+                const rTop = Math.floor(rows / 2) - 1;
+                const cLeft = 1;
+                addSym(rTop, cLeft, "wall");
+                if (cols >= 6) {
+                    addSym(rTop, cols - 2, "wall");
+                }
+                // Central Runes
+                addSym(rTop, Math.floor(cols / 2), "rune");
                 return grid;
             }
         },
         {
             id: "lava_rift",
             name: "Hỏa Ngục Dung Nham",
-            desc: "Ô Dung Nham ở giữa sân sẽ gây Thiêu Đốt (tự chết sau 3 lượt) cho bất kỳ quân cờ nào đứng lên nó!",
+            desc: "Các ô Dung Nham đối xứng ở trung tâm gây Thiêu Đốt (tự chết sau 3 lượt) cho bất kỳ quân cờ nào đứng lên nó!",
             themeColor: "#dc2626",
             generateTerrain: function(cols, rows) {
                 const grid = {};
-                const midR = Math.floor(rows / 2);
+                function addSym(r, c, type) {
+                    grid[`${r},${c}`] = type;
+                    grid[`${rows - 1 - r},${cols - 1 - c}`] = type;
+                }
+                const rTop = Math.floor(rows / 2) - 1;
                 const midC = Math.floor(cols / 2);
-                grid[`${midR},${midC}`] = "lava";
+                addSym(rTop, midC, "lava");
                 if (cols >= 6) {
-                    grid[`${midR - 1},${midC - 1}`] = "lava";
-                    grid[`${midR},${ 0 }`] = "rune";
-                    grid[`${midR - 1},${cols - 1}`] = "rune";
+                    addSym(rTop, 0, "rune");
                 }
                 return grid;
             }
@@ -733,18 +743,19 @@ window.CHESS_TFT_DATA = {
         {
             id: "labyrinth_rocks",
             name: "Mê Cung Đá Tảng",
-            desc: "Nhiều khối Đá Cổ chia bàn cờ thành các lối đi hẹp. Quân Mã nhảy qua đá và Xạ Thủ bắn tỉa qua khe đá là chìa khóa chiến thắng!",
+            desc: "Các khối Đá Cổ đối xứng tâm 180° công bằng tuyệt đối. Quân Mã nhảy qua đá và Xạ Thủ bắn tỉa qua khe đá là chìa khóa chiến thắng!",
             themeColor: "#475569",
             generateTerrain: function(cols, rows) {
                 const grid = {};
-                const midR = Math.floor(rows / 2);
-                grid[`${midR},1`] = "wall";
-                grid[`${midR},${cols - 2}`] = "wall";
-                grid[`${midR - 1},${Math.floor(cols / 2)}`] = "wall";
-                grid[`${midR + 1},${Math.floor(cols / 2)}`] = "wall";
+                function addSym(r, c, type) {
+                    grid[`${r},${c}`] = type;
+                    grid[`${rows - 1 - r},${cols - 1 - c}`] = type;
+                }
+                const rTop = Math.floor(rows / 2) - 1;
+                // Symmetrical rock pairs across 180° rotation
+                addSym(rTop, 1, "wall");
                 if (cols >= 6) {
-                    grid[`${midR - 1},0`] = "wall";
-                    grid[`${midR + 1},${cols - 1}`] = "wall";
+                    addSym(rTop, cols - 2, "wall");
                 }
                 return grid;
             }
