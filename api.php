@@ -10,19 +10,20 @@
  */
 
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
+$allowedOrigin = getenv('ALLOWED_ORIGIN') ?: '*';
+header("Access-Control-Allow-Origin: $allowedOrigin");
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
 
-$DB_HOST = '127.0.0.1';
-$DB_USER = 'root';
-$DB_PASS = '';
-$DB_NAME = 'chesstft_db';
+$DB_HOST = getenv('DB_HOST') ?: '127.0.0.1';
+$DB_USER = getenv('DB_USER') ?: 'root';
+$DB_PASS = getenv('DB_PASS') !== false ? getenv('DB_PASS') : '';
+$DB_NAME = getenv('DB_NAME') ?: 'chesstft_db';
 
 function getPdoConnection($host, $user, $pass, $dbName) {
     try {
@@ -44,21 +45,21 @@ function getPdoConnection($host, $user, $pass, $dbName) {
                 $sql = file_get_contents($sqlFile);
                 $pdo->exec($sql);
             }
-        } else {
-            // Check if legacy pieces exist (e.g. 'pawn' or 'guard' instead of 'shield_pawn')
-            $chkPiece = $pdo->query("SELECT id FROM pieces WHERE id IN ('pawn', 'guard') LIMIT 1");
-            if ($chkPiece && $chkPiece->fetch()) {
-                // Reseed pieces table cleanly with canonical 13 pieces
-                $pdo->exec("DELETE FROM pieces");
-                $sqlFile = __DIR__ . '/database.sql';
-                if (file_exists($sqlFile)) {
-                    $sql = file_get_contents($sqlFile);
-                    $pdo->exec($sql);
-                }
-            }
         }
+
+        // Ensure `token` column exists in `users` table for Bearer authentication
+        try {
+            $colChk = $pdo->query("SHOW COLUMNS FROM `users` LIKE 'token'");
+            if ($colChk && $colChk->rowCount() === 0) {
+                $pdo->exec("ALTER TABLE `users` ADD COLUMN `token` VARCHAR(128) NULL AFTER `password`");
+            }
+        } catch (Exception $e) {
+            error_log("Failed to ensure token column: " . $e->getMessage());
+        }
+
         return $pdo;
     } catch (Exception $e) {
+        error_log("MySQL connection error: " . $e->getMessage());
         return null;
     }
 }
@@ -78,7 +79,93 @@ function writeJsonFallback($filename, $data) {
     @file_put_contents($path, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 }
 
-// Helper to format a MySQL user row into the frontend user object
+// Password hashing & migration
+function hashUserPassword($plain) {
+    return password_hash($plain, PASSWORD_DEFAULT);
+}
+
+function verifyUserPasswordAndMigrate($plain, $hashedOrPlain, $userId, $pdo) {
+    if (empty($hashedOrPlain)) return false;
+
+    // Check if it's already a modern password_hash (bcrypt / argon2)
+    if (password_verify($plain, $hashedOrPlain)) {
+        return true;
+    }
+
+    // Auto-migrate legacy plaintext password if it matches
+    if ((string)$plain === (string)$hashedOrPlain) {
+        $newHash = hashUserPassword($plain);
+        if ($pdo && $userId) {
+            try {
+                $upd = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
+                $upd->execute([$newHash, $userId]);
+            } catch (Exception $e) {
+                error_log("Password auto-migration failed in MySQL: " . $e->getMessage());
+            }
+        } else if (!$pdo && $userId) {
+            $users = readJsonFallback('users.json', []);
+            foreach ($users as &$u) {
+                if ($u['id'] === $userId) {
+                    $u['password'] = $newHash;
+                    break;
+                }
+            }
+            writeJsonFallback('users.json', $users);
+        }
+        return true;
+    }
+
+    return false;
+}
+
+// Token extraction & authentication
+function getAuthTokenFromRequest() {
+    $headers = function_exists('getallheaders') ? getallheaders() : [];
+    $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? ($_SERVER['HTTP_AUTHORIZATION'] ?? '');
+    if (preg_match('/Bearer\s+(\S+)/i', $authHeader, $matches)) {
+        return trim($matches[1]);
+    }
+    if (!empty($_GET['token'])) return trim($_GET['token']);
+    $rawBody = file_get_contents('php://input');
+    $body = json_decode($rawBody, true) ?: [];
+    if (!empty($body['token'])) return trim($body['token']);
+    return '';
+}
+
+function getAuthenticatedUser($pdo) {
+    $token = getAuthTokenFromRequest();
+    if (!$token) return null;
+
+    if ($pdo) {
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE token = ? LIMIT 1");
+        $stmt->execute([$token]);
+        $row = $stmt->fetch();
+        if ($row) return $row;
+    } else {
+        $users = readJsonFallback('users.json', []);
+        foreach ($users as $u) {
+            if (!empty($u['token']) && hash_equals($u['token'], $token)) {
+                return $u;
+            }
+        }
+    }
+    return null;
+}
+
+function requireAdminPermission($pdo) {
+    $user = getAuthenticatedUser($pdo);
+    if (!$user || ($user['role'] ?? '') !== 'admin') {
+        http_response_code(403);
+        echo json_encode([
+            'ok' => false,
+            'msg' => 'Từ chối truy cập: Yêu cầu quyền Quản trị viên (Admin) với Token hợp lệ!'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    return $user;
+}
+
+// Helper to format a MySQL user row into the frontend user object (NEVER EXPOSES PASSWORD)
 function formatUserRow($row) {
     $bonusArr = [];
     if (!empty($row['bonusItems'])) {
@@ -87,23 +174,23 @@ function formatUserRow($row) {
     return [
         'id' => $row['id'],
         'username' => $row['username'],
-        'password' => $row['password'],
+        // Password field is intentionally REMOVED for security
         'displayName' => $row['displayName'],
         'role' => $row['role'],
         'avatar' => $row['avatar'] ?: '♟️',
         'stats' => [
-            'gamesPlayed' => (int)$row['gamesPlayed'],
-            'top1Count' => (int)$row['top1Count'],
-            'top4Count' => (int)$row['top4Count'],
-            'elo' => (int)$row['elo']
+            'gamesPlayed' => (int)($row['gamesPlayed'] ?? 0),
+            'top1Count' => (int)($row['top1Count'] ?? 0),
+            'top4Count' => (int)($row['top4Count'] ?? 0),
+            'elo' => (int)($row['elo'] ?? 1000)
         ],
         'customModifiers' => [
-            'startingHp' => (int)$row['startingHp'],
-            'startingGold' => (int)$row['startingGold'],
-            'startingLevel' => (int)$row['startingLevel'],
-            'extraClockSeconds' => (int)$row['extraClockSeconds'],
+            'startingHp' => (int)($row['startingHp'] ?? 100),
+            'startingGold' => (int)($row['startingGold'] ?? 6),
+            'startingLevel' => (int)($row['startingLevel'] ?? 3),
+            'extraClockSeconds' => (int)($row['extraClockSeconds'] ?? 0),
             'bonusItems' => $bonusArr,
-            'isBanned' => ((int)$row['isBanned']) === 1
+            'isBanned' => ((int)($row['isBanned'] ?? 0)) === 1
         ]
     ];
 }
@@ -124,7 +211,7 @@ function loadRulesFromDb($pdo) {
     $baseRules['STAGE_CONFIG']['2']['blitzTime'] = (int)($kv['stage2_blitz_time'] ?? 60);
     $baseRules['STAGE_CONFIG']['3']['blitzTime'] = (int)($kv['stage3_blitz_time'] ?? 75);
     $baseRules['STAGE_CONFIG']['1']['increment'] = (int)($kv['stage1_increment'] ?? 3);
-    $baseRules['STAGE_CONFIG']['2']['increment'] = (int)($kv['stage1_increment'] ?? 3);
+    $baseRules['STAGE_CONFIG']['2']['increment'] = (int)($kv['stage2_increment'] ?? ($kv['stage1_increment'] ?? 3));
     $baseRules['STAGE_CONFIG']['3']['increment'] = (int)($kv['stage3_increment'] ?? 4);
     $baseRules['STAGE_CONFIG']['1']['maxTurns'] = (int)($kv['stage1_max_turns'] ?? 36);
     $baseRules['STAGE_CONFIG']['2']['maxTurns'] = (int)($kv['stage2_max_turns'] ?? 48);
@@ -200,7 +287,7 @@ if ($action === 'config') {
 // ============================================================================
 if ($action === 'register') {
     $username = trim($body['username'] ?? '');
-    $password = $body['password'] ?? '';
+    $password = (string)($body['password'] ?? '');
     $displayName = trim($body['displayName'] ?? $username);
     $avatar = $body['avatar'] ?? '♟️';
 
@@ -209,6 +296,10 @@ if ($action === 'register') {
         exit;
     }
 
+    $hashedPassword = hashUserPassword($password);
+    $token = bin2hex(random_bytes(32));
+    $newId = 'u_' . time() . '_' . random_int(100, 999);
+
     if ($pdo) {
         $chk = $pdo->prepare("SELECT id FROM users WHERE LOWER(username) = LOWER(?)");
         $chk->execute([$username]);
@@ -216,14 +307,13 @@ if ($action === 'register') {
             echo json_encode(['ok' => false, 'msg' => 'Tên đăng nhập này đã tồn tại trong MySQL!']);
             exit;
         }
-        $newId = 'u_' . time() . '_' . rand(100, 999);
-        $ins = $pdo->prepare("INSERT INTO users (id, username, password, displayName, role, avatar, elo, gamesPlayed, top1Count, top4Count, startingHp, startingGold, startingLevel, extraClockSeconds, bonusItems, isBanned) VALUES (?, ?, ?, ?, 'player', ?, 1000, 0, 0, 0, 100, 6, 3, 0, '', 0)");
-        $ins->execute([$newId, $username, $password, $displayName ?: $username, $avatar]);
+        $ins = $pdo->prepare("INSERT INTO users (id, username, password, token, displayName, role, avatar, elo, gamesPlayed, top1Count, top4Count, startingHp, startingGold, startingLevel, extraClockSeconds, bonusItems, isBanned) VALUES (?, ?, ?, ?, ?, 'player', ?, 1000, 0, 0, 0, 100, 6, 3, 0, '', 0)");
+        $ins->execute([$newId, $username, $hashedPassword, $token, $displayName ?: $username, $avatar]);
 
         $sel = $pdo->prepare("SELECT * FROM users WHERE id = ?");
         $sel->execute([$newId]);
         $userObj = formatUserRow($sel->fetch());
-        unset($userObj['password']);
+        $userObj['token'] = $token;
         echo json_encode(['ok' => true, 'user' => $userObj], JSON_UNESCAPED_UNICODE);
         exit;
     } else {
@@ -236,9 +326,10 @@ if ($action === 'register') {
             }
         }
         $newUser = [
-            'id' => 'u_' . time() . '_' . rand(100, 999),
+            'id' => $newId,
             'username' => $cleanUser,
-            'password' => $password,
+            'password' => $hashedPassword,
+            'token' => $token,
             'displayName' => $displayName ?: $username,
             'role' => 'player',
             'avatar' => $avatar ?: '♟️',
@@ -263,13 +354,13 @@ if ($action === 'register') {
 // ============================================================================
 if ($action === 'login') {
     $username = trim($body['username'] ?? '');
-    $password = $body['password'] ?? '';
+    $password = (string)($body['password'] ?? '');
 
     if ($pdo) {
-        $stmt = $pdo->prepare("SELECT * FROM users WHERE LOWER(username) = LOWER(?) AND password = ?");
-        $stmt->execute([$username, $password]);
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE LOWER(username) = LOWER(?)");
+        $stmt->execute([$username]);
         $row = $stmt->fetch();
-        if (!$row) {
+        if (!$row || !verifyUserPasswordAndMigrate($password, $row['password'], $row['id'], $pdo)) {
             echo json_encode(['ok' => false, 'msg' => 'Sai tên đăng nhập hoặc mật khẩu!']);
             exit;
         }
@@ -277,33 +368,52 @@ if ($action === 'login') {
             echo json_encode(['ok' => false, 'msg' => 'Tài khoản này đã bị khóa bởi Admin trong MySQL!']);
             exit;
         }
+
+        $token = bin2hex(random_bytes(32));
+        $tokStmt = $pdo->prepare("UPDATE users SET token = ? WHERE id = ?");
+        $tokStmt->execute([$token, $row['id']]);
+
         $userObj = formatUserRow($row);
-        unset($userObj['password']);
+        $userObj['token'] = $token;
         echo json_encode(['ok' => true, 'user' => $userObj], JSON_UNESCAPED_UNICODE);
         exit;
     } else {
         $users = readJsonFallback('users.json', []);
         $cleanUser = strtolower($username);
-        $found = null;
-        foreach ($users as $u) {
-            if (strtolower($u['username']) === $cleanUser && (string)$u['password'] === (string)$password) {
-                $found = $u;
+        $foundIdx = -1;
+        foreach ($users as $i => $u) {
+            if (strtolower($u['username']) === $cleanUser) {
+                $foundIdx = $i;
                 break;
             }
         }
-        if (!$found) {
+        if ($foundIdx === -1 || !verifyUserPasswordAndMigrate($password, $users[$foundIdx]['password'], $users[$foundIdx]['id'], null)) {
             echo json_encode(['ok' => false, 'msg' => 'Sai tên đăng nhập hoặc mật khẩu!']);
             exit;
         }
+        $found = $users[$foundIdx];
         if (!empty($found['customModifiers']['isBanned'])) {
             echo json_encode(['ok' => false, 'msg' => 'Tài khoản này đang bị tạm khóa bởi Admin!']);
             exit;
         }
-        $safe = $found;
+
+        $token = bin2hex(random_bytes(32));
+        $users[$foundIdx]['token'] = $token;
+        writeJsonFallback('users.json', $users);
+
+        $safe = $users[$foundIdx];
         unset($safe['password']);
+        $safe['token'] = $token;
         echo json_encode(['ok' => true, 'user' => $safe], JSON_UNESCAPED_UNICODE);
         exit;
     }
+}
+
+// ============================================================================
+// SECURITY CHECKPOINT: ALL `admin_*` ACTIONS REQUIRE VALID ADMIN TOKEN
+// ============================================================================
+if (strpos($action, 'admin_') === 0) {
+    requireAdminPermission($pdo);
 }
 
 // ============================================================================
@@ -315,12 +425,17 @@ if ($action === 'admin_db') {
     if ($pdo) {
         $uStmt = $pdo->query("SELECT * FROM users ORDER BY role ASC, elo DESC");
         while ($r = $uStmt->fetch()) {
-            $users[] = formatUserRow($r);
+            $users[] = formatUserRow($r); // Guaranteed NO password field!
         }
-        $mStmt = $pdo->query("SELECT * FROM matches ORDER BY id DESC LIMIT 30");
+        $mStmt = $pdo->query("SELECT * FROM matches ORDER BY id DESC LIMIT 50");
         $matches = $mStmt->fetchAll();
     } else {
-        $users = readJsonFallback('users.json', []);
+        $rawUsers = readJsonFallback('users.json', []);
+        foreach ($rawUsers as $u) {
+            $copy = $u;
+            unset($copy['password']);
+            $users[] = $copy;
+        }
         $matches = readJsonFallback('matches.json', []);
     }
 
@@ -336,7 +451,7 @@ if ($action === 'admin_db') {
 }
 
 // ============================================================================
-// 5. ADMIN: UPDATE USER ACCOUNT & MODIFIERS IN MYSQL / JSON
+// 5. ADMIN: UPDATE USER ACCOUNT & MODIFIERS
 // ============================================================================
 if ($action === 'admin_user') {
     $userId = $body['userId'] ?? '';
@@ -355,7 +470,10 @@ if ($action === 'admin_user') {
         $displayName = !empty($up['displayName']) ? $up['displayName'] : $curr['displayName'];
         $role = !empty($up['role']) ? $up['role'] : $curr['role'];
         $elo = isset($up['elo']) ? (int)$up['elo'] : (int)$curr['elo'];
-        $password = (!empty($up['password'])) ? $up['password'] : $curr['password'];
+        $password = $curr['password'];
+        if (!empty($up['password']) && trim($up['password']) !== '') {
+            $password = hashUserPassword(trim($up['password']));
+        }
 
         $startingHp = isset($mods['startingHp']) ? (int)$mods['startingHp'] : (int)$curr['startingHp'];
         $startingGold = isset($mods['startingGold']) ? (int)$mods['startingGold'] : (int)$curr['startingGold'];
@@ -369,7 +487,7 @@ if ($action === 'admin_user') {
 
         $stmt->execute([$userId]);
         $updatedUser = formatUserRow($stmt->fetch());
-        echo json_encode(['ok' => true, 'msg' => 'Đã lưu tài khoản vào bảng `users` trong MySQL (phpMyAdmin)!', 'user' => $updatedUser], JSON_UNESCAPED_UNICODE);
+        echo json_encode(['ok' => true, 'msg' => 'Đã lưu tài khoản vào bảng `users` trong MySQL!', 'user' => $updatedUser], JSON_UNESCAPED_UNICODE);
         exit;
     } else {
         $users = readJsonFallback('users.json', []);
@@ -383,7 +501,9 @@ if ($action === 'admin_user') {
         }
         if (isset($up['displayName'])) $users[$idx]['displayName'] = $up['displayName'];
         if (isset($up['role'])) $users[$idx]['role'] = $up['role'];
-        if (!empty($up['password'])) $users[$idx]['password'] = $up['password'];
+        if (!empty($up['password']) && trim($up['password']) !== '') {
+            $users[$idx]['password'] = hashUserPassword(trim($up['password']));
+        }
         if (isset($up['elo'])) $users[$idx]['stats']['elo'] = (int)$up['elo'];
         if ($mods) {
             $users[$idx]['customModifiers'] = array_merge($users[$idx]['customModifiers'] ?? [], [
@@ -406,7 +526,7 @@ if ($action === 'admin_user') {
 // 5b. ADMIN CREATE USER
 if ($action === 'admin_user_create') {
     $username = strtolower(trim($body['username'] ?? ''));
-    $password = $body['password'] ?? '123';
+    $password = (string)($body['password'] ?? '123');
     $displayName = trim($body['displayName'] ?? $username);
     $role = ($body['role'] ?? 'player') === 'admin' ? 'admin' : 'player';
     $avatar = $body['avatar'] ?? '👤';
@@ -418,19 +538,37 @@ if ($action === 'admin_user_create') {
         exit;
     }
 
-    $users = readJsonFallback('users.json', []);
-    foreach ($users as $u) {
-        if (strtolower($u['username']) === $username) {
-            echo json_encode(['ok' => false, 'msg' => "Tên đăng nhập '{$username}' đã tồn tại!"]);
+    $hashedPassword = hashUserPassword($password);
+    $newId = 'u_' . time() . '_' . random_int(100, 999);
+    $bonusList = $mods['bonusItems'] ?? ['stun_hammer', 'burn_cloak'];
+    $bonusStr = is_array($bonusList) ? implode(',', $bonusList) : '';
+
+    if ($pdo) {
+        $chk = $pdo->prepare("SELECT id FROM users WHERE LOWER(username) = LOWER(?)");
+        $chk->execute([$username]);
+        if ($chk->fetch()) {
+            echo json_encode(['ok' => false, 'msg' => "Tên đăng nhập '{$username}' đã tồn tại trong MySQL!"]);
+            exit;
+        }
+        try {
+            $ins = $pdo->prepare("INSERT INTO users (id, username, password, displayName, role, avatar, elo, gamesPlayed, top1Count, top4Count, startingHp, startingGold, startingLevel, extraClockSeconds, bonusItems, isBanned) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?, ?, ?, ?, ?)");
+            $ins->execute([
+                $newId, $username, $hashedPassword, $displayName ?: $username, $role, $avatar, $elo,
+                (int)($mods['startingHp'] ?? 100), (int)($mods['startingGold'] ?? 6), (int)($mods['startingLevel'] ?? 3),
+                (int)($mods['extraClockSeconds'] ?? 0), $bonusStr, !empty($mods['isBanned']) ? 1 : 0
+            ]);
+        } catch (Exception $e) {
+            error_log("admin_user_create MySQL error: " . $e->getMessage());
+            echo json_encode(['ok' => false, 'msg' => 'Lỗi lưu tài khoản vào MySQL: ' . $e->getMessage()]);
             exit;
         }
     }
 
-    $newId = 'u_' . time() . '_' . rand(100, 999);
+    $users = readJsonFallback('users.json', []);
     $newUser = [
         'id' => $newId,
         'username' => $username,
-        'password' => $password,
+        'password' => $hashedPassword,
         'displayName' => $displayName ?: $username,
         'role' => $role,
         'avatar' => $avatar,
@@ -441,85 +579,147 @@ if ($action === 'admin_user_create') {
             'startingGold' => (int)($mods['startingGold'] ?? 6),
             'startingLevel' => (int)($mods['startingLevel'] ?? 3),
             'extraClockSeconds' => (int)($mods['extraClockSeconds'] ?? 0),
-            'bonusItems' => $mods['bonusItems'] ?? ['stun_hammer', 'burn_cloak'],
+            'bonusItems' => $bonusList,
             'isBanned' => !empty($mods['isBanned'])
         ]
     ];
     $users[] = $newUser;
     writeJsonFallback('users.json', $users);
 
-    if ($pdo) {
-        try {
-            $bonusStr = is_array($newUser['customModifiers']['bonusItems']) ? implode(',', $newUser['customModifiers']['bonusItems']) : '';
-            $ins = $pdo->prepare("INSERT INTO users (id, username, password, displayName, role, avatar, elo, gamesPlayed, top1Count, top4Count, startingHp, startingGold, startingLevel, extraClockSeconds, bonusItems, isBanned) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, ?, ?, ?, ?, ?)");
-            $ins->execute([$newId, $username, $password, $displayName ?: $username, $role, $avatar, $elo, $newUser['customModifiers']['startingHp'], $newUser['customModifiers']['startingGold'], $newUser['customModifiers']['startingLevel'], $newUser['customModifiers']['extraClockSeconds'], $bonusStr, $newUser['customModifiers']['isBanned'] ? 1 : 0]);
-        } catch (Exception $e) {}
-    }
+    $safeUsers = array_map(function($u) {
+        $c = $u;
+        unset($c['password']);
+        return $c;
+    }, $users);
 
-    echo json_encode(['ok' => true, 'msg' => "Đã tạo tài khoản '{$username}' thành công!", 'user' => $newUser, 'users' => $users], JSON_UNESCAPED_UNICODE);
+    $safeNew = $newUser;
+    unset($safeNew['password']);
+
+    echo json_encode(['ok' => true, 'msg' => "Đã tạo tài khoản '{$username}' thành công!", 'user' => $safeNew, 'users' => $safeUsers], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
 // 5c. ADMIN DELETE USER
 if ($action === 'admin_user_delete') {
-    $userId = $body['userId'] ?? '';
+    $userId = $body['userId'] ?? ($body['id'] ?? '');
     if (!$userId) {
         echo json_encode(['ok' => false, 'msg' => 'Thiếu ID người dùng cần xóa!']);
         exit;
     }
+
+    $deletedUsername = '';
+    if ($pdo) {
+        $stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $row = $stmt->fetch();
+        if ($row) {
+            if ($row['username'] === 'admin') {
+                echo json_encode(['ok' => false, 'msg' => 'Không thể xóa tài khoản Admin Tối Thượng!']);
+                exit;
+            }
+            $deletedUsername = $row['username'];
+            $del = $pdo->prepare("DELETE FROM users WHERE id = ?");
+            $del->execute([$userId]);
+        }
+    }
+
     $users = readJsonFallback('users.json', []);
     $idx = -1;
     foreach ($users as $i => $u) {
         if ($u['id'] === $userId) { $idx = $i; break; }
     }
-    if ($idx === -1) {
+    if ($idx !== -1) {
+        if ($users[$idx]['username'] === 'admin') {
+            echo json_encode(['ok' => false, 'msg' => 'Không thể xóa tài khoản Admin Tối Thượng!']);
+            exit;
+        }
+        $deleted = array_splice($users, $idx, 1)[0];
+        $deletedUsername = $deleted['username'];
+        writeJsonFallback('users.json', $users);
+    }
+
+    if (!$deletedUsername) {
         echo json_encode(['ok' => false, 'msg' => 'Không tìm thấy tài khoản cần xóa!']);
         exit;
     }
-    if ($users[$idx]['username'] === 'admin') {
-        echo json_encode(['ok' => false, 'msg' => 'Không thể xóa tài khoản Admin Tối Thượng!']);
-        exit;
-    }
-    $deleted = array_splice($users, $idx, 1)[0];
-    writeJsonFallback('users.json', $users);
 
+    $safeUsers = array_map(function($u) {
+        $c = $u;
+        unset($c['password']);
+        return $c;
+    }, $users);
+
+    echo json_encode(['ok' => true, 'msg' => "Đã xóa tài khoản '{$deletedUsername}' khỏi hệ thống!", 'users' => $safeUsers], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// 5d. ADMIN SEED DEFAULTS
+if ($action === 'admin_seed_defaults') {
+    $defaultAccounts = [
+        ['id' => 'u_admin', 'username' => 'admin', 'password' => '123', 'displayName' => 'GM Tối Cao (Admin)', 'role' => 'admin', 'avatar' => '👑', 'elo' => 1500, 'gamesPlayed' => 12, 'top1Count' => 6, 'top4Count' => 10, 'startingHp' => 100, 'startingGold' => 10, 'startingLevel' => 3, 'extraClockSeconds' => 10, 'bonusItems' => 'stun_hammer,burn_cloak'],
+        ['id' => 'u_kithu1', 'username' => 'kithu1', 'password' => '123', 'displayName' => 'Kỳ Thủ Tiên Phong', 'role' => 'player', 'avatar' => '🦊', 'elo' => 1050, 'gamesPlayed' => 8, 'top1Count' => 2, 'top4Count' => 4, 'startingHp' => 100, 'startingGold' => 6, 'startingLevel' => 3, 'extraClockSeconds' => 0, 'bonusItems' => 'stun_hammer,burn_cloak'],
+        ['id' => 'u_bot_magnus', 'username' => 'bot_magnus', 'password' => '123', 'displayName' => 'Đại Kiện Tướng Magnus (Bot)', 'role' => 'player', 'avatar' => '🤖', 'elo' => 1800, 'gamesPlayed' => 50, 'top1Count' => 25, 'top4Count' => 38, 'startingHp' => 100, 'startingGold' => 6, 'startingLevel' => 3, 'extraClockSeconds' => 0, 'bonusItems' => 'phase_boots']
+    ];
+
+    $added = 0;
     if ($pdo) {
-        try {
-            $del = $pdo->prepare("DELETE FROM users WHERE id = ?");
-            $del->execute([$userId]);
-        } catch (Exception $e) {}
+        $ins = $pdo->prepare("INSERT INTO users (id, username, password, displayName, role, avatar, elo, gamesPlayed, top1Count, top4Count, startingHp, startingGold, startingLevel, extraClockSeconds, bonusItems, isBanned) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0) ON DUPLICATE KEY UPDATE displayName=VALUES(displayName)");
+        foreach ($defaultAccounts as $acc) {
+            $hashed = hashUserPassword($acc['password']);
+            $ins->execute([
+                $acc['id'], $acc['username'], $hashed, $acc['displayName'], $acc['role'], $acc['avatar'],
+                $acc['elo'], $acc['gamesPlayed'], $acc['top1Count'], $acc['top4Count'],
+                $acc['startingHp'], $acc['startingGold'], $acc['startingLevel'], $acc['extraClockSeconds'], $acc['bonusItems']
+            ]);
+            $added++;
+        }
     }
-    echo json_encode(['ok' => true, 'msg' => "Đã xóa tài khoản '{$deleted['username']}' khỏi hệ thống!", 'users' => $users], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['ok' => true, 'msg' => "Đã đồng bộ $added tài khoản mẫu vào hệ thống!"]);
     exit;
 }
 
 // ============================================================================
-// 6. ADMIN: UPDATE GAME RULES IN MYSQL `game_rules` TABLE
+// 6. ADMIN: UPDATE FULL GAME RULES (ALL 23 KEYS SAVED PROPERLY)
 // ============================================================================
 if ($action === 'admin_rules') {
     $r = $body['rules'] ?? [];
-    if ($pdo && !empty($r)) {
-        $pairs = [
-            'stage1_blitz_time' => $r['STAGE_CONFIG']['1']['blitzTime'] ?? 45,
-            'stage2_blitz_time' => $r['STAGE_CONFIG']['2']['blitzTime'] ?? 60,
-            'stage3_blitz_time' => $r['STAGE_CONFIG']['3']['blitzTime'] ?? 75,
-            'stage1_increment' => $r['STAGE_CONFIG']['1']['increment'] ?? 3,
-            'stage3_increment' => $r['STAGE_CONFIG']['3']['increment'] ?? 4,
-            'turn_one_grace' => !empty($r['combatRules']['turnOneGrace']) ? '1' : '0',
-            'base_round_gold' => $r['economy']['baseRoundGold'] ?? 5,
-            'max_interest' => $r['economy']['maxInterest'] ?? 5,
-            'checkmate_base_dmg' => $r['damageFormula']['checkmateBase'] ?? 8,
-            'checkmate_per_unit_dmg' => $r['damageFormula']['checkmatePerUnit'] ?? 2,
-            'king_capture_base_dmg' => $r['damageFormula']['kingCaptureBase'] ?? 3
-        ];
-        $stmt = $pdo->prepare("UPDATE game_rules SET rule_value = ? WHERE rule_key = ?");
-        foreach ($pairs as $k => $v) {
-            $stmt->execute([(string)$v, $k]);
+    if (!empty($r)) {
+        if ($pdo) {
+            $pairs = [
+                'stage1_blitz_time' => $r['STAGE_CONFIG']['1']['blitzTime'] ?? 45,
+                'stage2_blitz_time' => $r['STAGE_CONFIG']['2']['blitzTime'] ?? 60,
+                'stage3_blitz_time' => $r['STAGE_CONFIG']['3']['blitzTime'] ?? 75,
+                'stage1_increment' => $r['STAGE_CONFIG']['1']['increment'] ?? 3,
+                'stage2_increment' => $r['STAGE_CONFIG']['2']['increment'] ?? ($r['STAGE_CONFIG']['1']['increment'] ?? 3),
+                'stage3_increment' => $r['STAGE_CONFIG']['3']['increment'] ?? 4,
+                'stage1_max_turns' => $r['STAGE_CONFIG']['1']['maxTurns'] ?? 36,
+                'stage2_max_turns' => $r['STAGE_CONFIG']['2']['maxTurns'] ?? 48,
+                'stage3_max_turns' => $r['STAGE_CONFIG']['3']['maxTurns'] ?? 64,
+                'turn_one_grace' => !empty($r['combatRules']['turnOneGrace']) ? '1' : '0',
+                'ranged_reload_turns' => $r['combatRules']['rangedReloadTurns'] ?? 1,
+                'stun_immune_turns' => $r['combatRules']['stunImmuneTurns'] ?? 1,
+                'base_round_gold' => $r['economy']['baseRoundGold'] ?? 5,
+                'max_interest' => $r['economy']['maxInterest'] ?? 5,
+                'reroll_cost' => $r['economy']['rerollCost'] ?? 2,
+                'buy_xp_cost' => $r['economy']['buyXpCost'] ?? 4,
+                'buy_xp_amount' => $r['economy']['buyXpAmount'] ?? 4,
+                'checkmate_base_dmg' => $r['damageFormula']['checkmateBase'] ?? 8,
+                'checkmate_stage_mult' => $r['damageFormula']['checkmateStageMult'] ?? 2,
+                'checkmate_per_unit_dmg' => $r['damageFormula']['checkmatePerUnit'] ?? 2,
+                'king_capture_base_dmg' => $r['damageFormula']['kingCaptureBase'] ?? 3,
+                'king_capture_stage_mult' => $r['damageFormula']['kingCaptureStageMult'] ?? 1,
+                'king_capture_diff_mult' => $r['damageFormula']['kingCaptureDiffMult'] ?? 1,
+                'draw_base_dmg' => $r['damageFormula']['drawBase'] ?? 4
+            ];
+            $stmt = $pdo->prepare("INSERT INTO game_rules (rule_key, rule_value, description) VALUES (?, ?, '') ON DUPLICATE KEY UPDATE rule_value = VALUES(rule_value)");
+            foreach ($pairs as $k => $v) {
+                $stmt->execute([$k, (string)$v]);
+            }
         }
         writeJsonFallback('game_rules.json', $r);
         echo json_encode([
             'ok' => true,
-            'msg' => 'Đã cập nhật bảng `game_rules` trong MySQL (phpMyAdmin)!',
+            'msg' => 'Đã cập nhật toàn bộ 23 thông số luật chơi thành công!',
             'rules' => loadRulesFromDb($pdo),
             'entities' => loadEntitiesFromDb($pdo)
         ], JSON_UNESCAPED_UNICODE);
@@ -528,28 +728,39 @@ if ($action === 'admin_rules') {
 }
 
 // ============================================================================
-// 7. ADMIN: UPDATE PIECE IN MYSQL `pieces` TABLE
+// 7. ADMIN: UPDATE PIECE
 // ============================================================================
 if ($action === 'admin_piece') {
     $pieceId = $body['pieceId'] ?? '';
     $pd = $body['pieceData'] ?? [];
-    if ($pdo && $pieceId && !empty($pd)) {
-        $stmt = $pdo->prepare("UPDATE pieces SET name=?, cost=?, hp_star1=?, hp_star2=?, hp_star3=?, range_star1=?, range_star2=?, range_star3=?, desc_text=? WHERE id=?");
-        $stmt->execute([
-            $pd['name'],
-            (int)$pd['cost'],
-            (int)($pd['baseHp'][0] ?? 1),
-            (int)($pd['baseHp'][1] ?? 2),
-            (int)($pd['baseHp'][2] ?? 3),
-            (int)($pd['range'][0] ?? 1),
-            (int)($pd['range'][1] ?? 1),
-            (int)($pd['range'][2] ?? 1),
-            $pd['desc'],
-            $pieceId
-        ]);
+    if ($pieceId && !empty($pd)) {
+        if ($pdo) {
+            $stmt = $pdo->prepare("UPDATE pieces SET name=?, cost=?, hp_star1=?, hp_star2=?, hp_star3=?, range_star1=?, range_star2=?, range_star3=?, desc_text=? WHERE id=?");
+            $stmt->execute([
+                $pd['name'],
+                (int)$pd['cost'],
+                (int)($pd['baseHp'][0] ?? 1),
+                (int)($pd['baseHp'][1] ?? 2),
+                (int)($pd['baseHp'][2] ?? 3),
+                (int)($pd['range'][0] ?? 1),
+                (int)($pd['range'][1] ?? 1),
+                (int)($pd['range'][2] ?? 1),
+                $pd['desc'],
+                $pieceId
+            ]);
+        }
+        $entities = readJsonFallback('gameplay_entities.json', []);
+        if (isset($entities['PIECES'][$pieceId])) {
+            $entities['PIECES'][$pieceId]['name'] = $pd['name'];
+            $entities['PIECES'][$pieceId]['cost'] = (int)$pd['cost'];
+            $entities['PIECES'][$pieceId]['baseHp'] = [(int)($pd['baseHp'][0] ?? 1), (int)($pd['baseHp'][1] ?? 2), (int)($pd['baseHp'][2] ?? 3)];
+            $entities['PIECES'][$pieceId]['range'] = [(int)($pd['range'][0] ?? 1), (int)($pd['range'][1] ?? 1), (int)($pd['range'][2] ?? 1)];
+            $entities['PIECES'][$pieceId]['desc'] = $pd['desc'];
+            writeJsonFallback('gameplay_entities.json', $entities);
+        }
         echo json_encode([
             'ok' => true,
-            'msg' => "Đã lưu quân cờ {$pd['name']} vào bảng `pieces` trong MySQL (phpMyAdmin)!",
+            'msg' => "Đã lưu quân cờ {$pd['name']} thành công!",
             'rules' => loadRulesFromDb($pdo),
             'entities' => loadEntitiesFromDb($pdo)
         ], JSON_UNESCAPED_UNICODE);
@@ -558,11 +769,26 @@ if ($action === 'admin_piece') {
 }
 
 // ============================================================================
-// 8. RECORD MATCH HISTORY & ELO IN MYSQL `matches` & `users`
+// 8. RECORD MATCH HISTORY & ELO (VERIFIES CALLER IDENTITY VIA TOKEN)
 // ============================================================================
 if ($action === 'match_finish') {
+    $authUser = getAuthenticatedUser($pdo);
     $userId = $body['userId'] ?? '';
-    $rank = (int)($body['rank'] ?? 8);
+
+    // If an authenticated session exists, ensure the report belongs to this user
+    if ($authUser && $authUser['id'] !== $userId) {
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'msg' => 'Từ chối: Không thể ghi nhận kết quả trận đấu cho tài khoản khác!']);
+        exit;
+    }
+
+    // Ignore guest / local playground matches for official ELO ranking
+    if (!$userId || strpos($userId, 'local_') === 0 || strpos($userId, 'guest_') === 0) {
+        echo json_encode(['ok' => true]);
+        exit;
+    }
+
+    $rank = max(1, min(8, (int)($body['rank'] ?? 8)));
     $stageReached = $body['stageReached'] ?? '1-1';
     $roomCode = $body['roomCode'] ?? 'SOLO';
     $finalComp = json_encode($body['finalComp'] ?? [], JSON_UNESCAPED_UNICODE);
@@ -570,7 +796,7 @@ if ($action === 'match_finish') {
     $eloDeltaMap = [1 => 35, 2 => 22, 3 => 12, 4 => 5, 5 => -5, 6 => -12, 7 => -20, 8 => -28];
     $delta = $eloDeltaMap[$rank] ?? 0;
 
-    if ($pdo && $userId) {
+    if ($pdo) {
         $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $u = $stmt->fetch();
@@ -588,11 +814,41 @@ if ($action === 'match_finish') {
 
             $stmt->execute([$userId]);
             $updatedUser = formatUserRow($stmt->fetch());
-            unset($updatedUser['password']);
             echo json_encode(['ok' => true, 'user' => $updatedUser], JSON_UNESCAPED_UNICODE);
             exit;
         }
+    } else {
+        $users = readJsonFallback('users.json', []);
+        foreach ($users as &$u) {
+            if ($u['id'] === $userId) {
+                if (!isset($u['stats'])) $u['stats'] = ['elo' => 1000, 'gamesPlayed' => 0, 'top1Count' => 0, 'top4Count' => 0];
+                $u['stats']['gamesPlayed'] = ($u['stats']['gamesPlayed'] ?? 0) + 1;
+                $u['stats']['elo'] = max(0, ($u['stats']['elo'] ?? 1000) + $delta);
+                if ($rank === 1) $u['stats']['top1Count'] = ($u['stats']['top1Count'] ?? 0) + 1;
+                if ($rank <= 4) $u['stats']['top4Count'] = ($u['stats']['top4Count'] ?? 0) + 1;
+                writeJsonFallback('users.json', $users);
+
+                $matches = readJsonFallback('matches.json', []);
+                array_unshift($matches, [
+                    'id' => 'match_' . time(),
+                    'userId' => $userId,
+                    'username' => $u['username'],
+                    'roomCode' => $roomCode,
+                    'rank' => $rank,
+                    'stageReached' => $stageReached,
+                    'eloDelta' => $delta,
+                    'finishedAt' => date('c')
+                ]);
+                writeJsonFallback('matches.json', array_slice($matches, 0, 100));
+
+                $safe = $u;
+                unset($safe['password']);
+                echo json_encode(['ok' => true, 'user' => $safe], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+        }
     }
+
     echo json_encode(['ok' => true]);
     exit;
 }
@@ -625,19 +881,23 @@ if ($action === 'room_list' && $pdo) {
 if ($action === 'room_create' && $pdo) {
     $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     $code = '';
-    for ($i = 0; $i < 6; $i++) $code .= $chars[rand(0, strlen($chars) - 1)];
+    for ($i = 0; $i < 6; $i++) $code .= $chars[random_int(0, strlen($chars) - 1)];
 
+    $authUser = getAuthenticatedUser($pdo);
     $user = $body['user'] ?? [];
-    $hostId = $user['id'] ?? ('guest_' . time());
-    $hostName = $user['displayName'] ?? ($user['username'] ?? 'Kỳ Thủ');
+    $hostId = $authUser['id'] ?? ($user['id'] ?? ('guest_' . time() . '_' . random_int(100, 999)));
+    $hostName = $authUser['displayName'] ?? ($user['displayName'] ?? ($user['username'] ?? 'Kỳ Thủ'));
     $roomName = trim($body['roomName'] ?? "Phòng của $hostName");
-    $fillBots = !isset($body['fillBots']) || $body['fillBots'] ? 1 : 0;
+    $mode = $body['mode'] ?? 'tft_8p';
+    $is1v1 = ($mode === 'tft_1v1' || $mode === 'skirmish_1v1');
+    $maxPlayers = $is1v1 ? 2 : 8;
+    $fillBots = $is1v1 ? 0 : (!isset($body['fillBots']) || $body['fillBots'] ? 1 : 0);
     $timeMode = $body['timeMode'] ?? 'standard';
     $isSpectator = !empty($body['isSpectator']);
 
     $players = $isSpectator ? [] : [[
         'id' => $hostId,
-        'username' => $user['username'] ?? 'guest',
+        'username' => $authUser['username'] ?? ($user['username'] ?? 'guest'),
         'displayName' => $hostName,
         'avatar' => $user['avatar'] ?? '👑',
         'elo' => $user['stats']['elo'] ?? 1000,
@@ -663,6 +923,8 @@ if ($action === 'room_create' && $pdo) {
         'room' => [
             'code' => $code,
             'name' => $roomName,
+            'mode' => $mode,
+            'maxPlayers' => $maxPlayers,
             'hostId' => $hostId,
             'hostName' => $hostName,
             'fillBots' => $fillBots === 1,
@@ -680,7 +942,7 @@ if ($action === 'room_join' && $pdo) {
     $code = strtoupper(trim($body['code'] ?? ''));
     $user = $body['user'] ?? [];
     $asSpectator = !empty($body['asSpectator']);
-    $stmt = $pdo->prepare("SELECT * FROM rooms WHERE code = ?");
+    $stmt = $pdo->prepare("SELECT * FROM rooms WHERE code = ? FOR UPDATE");
     $stmt->execute([$code]);
     $r = $stmt->fetch();
     if (!$r) {
@@ -688,11 +950,14 @@ if ($action === 'room_join' && $pdo) {
         exit;
     }
     $players = json_decode($r['players_json'], true) ?: [];
-    if (!$asSpectator && count($players) >= 8) {
-        echo json_encode(['ok' => false, 'msg' => 'Phòng đã đủ 8 người chơi!']);
+    $mode = $r['mode'] ?? 'tft_8p';
+    $maxAllowed = ($mode === 'tft_1v1' || $mode === 'skirmish_1v1') ? 2 : 8;
+    if (!$asSpectator && count($players) >= $maxAllowed) {
+        echo json_encode(['ok' => false, 'msg' => "Phòng đã đủ $maxAllowed người chơi!"]);
         exit;
     }
-    $uid = $user['id'] ?? ('guest_' . time());
+    $authUser = getAuthenticatedUser($pdo);
+    $uid = $authUser['id'] ?? ($user['id'] ?? ('guest_' . time() . '_' . random_int(100, 999)));
     $exists = false;
     foreach ($players as &$p) {
         if ($p['id'] === $uid) { $exists = true; break; }
@@ -700,8 +965,8 @@ if ($action === 'room_join' && $pdo) {
     if (!$exists && !$asSpectator) {
         $players[] = [
             'id' => $uid,
-            'username' => $user['username'] ?? 'guest',
-            'displayName' => $user['displayName'] ?? 'Kỳ Thủ',
+            'username' => $authUser['username'] ?? ($user['username'] ?? 'guest'),
+            'displayName' => $authUser['displayName'] ?? ($user['displayName'] ?? 'Kỳ Thủ'),
             'avatar' => $user['avatar'] ?? '⚔️',
             'elo' => $user['stats']['elo'] ?? 1000,
             'customModifiers' => $user['customModifiers'] ?? null,
@@ -718,6 +983,8 @@ if ($action === 'room_join' && $pdo) {
         'room' => [
             'code' => $r['code'],
             'name' => $r['name'],
+            'mode' => $mode,
+            'maxPlayers' => $maxAllowed,
             'hostId' => $r['hostId'],
             'hostName' => $r['hostName'],
             'fillBots' => ((int)$r['fillBots']) === 1,
@@ -726,6 +993,181 @@ if ($action === 'room_join' && $pdo) {
             'players' => $players
         ]
     ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($action === 'room_start' && $pdo) {
+    $code = strtoupper(trim($body['code'] ?? ''));
+    $stmt = $pdo->prepare("SELECT * FROM rooms WHERE code = ?");
+    $stmt->execute([$code]);
+    $r = $stmt->fetch();
+    if (!$r) {
+        echo json_encode(['ok' => false, 'msg' => 'Không tìm thấy phòng!']);
+        exit;
+    }
+
+    $authUser = getAuthenticatedUser($pdo);
+    $callerId = $authUser['id'] ?? ($body['user']['id'] ?? '');
+    if ($callerId !== $r['hostId']) {
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'msg' => 'Chỉ có Chủ phòng mới có quyền bắt đầu trận đấu!']);
+        exit;
+    }
+
+    $fillBots = !isset($body['fillBots']) || $body['fillBots'] ? 1 : 0;
+    $timeMode = $body['timeMode'] ?? 'standard';
+    $upd = $pdo->prepare("UPDATE rooms SET status = 'playing', fillBots = ?, timeMode = ? WHERE code = ?");
+    $upd->execute([$fillBots, $timeMode, $code]);
+
+    $stmt = $pdo->prepare("SELECT * FROM rooms WHERE code = ?");
+    $stmt->execute([$code]);
+    $updatedRoom = $stmt->fetch();
+    echo json_encode([
+        'ok' => true,
+        'room' => [
+            'code' => $updatedRoom['code'],
+            'name' => $updatedRoom['name'],
+            'hostId' => $updatedRoom['hostId'],
+            'hostName' => $updatedRoom['hostName'],
+            'fillBots' => ((int)$updatedRoom['fillBots']) === 1,
+            'timeMode' => $updatedRoom['timeMode'],
+            'status' => 'playing',
+            'players' => json_decode($updatedRoom['players_json'], true) ?: []
+        ]
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($action === 'room_add_bot' && $pdo) {
+    $code = strtoupper(trim($body['code'] ?? ''));
+    $stmt = $pdo->prepare("SELECT * FROM rooms WHERE code = ?");
+    $stmt->execute([$code]);
+    $r = $stmt->fetch();
+    if (!$r) {
+        echo json_encode(['ok' => false, 'msg' => 'Không tìm thấy phòng!']);
+        exit;
+    }
+    $players = json_decode($r['players_json'], true) ?: [];
+    $mode = $r['mode'] ?? 'tft_8p';
+    $maxAllowed = ($mode === 'tft_1v1' || $mode === 'skirmish_1v1') ? 2 : 8;
+    if (count($players) >= $maxAllowed) {
+        echo json_encode(['ok' => false, 'msg' => "Phòng đã đủ $maxAllowed người!"]);
+        exit;
+    }
+    $botNames = [
+        ['name' => 'Đại Kiện Tướng Magnus AI', 'avatar' => '🤖', 'elo' => 1800, 'style' => 'Tấn Công Tổng Lực'],
+        ['name' => 'Bá Tước Bóng Đêm AI', 'avatar' => '🦇', 'elo' => 1750, 'style' => 'Sát Thủ Cờ Chớp'],
+        ['name' => 'Phù Thủy Băng Giá AI', 'avatar' => '🧙‍♀️', 'elo' => 1650, 'style' => 'Phép Thuật Khống Chế'],
+        ['name' => 'Hiệp Sĩ Hoàng Gia AI', 'avatar' => '🛡️', 'elo' => 1600, 'style' => 'Hộ Vệ Bất Tử'],
+        ['name' => 'Kỳ Thủ Martin AI', 'avatar' => '♟️', 'elo' => 1200, 'style' => 'Cân Bằng Cơ Bản']
+    ];
+    $botIdx = count(array_filter($players, function($p) { return !empty($p['isBot']); }));
+    $chosen = $botNames[$botIdx % count($botNames)];
+    $bot = [
+        'id' => 'bot_' . time() . '_' . $botIdx,
+        'username' => 'bot_' . $botIdx,
+        'displayName' => $chosen['name'],
+        'avatar' => $chosen['avatar'],
+        'elo' => $chosen['elo'],
+        'style' => $chosen['style'],
+        'isHost' => false,
+        'isBot' => true,
+        'hp' => 100,
+        'level' => 3,
+        'board' => []
+    ];
+    $players[] = $bot;
+    $upd = $pdo->prepare("UPDATE rooms SET players_json = ? WHERE code = ?");
+    $upd->execute([json_encode($players, JSON_UNESCAPED_UNICODE), $code]);
+    echo json_encode(['ok' => true, 'bot' => $bot, 'players' => $players], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($action === 'room_remove_bot' && $pdo) {
+    $code = strtoupper(trim($body['code'] ?? ''));
+    $botId = $body['botId'] ?? '';
+    $stmt = $pdo->prepare("SELECT * FROM rooms WHERE code = ?");
+    $stmt->execute([$code]);
+    $r = $stmt->fetch();
+    if (!$r) {
+        echo json_encode(['ok' => false, 'msg' => 'Không tìm thấy phòng!']);
+        exit;
+    }
+    $players = json_decode($r['players_json'], true) ?: [];
+    $filtered = [];
+    foreach ($players as $p) {
+        if ($p['id'] !== $botId) {
+            $filtered[] = $p;
+        }
+    }
+    $upd = $pdo->prepare("UPDATE rooms SET players_json = ? WHERE code = ?");
+    $upd->execute([json_encode($filtered, JSON_UNESCAPED_UNICODE), $code]);
+    echo json_encode(['ok' => true, 'players' => $filtered], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($action === 'room_fill_all_bots' && $pdo) {
+    $code = strtoupper(trim($body['code'] ?? ''));
+    $stmt = $pdo->prepare("SELECT * FROM rooms WHERE code = ?");
+    $stmt->execute([$code]);
+    $r = $stmt->fetch();
+    if (!$r) {
+        echo json_encode(['ok' => false, 'msg' => 'Không tìm thấy phòng!']);
+        exit;
+    }
+    $players = json_decode($r['players_json'], true) ?: [];
+    $mode = $r['mode'] ?? 'tft_8p';
+    $maxAllowed = ($mode === 'tft_1v1' || $mode === 'skirmish_1v1') ? 2 : 8;
+
+    $botNames = [
+        ['name' => 'Đại Kiện Tướng Magnus AI', 'avatar' => '🤖', 'elo' => 1800, 'style' => 'Tấn Công Tổng Lực'],
+        ['name' => 'Bá Tước Bóng Đêm AI', 'avatar' => '🦇', 'elo' => 1750, 'style' => 'Sát Thủ Cờ Chớp'],
+        ['name' => 'Phù Thủy Băng Giá AI', 'avatar' => '🧙‍♀️', 'elo' => 1650, 'style' => 'Phép Thuật Khống Chế'],
+        ['name' => 'Hiệp Sĩ Hoàng Gia AI', 'avatar' => '🛡️', 'elo' => 1600, 'style' => 'Hộ Vệ Bất Tử'],
+        ['name' => 'Xạ Thủ Tinh Anh AI', 'avatar' => '🏹', 'elo' => 1550, 'style' => 'Tầm Xa Xuyên Giáp'],
+        ['name' => 'Đạo Tặc Thần Bài AI', 'avatar' => '🎰', 'elo' => 1500, 'style' => 'Nổ Hũ Kinh Tế'],
+        ['name' => 'Kỳ Thủ Martin AI', 'avatar' => '♟️', 'elo' => 1200, 'style' => 'Cân Bằng Cơ Bản']
+    ];
+
+    $botIdx = count(array_filter($players, function($p) { return !empty($p['isBot']); }));
+    while (count($players) < $maxAllowed) {
+        $chosen = $botNames[$botIdx % count($botNames)];
+        $players[] = [
+            'id' => 'bot_' . time() . '_' . $botIdx,
+            'username' => 'bot_' . $botIdx,
+            'displayName' => $chosen['name'],
+            'avatar' => $chosen['avatar'],
+            'elo' => $chosen['elo'],
+            'style' => $chosen['style'],
+            'isHost' => false,
+            'isBot' => true,
+            'hp' => 100,
+            'level' => 3,
+            'board' => []
+        ];
+        $botIdx++;
+    }
+
+    $upd = $pdo->prepare("UPDATE rooms SET players_json = ? WHERE code = ?");
+    $upd->execute([json_encode($players, JSON_UNESCAPED_UNICODE), $code]);
+    echo json_encode(['ok' => true, 'players' => $players], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($action === 'room_clear_all_bots' && $pdo) {
+    $code = strtoupper(trim($body['code'] ?? ''));
+    $stmt = $pdo->prepare("SELECT * FROM rooms WHERE code = ?");
+    $stmt->execute([$code]);
+    $r = $stmt->fetch();
+    if (!$r) {
+        echo json_encode(['ok' => false, 'msg' => 'Không tìm thấy phòng!']);
+        exit;
+    }
+    $players = json_decode($r['players_json'], true) ?: [];
+    $filtered = array_values(array_filter($players, function($p) { return empty($p['isBot']); }));
+    $upd = $pdo->prepare("UPDATE rooms SET players_json = ? WHERE code = ?");
+    $upd->execute([json_encode($filtered, JSON_UNESCAPED_UNICODE), $code]);
+    echo json_encode(['ok' => true, 'players' => $filtered], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
@@ -748,32 +1190,6 @@ if ($action === 'room_get' && $pdo) {
             'fillBots' => ((int)$r['fillBots']) === 1,
             'timeMode' => $r['timeMode'],
             'status' => $r['status'],
-            'players' => json_decode($r['players_json'], true) ?: []
-        ]
-    ], JSON_UNESCAPED_UNICODE);
-    exit;
-}
-
-if ($action === 'room_start' && $pdo) {
-    $code = strtoupper(trim($body['code'] ?? ''));
-    $fillBots = !isset($body['fillBots']) || $body['fillBots'] ? 1 : 0;
-    $timeMode = $body['timeMode'] ?? 'standard';
-    $upd = $pdo->prepare("UPDATE rooms SET status = 'playing', fillBots = ?, timeMode = ? WHERE code = ?");
-    $upd->execute([$fillBots, $timeMode, $code]);
-
-    $stmt = $pdo->prepare("SELECT * FROM rooms WHERE code = ?");
-    $stmt->execute([$code]);
-    $r = $stmt->fetch();
-    echo json_encode([
-        'ok' => true,
-        'room' => [
-            'code' => $r['code'],
-            'name' => $r['name'],
-            'hostId' => $r['hostId'],
-            'hostName' => $r['hostName'],
-            'fillBots' => ((int)$r['fillBots']) === 1,
-            'timeMode' => $r['timeMode'],
-            'status' => 'playing',
             'players' => json_decode($r['players_json'], true) ?: []
         ]
     ], JSON_UNESCAPED_UNICODE);

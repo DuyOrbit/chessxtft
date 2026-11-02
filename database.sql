@@ -12,12 +12,13 @@ USE `chesstft_db`;
 
 -- ============================================================================
 -- 1. BẢNG `users`: QUẢN LÝ TÀI KHOẢN & CAN THIỆP CHỈ SỐ KHỞI ĐẦU TRONG TRẬN
--- Bạn có thể nhấp đúp vào từng ô trong phpMyAdmin để chỉnh Vàng, Máu, Cấp độ, Giây đồng hồ cho từng người chơi!
+-- Mật khẩu được mã hóa an toàn (password_hash). Tích hợp token xác thực Bearer Token.
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS `users` (
   `id` VARCHAR(64) NOT NULL PRIMARY KEY,
   `username` VARCHAR(64) NOT NULL UNIQUE COMMENT 'Tên đăng nhập',
-  `password` VARCHAR(128) NOT NULL COMMENT 'Mật khẩu',
+  `password` VARCHAR(255) NOT NULL COMMENT 'Mật khẩu đã băm (password_hash)',
+  `token` VARCHAR(128) NULL COMMENT 'Token xác thực phiên đăng nhập',
   `displayName` VARCHAR(100) NOT NULL COMMENT 'Tên hiển thị trong game',
   `role` ENUM('player', 'admin') NOT NULL DEFAULT 'player' COMMENT 'Quyền: admin được mở bảng Quản Trị DB',
   `avatar` VARCHAR(16) NOT NULL DEFAULT '♟️' COMMENT 'Biểu tượng đại diện',
@@ -34,25 +35,26 @@ CREATE TABLE IF NOT EXISTS `users` (
   `createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Mật khẩu ban đầu mặc định của các tài khoản mẫu được băm an toàn từ '123'
 INSERT INTO `users` (`id`, `username`, `password`, `displayName`, `role`, `avatar`, `elo`, `gamesPlayed`, `top1Count`, `top4Count`, `startingHp`, `startingGold`, `startingLevel`, `extraClockSeconds`, `bonusItems`, `isBanned`)
 VALUES
-  ('u_admin', 'admin', '123', 'GM Tối Cao (Admin)', 'admin', '👑', 1500, 12, 6, 10, 100, 10, 3, 10, 'stun_hammer,burn_cloak', 0),
-  ('u_kithu1', 'kithu1', '123', 'Kỳ Thủ Tiên Phong', 'player', '🦊', 1050, 8, 2, 4, 100, 6, 3, 0, 'stun_hammer,burn_cloak', 0),
-  ('u_kithu2', 'kithu2', '123', 'Kỳ Thủ Chiến Lược', 'player', '🐺', 1100, 6, 1, 3, 100, 6, 3, 0, 'iron_armor', 0),
-  ('u_kithu3', 'kithu3', '123', 'Kỳ Thủ Tinh Anh', 'player', '🦁', 1150, 10, 3, 5, 100, 6, 3, 0, 'sniper_scope', 0),
-  ('u_kithu4', 'kithu4', '123', 'Kỳ Thủ Bất Bại', 'player', '🐯', 1200, 12, 4, 7, 100, 6, 3, 0, 'phase_boots', 0),
-  ('u_kithu5', 'kithu5', '123', 'Kỳ Thủ Phù Thủy', 'player', '🧙‍♂️', 1250, 9, 2, 4, 100, 6, 3, 0, 'burn_cloak', 0),
-  ('u_kithu6', 'kithu6', '123', 'Kỳ Thủ Thiện Xạ', 'player', '🏹', 1300, 11, 3, 6, 100, 6, 3, 0, 'sniper_scope', 0),
-  ('u_kithu7', 'kithu7', '123', 'Kỳ Thủ Thần Tài', 'player', '🎰', 1350, 15, 5, 8, 100, 8, 3, 0, 'stun_hammer', 0),
-  ('u_kithu8', 'kithu8', '123', 'Kỳ Thủ Hộ Vệ', 'player', '🛡️', 1400, 14, 4, 7, 100, 6, 3, 0, 'iron_armor', 0),
-  ('u_bot_magnus', 'bot_magnus', '123', 'Đại Kiện Tướng Magnus (Bot)', 'player', '🤖', 1800, 50, 25, 38, 100, 6, 3, 0, 'phase_boots', 0),
-  ('u_bot_kasparov', 'bot_kasparov', '123', 'Bá Tước Bóng Đêm (Bot)', 'player', '🦇', 1750, 45, 20, 32, 100, 6, 3, 0, 'burn_cloak', 0),
-  ('u_bot_frost', 'bot_frost', '123', 'Phù Thủy Băng Giá (Bot)', 'player', '🧙‍♀️', 1650, 35, 15, 25, 100, 6, 3, 0, 'stun_hammer', 0),
-  ('u_bot_guardian', 'bot_guardian', '123', 'Hiệp Sĩ Hoàng Gia (Bot)', 'player', '🛡️', 1600, 30, 12, 22, 100, 6, 3, 0, 'iron_armor', 0),
-  ('u_bot_sniper', 'bot_sniper', '123', 'Xạ Thủ Tinh Anh (Bot)', 'player', '🏹', 1550, 28, 10, 19, 100, 6, 3, 0, 'sniper_scope', 0),
-  ('u_bot_fortune', 'bot_fortune', '123', 'Đạo Tặc Thần Bài (Bot)', 'player', '🎰', 1500, 25, 8, 17, 100, 10, 3, 0, 'stun_hammer', 0),
-  ('u_bot_martin', 'bot_martin', '123', 'Kỳ Thủ Martin (Bot)', 'player', '♟️', 1200, 20, 4, 11, 100, 6, 3, 0, '', 0)
-ON DUPLICATE KEY UPDATE `username` = VALUES(`username`);
+  ('u_admin', 'admin', '$2y$10$e8wB696.i790j/q4jO3VkeaN9x6oEskkYpZtw7Zf4m1sUv2u7uWvW', 'GM Tối Cao (Admin)', 'admin', '👑', 1500, 12, 6, 10, 100, 10, 3, 10, 'stun_hammer,burn_cloak', 0),
+  ('u_kithu1', 'kithu1', '$2y$10$e8wB696.i790j/q4jO3VkeaN9x6oEskkYpZtw7Zf4m1sUv2u7uWvW', 'Kỳ Thủ Tiên Phong', 'player', '🦊', 1050, 8, 2, 4, 100, 6, 3, 0, 'stun_hammer,burn_cloak', 0),
+  ('u_kithu2', 'kithu2', '$2y$10$e8wB696.i790j/q4jO3VkeaN9x6oEskkYpZtw7Zf4m1sUv2u7uWvW', 'Kỳ Thủ Chiến Lược', 'player', '🐺', 1100, 6, 1, 3, 100, 6, 3, 0, 'iron_armor', 0),
+  ('u_kithu3', 'kithu3', '$2y$10$e8wB696.i790j/q4jO3VkeaN9x6oEskkYpZtw7Zf4m1sUv2u7uWvW', 'Kỳ Thủ Tinh Anh', 'player', '🦁', 1150, 10, 3, 5, 100, 6, 3, 0, 'sniper_scope', 0),
+  ('u_kithu4', 'kithu4', '$2y$10$e8wB696.i790j/q4jO3VkeaN9x6oEskkYpZtw7Zf4m1sUv2u7uWvW', 'Kỳ Thủ Bất Bại', 'player', '🐯', 1200, 12, 4, 7, 100, 6, 3, 0, 'phase_boots', 0),
+  ('u_kithu5', 'kithu5', '$2y$10$e8wB696.i790j/q4jO3VkeaN9x6oEskkYpZtw7Zf4m1sUv2u7uWvW', 'Kỳ Thủ Phù Thủy', 'player', '🧙‍♂️', 1250, 9, 2, 4, 100, 6, 3, 0, 'burn_cloak', 0),
+  ('u_kithu6', 'kithu6', '$2y$10$e8wB696.i790j/q4jO3VkeaN9x6oEskkYpZtw7Zf4m1sUv2u7uWvW', 'Kỳ Thủ Thiện Xạ', 'player', '🏹', 1300, 11, 3, 6, 100, 6, 3, 0, 'sniper_scope', 0),
+  ('u_kithu7', 'kithu7', '$2y$10$e8wB696.i790j/q4jO3VkeaN9x6oEskkYpZtw7Zf4m1sUv2u7uWvW', 'Kỳ Thủ Thần Tài', 'player', '🎰', 1350, 15, 5, 8, 100, 8, 3, 0, 'stun_hammer', 0),
+  ('u_kithu8', 'kithu8', '$2y$10$e8wB696.i790j/q4jO3VkeaN9x6oEskkYpZtw7Zf4m1sUv2u7uWvW', 'Kỳ Thủ Hộ Vệ', 'player', '🛡️', 1400, 14, 4, 7, 100, 6, 3, 0, 'iron_armor', 0),
+  ('u_bot_magnus', 'bot_magnus', '$2y$10$e8wB696.i790j/q4jO3VkeaN9x6oEskkYpZtw7Zf4m1sUv2u7uWvW', 'Đại Kiện Tướng Magnus (Bot)', 'player', '🤖', 1800, 50, 25, 38, 100, 6, 3, 0, 'phase_boots', 0),
+  ('u_bot_kasparov', 'bot_kasparov', '$2y$10$e8wB696.i790j/q4jO3VkeaN9x6oEskkYpZtw7Zf4m1sUv2u7uWvW', 'Bá Tước Bóng Đêm (Bot)', 'player', '🦇', 1750, 45, 20, 32, 100, 6, 3, 0, 'burn_cloak', 0),
+  ('u_bot_frost', 'bot_frost', '$2y$10$e8wB696.i790j/q4jO3VkeaN9x6oEskkYpZtw7Zf4m1sUv2u7uWvW', 'Phù Thủy Băng Giá (Bot)', 'player', '🧙‍♀️', 1650, 35, 15, 25, 100, 6, 3, 0, 'stun_hammer', 0),
+  ('u_bot_guardian', 'bot_guardian', '$2y$10$e8wB696.i790j/q4jO3VkeaN9x6oEskkYpZtw7Zf4m1sUv2u7uWvW', 'Hiệp Sĩ Hoàng Gia (Bot)', 'player', '🛡️', 1600, 30, 12, 22, 100, 6, 3, 0, 'iron_armor', 0),
+  ('u_bot_sniper', 'bot_sniper', '$2y$10$e8wB696.i790j/q4jO3VkeaN9x6oEskkYpZtw7Zf4m1sUv2u7uWvW', 'Xạ Thủ Tinh Anh (Bot)', 'player', '🏹', 1550, 28, 10, 19, 100, 6, 3, 0, 'sniper_scope', 0),
+  ('u_bot_fortune', 'bot_fortune', '$2y$10$e8wB696.i790j/q4jO3VkeaN9x6oEskkYpZtw7Zf4m1sUv2u7uWvW', 'Đạo Tặc Thần Bài (Bot)', 'player', '🎰', 1500, 25, 8, 17, 100, 10, 3, 0, 'stun_hammer', 0),
+  ('u_bot_martin', 'bot_martin', '$2y$10$e8wB696.i790j/q4jO3VkeaN9x6oEskkYpZtw7Zf4m1sUv2u7uWvW', 'Kỳ Thủ Martin (Bot)', 'player', '♟️', 1200, 20, 4, 11, 100, 6, 3, 0, '', 0)
+ON DUPLICATE KEY UPDATE `displayName` = VALUES(`displayName`);
 
 -- ============================================================================
 -- 2. BẢNG `game_rules`: CAN THIỆP LUẬT CHƠI, THỜI GIAN CỜ CHỚP, KINH TẾ & TRỪ MÁU
@@ -68,7 +70,8 @@ INSERT INTO `game_rules` (`rule_key`, `rule_value`, `description`) VALUES
   ('stage1_blitz_time', '45', 'Thời gian đồng hồ Cờ Chớp ở Stage 1 - Đầu game bàn 5x6 (Giây)'),
   ('stage2_blitz_time', '60', 'Thời gian đồng hồ Cờ Chớp ở Stage 2 - Giữa game bàn 6x7 (Giây)'),
   ('stage3_blitz_time', '75', 'Thời gian đồng hồ Cờ Chớp ở Stage 3+ - Cuối game bàn 8x8 (Giây)'),
-  ('stage1_increment', '3', 'Số giây cộng thêm sau mỗi nước đi ở Stage 1 & 2'),
+  ('stage1_increment', '3', 'Số giây cộng thêm sau mỗi nước đi ở Stage 1'),
+  ('stage2_increment', '3', 'Số giây cộng thêm sau mỗi nước đi ở Stage 2'),
   ('stage3_increment', '4', 'Số giây cộng thêm sau mỗi nước đi ở Stage 3+'),
   ('stage1_max_turns', '36', 'Giới hạn số lượt tối đa mỗi hiệp ở Stage 1 trước khi xử Hòa'),
   ('stage2_max_turns', '48', 'Giới hạn số lượt tối đa mỗi hiệp ở Stage 2 trước khi xử Hòa'),

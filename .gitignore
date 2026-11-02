@@ -17,3 +17,5 @@ qa_screenshots/*
 !qa_screenshots/06_gameplay_combat_dps.png
 !qa_screenshots/07_sandbox_godmode.png
 !qa_screenshots/08_spectator_caster_4boards.png
+
+scratch/

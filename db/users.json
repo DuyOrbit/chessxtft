@@ -2,14 +2,14 @@
   {
     "id": "user_admin",
     "username": "admin",
-    "password": "123",
+    "password": "scrypt:e83a3e6125c102a7e5406bb1d4732c77:ae156525581bcd96db06b2e0bd7427219493d4d545215aefe3f0577fb59d69b456483ae2219a700a3620987dc78daafdc7cc948278200363de62448bb43d2ea5",
     "displayName": "Admin Tối Thượng",
     "avatar": "👑",
     "role": "admin",
     "createdAt": "2026-10-19T19:00:00.000Z",
     "stats": {
-      "elo": 1485,
-      "gamesPlayed": 6,
+      "elo": 1464,
+      "gamesPlayed": 29,
       "top1Count": 3,
       "wins": 18,
       "losses": 4
@@ -24,12 +24,13 @@
         "burn_cloak"
       ],
       "isBanned": false
-    }
+    },
+    "token": "c0881676f958e84da8f8bbbba48dd22fe3b7934610b3f61b341ac451ec7d4849"
   },
   {
     "id": "user_kithu1",
     "username": "kithu1",
-    "password": "123",
+    "password": "scrypt:01d025e7e3048306a4da8360e1ccaccd:1abf6061be72bccb78fa416d3399ad319ecfa1891eb46d3544207903db8d93d4e5f2856cd3f3839a8fe70fe560d14c13643fc9cf50f45e0aab7a677f6e90fe5c",
     "displayName": "Kỳ Thủ Tiên Phong",
     "avatar": "🦊",
     "role": "player",
@@ -56,7 +57,7 @@
   {
     "id": "user_kithu2",
     "username": "kithu2",
-    "password": "123",
+    "password": "scrypt:76dbfcbebb01708e2e8166744aa2d3f9:f4091e350fe673655d2a14e9cc522150e45840d5cfa202f6c571b6911673b86d253344c4784ef6aa740982d0d85b925f6eb49f46c18ded250645708a06ae53cf",
     "displayName": "Kỳ Thủ Chiến Lược",
     "avatar": "🐺",
     "role": "player",
@@ -82,7 +83,7 @@
   {
     "id": "user_kithu3",
     "username": "kithu3",
-    "password": "123",
+    "password": "scrypt:ba9979b3e59831e171d5d9bad6dcce9a:32e468433ef69f3d9dc3da5b7d4bb347261ce4106cb1ae61664c2f43ae280f4a870102cc46f62aaadeddc46ffe38ceb502ec27c2ecb1cdd1389cf160de029690",
     "displayName": "Kỳ Thủ Tinh Anh",
     "avatar": "🦁",
     "role": "player",
@@ -108,7 +109,7 @@
   {
     "id": "user_kithu4",
     "username": "kithu4",
-    "password": "123",
+    "password": "scrypt:845fea89517e31f46fa151b01d6349a4:0e5a1de2b13091d55759b0cab1b35d371e7f83ea7154fffac469c2c66fe4270a164be2b7444462db41eb053ead422025188ad0a434ed044a68e07a8e08bcdbc9",
     "displayName": "Kỳ Thủ Bất Bại",
     "avatar": "🐯",
     "role": "player",
@@ -134,7 +135,7 @@
   {
     "id": "user_kithu5",
     "username": "kithu5",
-    "password": "123",
+    "password": "scrypt:6a034e400c8c7d9e05e126f94dfcf3e3:ed5fe3bb04bc8e58542ee1e6707df1857042f97a0a1bdff5b192f05966e15a47ca2db986bd3b5a9360e83324da4ace98ec87d890546c1a0ce8accccae6c03c14",
     "displayName": "Kỳ Thủ Phù Thủy",
     "avatar": "🧙‍♂️",
     "role": "player",
@@ -160,7 +161,7 @@
   {
     "id": "user_kithu6",
     "username": "kithu6",
-    "password": "123",
+    "password": "scrypt:4c75bc4e6e9eebbd2b1877938ff39c6c:fc48a18117b31e1f9878994231ac186f02d5086c67d2ea418a518635922a4020c0229eaa071adf89f2e30561e58c5584ee996b830aad0dc3a235d8e246cf84cb",
     "displayName": "Kỳ Thủ Thiện Xạ",
     "avatar": "🏹",
     "role": "player",
@@ -186,7 +187,7 @@
   {
     "id": "user_kithu7",
     "username": "kithu7",
-    "password": "123",
+    "password": "scrypt:05bcfc2860396192db8b1809ecdd3703:16ac884cc59d145c2acf9fefd288fc11e6f9b9eacb42e8611b4ddff690eab5d43b9ad946f9ff7a2107c8af8759d348ffedddd7259d2b9d323a8cc41990fe2486",
     "displayName": "Kỳ Thủ Thần Tài",
     "avatar": "🎰",
     "role": "player",
@@ -212,7 +213,7 @@
   {
     "id": "user_kithu8",
     "username": "kithu8",
-    "password": "123",
+    "password": "scrypt:3c17f14e9a368bc02e13509ae78fb70e:8ff6c690041f7d6d94ed40b4b445521148f55c33a7d5d698247436b40f6c865758ee987822dd6a0724c4b0b0c407a88e592679772ffdd2f96edfe998c6ad2cef",
     "displayName": "Kỳ Thủ Hộ Vệ",
     "avatar": "🛡️",
     "role": "player",
@@ -238,7 +239,7 @@
   {
     "id": "bot_magnus",
     "username": "bot_magnus",
-    "password": "123",
+    "password": "scrypt:5cd1dbcf08aa89bbc2cb7dcfe7f96cac:f0c49c2667c921953f39b431f646aba238ca6d5795854533341121a17243e071f1cf776f143e932ce05b483868a7fe27ea26cc5a2977723b2095ef544601c829",
     "displayName": "Đại Kiện Tướng Magnus (Bot)",
     "avatar": "🤖",
     "role": "player",
@@ -264,7 +265,7 @@
   {
     "id": "bot_kasparov",
     "username": "bot_kasparov",
-    "password": "123",
+    "password": "scrypt:ba6d0e67fc9b88d1e86a6d33e6b78ffc:061fd5adb59b06642df28e66740625a5574af1111bb94f80a6c07f42073cd9a7891810a4811de2cfcc24e902bf609b042a0e4830c90c91ac493e87990288f937",
     "displayName": "Bá Tước Bóng Đêm (Bot)",
     "avatar": "🦇",
     "role": "player",
@@ -290,7 +291,7 @@
   {
     "id": "bot_frost",
     "username": "bot_frost",
-    "password": "123",
+    "password": "scrypt:f856309ba52a806834c4e72854755a28:3dc745f5f6ec59aa91a72b2d0fdfa311262fd535b4b13ee27df31b90fa8e4c79d43702eebeb76194c08f1818be23b2dbbd9ea149d062abdc9dc899b950cf8b60",
     "displayName": "Phù Thủy Băng Giá (Bot)",
     "avatar": "🧙‍♀️",
     "role": "player",
@@ -316,7 +317,7 @@
   {
     "id": "bot_guardian",
     "username": "bot_guardian",
-    "password": "123",
+    "password": "scrypt:376251e5f8e8693c278f7a625b026228:33ff01465c103aaea9379e49ed6252c0fb2ed92083c849f74447eb1c926b9ccf4907f18cf588ba9ea4b7fcefd35810ea20eb031662da5349aa3e49249a5b90bd",
     "displayName": "Hiệp Sĩ Hoàng Gia (Bot)",
     "avatar": "🛡️",
     "role": "player",
@@ -342,7 +343,7 @@
   {
     "id": "bot_sniper",
     "username": "bot_sniper",
-    "password": "123",
+    "password": "scrypt:a8c82df181c270d2f985c40d7ae0dd8f:46b3ceedb2367b2650abb5ab49091998f40be1971df60e91bb086efc2d72e17a8a3351084e878186bfbd98b21d723f708f38fc44f876359880705a590f8c22c2",
     "displayName": "Xạ Thủ Tinh Anh (Bot)",
     "avatar": "🏹",
     "role": "player",
@@ -368,7 +369,7 @@
   {
     "id": "bot_fortune",
     "username": "bot_fortune",
-    "password": "123",
+    "password": "scrypt:20c7e885251bc6c975d8b4266d80c2c9:fb7a3ed1c668b768cf811294db66b06f297890d2a79599535df8a5ff7c391f1ba99822d6b4a706b0aa652e6728f4f77cc8a2deb6d281cb9bd5249571b76ec907",
     "displayName": "Đạo Tặc Thần Bài (Bot)",
     "avatar": "🎰",
     "role": "player",
@@ -394,7 +395,7 @@
   {
     "id": "bot_martin",
     "username": "bot_martin",
-    "password": "123",
+    "password": "scrypt:f2446bacd6d928f5075bdb4f4fe78965:ab102698720e6e8b5132f1da74e9b6c5ff49de0bf903ed2c6e771a65c9dab44d1811b2629620b69111c25bb54032934491ab33e8fd92ad010721e27393ed97c8",
     "displayName": "Kỳ Thủ Martin (Bot)",
     "avatar": "♟️",
     "role": "player",
@@ -412,6 +413,499 @@
       "startingLevel": 3,
       "extraClockSeconds": 0,
       "bonusItems": [],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "user_test_1",
+    "username": "user_test_1",
+    "password": "scrypt:8885da4949667a1a971dc9325f44693b:680d90bbcdf5c370f01fb711f2dc69d045e02d971051c9ede01dade123a5678d6f3f9e242aec36d115c85f444523361cbc572f36d809cb2c624a43512954b37d",
+    "displayName": "user_test_1",
+    "avatar": "👑",
+    "role": "player",
+    "createdAt": "2026-10-22T11:26:31.556Z",
+    "stats": {
+      "elo": 1000,
+      "gamesPlayed": 0,
+      "top1Count": 0,
+      "wins": 0,
+      "losses": 0
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer",
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "user_test_2",
+    "username": "user_test_2",
+    "password": "scrypt:f4d12b08110c963552af4ec375875ccf:6b05311e511c51c297c5f8779f04c6067b1b0d793a5c3c65962a9e6ca1ff2ca8f09ede0c0300e25bd9b69bfe64e81f42a4cb4371530caf3bcd8aa66cfcaf85b0",
+    "displayName": "user_test_2",
+    "avatar": "⚔️",
+    "role": "player",
+    "createdAt": "2026-10-22T11:26:31.564Z",
+    "stats": {
+      "elo": 1000,
+      "gamesPlayed": 0,
+      "top1Count": 0,
+      "wins": 0,
+      "losses": 0
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer",
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "user_tft_1",
+    "username": "user_tft_1",
+    "password": "scrypt:93b567832ecdf90672a5c46255eed11c:16e2244a46d0535e1751c6fc0ebde37f2a968b0b179df1f7b9468a5b559189d50544c5fa983f950694aa6438d435d04872bd2ff2ef900004fe11fb7efecfa630",
+    "displayName": "user_tft_1",
+    "avatar": "👑",
+    "role": "player",
+    "createdAt": "2026-10-22T11:28:11.123Z",
+    "stats": {
+      "elo": 1000,
+      "gamesPlayed": 0,
+      "top1Count": 0,
+      "wins": 0,
+      "losses": 0
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer",
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "user_tft_2",
+    "username": "user_tft_2",
+    "password": "scrypt:0e85b866030b0d8edcac18f763fd740f:9f71f3e074ad47d7a8ebfe95105cf0b1b7254c59dfc44b170128ef6ff07b8ec176bacb1b964c8e207ca48a94bcbe0f2f9eeb563b631b44135654d2beab27a12f",
+    "displayName": "user_tft_2",
+    "avatar": "⚡",
+    "role": "player",
+    "createdAt": "2026-10-22T11:28:11.137Z",
+    "stats": {
+      "elo": 1000,
+      "gamesPlayed": 0,
+      "top1Count": 0,
+      "wins": 0,
+      "losses": 0
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer",
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "7NCdDr-U_NuaBDLTAAAB",
+    "username": "player_7ncd",
+    "password": "scrypt:62114a8e06d68f9d962fcb5137671a9c:31161d21d980333ba9784e505ff37f5cf1c858b99076ae715bc318650a6e292c34b04aaafc725674904ed79914ca290fa66ace610f59932731084e34c14c92fb",
+    "displayName": "Kỳ Thủ",
+    "avatar": "👑",
+    "role": "player",
+    "createdAt": "2026-10-22T11:51:27.974Z",
+    "stats": {
+      "elo": 1000
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer",
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "ikaj_fBk4pbhHYSJAAAC",
+    "username": "player_ikaj",
+    "password": "scrypt:cfbee34637bc7f31b29135a5b1f413fa:3fc52e235d5d19ea27a90402c10f07ce7ffbb11be194bdebe1fdeb1b86e75c5b0f0e0c14a3ff102221c8402de5a3c3a3464c03ed1e7a8bf1d424634935fa0e23",
+    "displayName": "Kỳ Thủ",
+    "avatar": "👑",
+    "role": "player",
+    "createdAt": "2026-10-22T11:52:06.846Z",
+    "stats": {
+      "elo": 1000
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer",
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "dn4d6ppQG9XUMI0YAAAD",
+    "username": "player_dn4d",
+    "password": "scrypt:f3bc4bed954d0b0d0892d80ea769a126:c34ba12cd53d7d8fd945747b444fc3f89b09262ea1ac24a6e6f109751b8e6f0b290e0eb8e6d8c2beadd0d7f57ecab0df344b6f1dd4fac605e8cb99023ef939c4",
+    "displayName": "Kỳ Thủ",
+    "avatar": "👑",
+    "role": "player",
+    "createdAt": "2026-10-22T11:52:06.863Z",
+    "stats": {
+      "elo": 1000
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer",
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "LI5nSSdvgCcYsOgEAAAE",
+    "username": "player_li5n",
+    "password": "scrypt:524c5989bc0c17c654820a3c9afb2d30:e828ab14b4f703bc59e36c187aaf2ba3ec667722bfd8bcf9eeea5b1f4fbc75009e0ac2ed38c2cf617ed863f5c71c55e3f35a0ad8666df2b32f16a1cd1a17a216",
+    "displayName": "Kỳ Thủ",
+    "avatar": "👑",
+    "role": "player",
+    "createdAt": "2026-10-22T11:52:25.860Z",
+    "stats": {
+      "elo": 1000
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer",
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "test_friend_2",
+    "username": "bạnbèthật",
+    "password": "scrypt:1768451dd9415bbf27825232a4d591fe:e673f7e1cb27e2ceb8a047e265bda0b88d824b8ab15d4d400f27b39430ced35182525e92bb13224591127394dac5112323d37f4fad7e786532d789e70811fed7",
+    "displayName": "BạnBèThật",
+    "avatar": "👤",
+    "role": "player",
+    "createdAt": "2026-10-22T11:52:25.878Z",
+    "stats": {
+      "elo": 1000,
+      "gamesPlayed": 0,
+      "top1Count": 0,
+      "wins": 0,
+      "losses": 0
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer",
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "N4BwYtYKQhlofZiaAAAG",
+    "username": "player_n4bw",
+    "password": "scrypt:fd7b7f673ae9fd19c4406e757d8c0f6f:726520725b47e78fa69807bf803bd5b883fb5e68696d9bfa0af74381d70338774d9a8902ebd1e103d331f577b57dd82f4de1b639036bc5fd1049461d151e9c8f",
+    "displayName": "Kỳ Thủ",
+    "avatar": "👑",
+    "role": "player",
+    "createdAt": "2026-10-22T11:52:25.955Z",
+    "stats": {
+      "elo": 1000
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer",
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "-t4QVXK3urQ2gpGVAAAA",
+    "username": "player_-t4q",
+    "password": "scrypt:2a66b9e2766d37a7d561bbc5ace3ecd3:5cb44cf751013e598a463d2c524e1210b47144ba9001c01aa062cd3be92fba8eb7e3c9199a5f836995fc2dd4310fa9a2b1405356ee982adeaacef19e7f1be975",
+    "displayName": "Kỳ Thủ",
+    "avatar": "🎙️",
+    "role": "player",
+    "createdAt": "2026-10-22T12:14:13.352Z",
+    "stats": {
+      "elo": 1000
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer",
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "3P3zerW_olCVbhAsAAAC",
+    "username": "player_3p3z",
+    "password": "scrypt:ff061a0c246e5b001f9d39b8e8c6db5a:e60e5ab132656d3664fd7155ac9ae29656337de3cdb3502e4206f13a41917dfa55a3d66fff4a37a01ba9e82df4de5fdda6f9593d58864d2b4f838de0f141fe1c",
+    "displayName": "Kỳ Thủ",
+    "avatar": "👑",
+    "role": "player",
+    "createdAt": "2026-10-22T12:21:57.739Z",
+    "stats": {
+      "elo": 1000
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer",
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "tester_friend",
+    "username": "bạnchơithật",
+    "password": "scrypt:345543c31a1498e7ecd9ae8f72197b62:fa232f798d81027ba0c902c5d3bd5800c53d99ca1581e3d5580cda35f1adcc6790cfd399630f6f2ad82f9e1c3ca930ce4f9bfbaeffa47ae70acbc8ec427cce8b",
+    "displayName": "BạnChơiThật",
+    "avatar": "👤",
+    "role": "player",
+    "createdAt": "2026-10-22T12:21:57.766Z",
+    "stats": {
+      "elo": 1000,
+      "gamesPlayed": 0,
+      "top1Count": 0,
+      "wins": 0,
+      "losses": 0
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer",
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "iG0eKpfJrwxGBe63AAAF",
+    "username": "player_ig0e",
+    "password": "scrypt:7545276a1b2b70cf23595bbe86b442fc:8d15c24e17e8d661a25d925440b018808d8210f12aa0e7cf210adea271b695e0b7e2bf1a97c5730dbe2ed5a6a17fd880d2144ad49df3a75de6471d4ab12cfbe3",
+    "displayName": "Kỳ Thủ",
+    "avatar": "👑",
+    "role": "player",
+    "createdAt": "2026-10-22T12:23:46.102Z",
+    "stats": {
+      "elo": 1000
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer",
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "tester_host",
+    "username": "kiểmthửviênkhótính",
+    "password": "scrypt:b8ae3a0154baffd74cf72192957bc478:4fc3cd4aaedb8ee1b297f19cd12ab87f69161ea43e24c51052c3ad782a5c90a475b54d089f05596d0c809e77e78a8c5d9690153feb7d74ac31450132839bb5a2",
+    "displayName": "KiểmThửViênKhóTính",
+    "avatar": "👤",
+    "role": "player",
+    "createdAt": "2026-10-22T12:23:46.133Z",
+    "stats": {
+      "elo": 1000,
+      "gamesPlayed": 0,
+      "top1Count": 0,
+      "wins": 0,
+      "losses": 0
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer",
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "GJOMLFlw-qyEPQdmAAAB",
+    "username": "player_gjom",
+    "password": "scrypt:b5080a37a37c86e9468300457be92948:bba80df05fa452c1668cacf480ab32d914828f1e1b0b50437919a1e2099b2f971e9135891403cfad64d917e72d44d64cf8f5314023bcdd6f43c6752135b3e1c0",
+    "displayName": "Kỳ Thủ",
+    "avatar": "👑",
+    "role": "player",
+    "createdAt": "2026-10-22T12:28:34.237Z",
+    "stats": {
+      "elo": 1000
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer",
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "czHShRj6G0klF7D2AAAN",
+    "username": "player_czhs",
+    "password": "scrypt:b5e00a962737fbb9bd1bee288988a583:dfb17f71aa8d3d5418836b68a838c38fc317ad6b72e30f88036dcc76e02dcf37fbe7101ac29f4fbc6a9c8cb8468584eb8fcae7a28b1fb478a0b466b2b647ae2f",
+    "displayName": "Kỳ Thủ",
+    "avatar": "👑",
+    "role": "player",
+    "createdAt": "2026-10-22T13:48:15.184Z",
+    "stats": {
+      "elo": 1000
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer",
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "bblj1nCZvi-TjWciAAAP",
+    "username": "player_bblj",
+    "password": "scrypt:c61af6904875c5893f298cd68a8a78e2:27b3a4657e525ace7e345052b74b9dedef9b476b0ba711e04b74209c1e969cb966d90ec84c4f31eec08be1d692c6aeddfe983accf0ee9947cdefc6a58dacd9c1",
+    "displayName": "Kỳ Thủ",
+    "avatar": "👑",
+    "role": "player",
+    "createdAt": "2026-10-22T13:48:15.201Z",
+    "stats": {
+      "elo": 1000
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer",
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "kaufj0Kt76Nx-s2NAAAQ",
+    "username": "player_kauf",
+    "password": "scrypt:d53f0c7b765349e0df9a308fb209d121:844ab139808d9e7ed83664fb93f0ce25539acb3906190286718672d72c648dcb6a536cfdb51e2523d029a12c6bd0e310ad079c946fb269248e6b8345a5668579",
+    "displayName": "Kỳ Thủ",
+    "avatar": "🎙️",
+    "role": "player",
+    "createdAt": "2026-10-22T13:48:19.759Z",
+    "stats": {
+      "elo": 1000
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer",
+        "burn_cloak"
+      ],
+      "isBanned": false
+    }
+  },
+  {
+    "id": "user_1793618783860_cc3e3cda",
+    "username": "tester_3856",
+    "password": "scrypt:fcfc488ca42dc36c22abd95855251ffc:0065701dac38752cf5e306718de0af7555d52340ccccaa0af8074114f3ffb4b1415fe3d024f10248c2738e54fc8981db56da42ad28e1a627c23c11372614ef7a",
+    "token": "b5c72422d58f5fabbe902d4b5a8f7b868b339586582240a37bfbef543db1f50f",
+    "displayName": "Người Chơi Thử Nghiệm",
+    "avatar": "🧙‍♂️",
+    "role": "player",
+    "createdAt": "2026-11-02T11:26:23.891Z",
+    "stats": {
+      "elo": 1035,
+      "gamesPlayed": 1,
+      "top1Count": 1,
+      "wins": 0,
+      "losses": 0
+    },
+    "customModifiers": {
+      "startingHp": 100,
+      "startingGold": 6,
+      "startingLevel": 3,
+      "extraClockSeconds": 0,
+      "bonusItems": [
+        "stun_hammer",
+        "burn_cloak"
+      ],
       "isBanned": false
     }
   }

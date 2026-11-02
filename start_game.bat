@@ -14,7 +14,7 @@ echo Dang mo trinh duyet tai http://localhost:3000 ...
 start "" "http://localhost:3000"
 echo.
 echo Server dang chay! Hay giu cua so nay mo khi dang choi.
-echo Tai khoan Admin mac dinh: admin / Mat khau: 123
+echo Dang nhap bang tai khoan Quan Tri Vien de quan ly Database.
 echo ================================================================
 node server.js
 pause

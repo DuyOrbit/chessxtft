@@ -193,12 +193,12 @@ Toàn bộ ảnh sẽ được lưu trữ tự động vào thư mục [`qa_scre
 
 ---
 
-## 🔑 Tài Khoản Mặc Định Trong Game
+## 🔑 Tài Khoản Quản Trị & Người Chơi
 
 - **Tài khoản Quản trị (Admin / GM)**:
   - **Tên đăng nhập**: `admin`
-  - **Mật khẩu**: `123`
-  - *(Có toàn quyền mở Bảng Quản Trị Database, Phòng Tập Sandbox và Chế Độ Khán Giả 4 Màn Hình)*.
+  - *(Toàn bộ mật khẩu trong hệ thống đã được mã hóa bằng hàm băm an toàn Scrypt / Bcrypt; hệ thống hỗ trợ Bearer Token xác thực cho mọi thao tác Quản Trị).*
+  - *(Khi triển khai lên máy chủ thật, vui lòng đổi mật khẩu tài khoản Admin qua Bảng Quản Trị).*
 - **Tài khoản Người Chơi Mới**: Bạn có thể tự do bấm **Đăng Ký Tài Khoản** ngay trên màn hình game để tạo nhân vật và avatar riêng.
 
 ---

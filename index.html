@@ -307,6 +307,7 @@
                     <button class="codex-tab" data-tab="synergies"><i data-lucide="sparkles"></i> Tộc / Hệ (8)</button>
                     <button class="codex-tab" data-tab="items"><i data-lucide="package"></i> Trang Bị & Bản Đồ</button>
                     <button class="codex-tab" data-tab="rules"><i data-lucide="book-open"></i> Luật Chơi & Trừ Máu</button>
+                    <button class="codex-tab" data-tab="meta"><i data-lucide="trophy"></i> Đội Hình Meta & Winrate (840 Trận Bot)</button>
                 </div>
                 <div id="codex-content" class="codex-content"></div>
             </div>
@@ -318,9 +319,17 @@
                         <span><i data-lucide="users"></i> TẠO PHÒNG & GHÉP TRẬN BẠN BÈ</span>
                         <button id="btn-back-from-rooms" class="btn-game btn-game-gold" style="padding:4px 12px; font-size:0.75rem; font-weight:800;"><i data-lucide="arrow-left"></i> Quay Về Sảnh</button>
                     </div>
-                    <p class="cc-sub">Tạo phòng riêng hoặc nhập mã để so tài cùng bạn bè. Ghế trống tự động thêm Bot AI!</p>
-                    <div class="room-create-row" style="margin-top:10px;">
-                        <div class="form-group" style="flex:1;">
+                    <p class="cc-sub" id="room-mode-desc-text">Tạo phòng riêng hoặc nhập mã để so tài cùng bạn bè. Hỗ trợ Đấu Trường 8 Người, Quyết Đấu 1v1 TFT và Cờ Chớp Chiến Thuật 1v1!</p>
+                    <div class="room-create-row" style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+                        <div class="form-group" style="flex:1.2; min-width:260px;">
+                            <label style="font-size:0.75rem; color:#f59e0b; font-weight:700;"><i data-lucide="swords"></i> Thể Thức Trận Đấu:</label>
+                            <select id="select-room-gamemode" class="lobby-select" style="font-weight:700;">
+                                <option value="tft_8p" selected>👑 Đấu Trường 8 Người (TFT Battle Royale - Mặc định)</option>
+                                <option value="tft_1v1">⚔️ Quyết Đấu TFT 1v1 (2 Người • Đấu Người Hoặc Bot AI)</option>
+                                <option value="skirmish_1v1">♟️ Cờ Chớp Chiến Thuật 1v1 (2 Người • Dàn 30 Vàng PvP)</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex:1; min-width:220px;">
                             <label style="font-size:0.75rem; color:#989795; font-weight:700;"><i data-lucide="clock"></i> Thời Gian Cờ Chớp:</label>
                             <select id="select-room-timemode" class="lobby-select">
                                 <option value="standard" selected>Tiêu Chuẩn (45s/60s/75s + 3s/nước) — Cân bằng</option>
@@ -329,7 +338,7 @@
                             </select>
                         </div>
                         <button id="btn-create-room" class="btn-game btn-game-gold" style="height:38px; align-self:flex-end;"><i data-lucide="plus"></i> Tạo Phòng Mới</button>
-                        <button id="btn-create-spectator-room" class="btn-game btn-game-cyan" style="height:38px; align-self:flex-end;" title="Tạo phòng với tư cách Khán Giả, 8 ghế tự động thêm Bot AI"><i data-lucide="eye"></i> Tạo Phòng Khán Giả</button>
+                        <button id="btn-create-spectator-room" class="btn-game btn-game-cyan" style="height:38px; align-self:flex-end;" title="Tạo phòng với tư cách Khán Giả"><i data-lucide="eye"></i> Tạo Phòng Khán Giả</button>
                     </div>
 
                     <div class="room-options-row" style="margin-top:8px; display:flex; align-items:center;">
@@ -385,14 +394,31 @@
                         </button>
                     </div>
 
-                    <div class="waiting-room-settings">
+                    <!-- 1V1 MODE SPECIAL BANNER -->
+                    <div id="waiting-1v1-badge" class="badge-1v1-room hidden">
+                        <i data-lucide="swords"></i> <span id="waiting-1v1-badge-text">CHẾ ĐỘ 1V1: TỐI ĐA 2 NGƯỜI (CÓ THỂ THÊM BOT HOẶC CHỜ BẠN BÈ)</span>
+                    </div>
+
+                    <div id="waiting-bot-actions-bar" class="waiting-bot-actions-bar" style="display:flex; gap:8px; margin: 8px 0; flex-wrap:wrap; align-items:center;">
+                        <button id="btn-add-single-bot" class="btn-game btn-game-cyan" style="padding:6px 12px; font-size:0.75rem; font-weight:800;" title="Thêm 1 Bot AI vào ghế trống tiếp theo">
+                            <i data-lucide="bot"></i> + Thêm 1 Bot AI
+                        </button>
+                        <button id="btn-fill-all-bots" class="btn-game btn-game-gold" style="padding:6px 12px; font-size:0.75rem; font-weight:800;" title="Lấp đầy toàn bộ ghế trống bằng các Đại Kiện Tướng AI">
+                            <i data-lucide="zap"></i> Lấp Đầy Bằng Bot
+                        </button>
+                        <button id="btn-clear-all-bots" class="btn-secondary" style="padding:6px 10px; font-size:0.74rem;" title="Xóa tất cả Bot khỏi phòng để nhường chỗ cho bạn bè">
+                            <i data-lucide="trash-2"></i> Đuổi Hết Bot
+                        </button>
+                    </div>
+
+                    <div class="waiting-room-settings" id="waiting-settings-fillbots-wrap">
                         <label class="checkbox-label">
                             <input type="checkbox" id="chk-fill-bots" checked />
-                            <span>🤖 Tự động thêm Bot AI vào các ghế trống cho đủ 8 người</span>
+                            <span>🤖 Tự động thêm Bot AI vào các ghế trống cho đủ người khi bấm Bắt Đầu</span>
                         </label>
                     </div>
 
-                    <div class="panel-section-title">👥 Ghế Thi Đấu 8 Kỳ Thủ (<span id="waiting-player-count">1</span>/8)</div>
+                    <div class="panel-section-title">👥 Ghế Thi Đấu (<span id="waiting-player-count">1</span>/<span id="waiting-max-players">8</span>)</div>
                     <div id="waiting-players-grid" class="waiting-players-grid"></div>
 
                     <div class="panel-section-title" style="margin-top:14px; display:flex; justify-content:space-between; align-items:center;">
@@ -437,6 +463,7 @@
                 <button id="btn-rules-modal" class="hidden"></button>
                 <button id="btn-close-rules" class="hidden"></button>
                 <span id="fortune-chest-badge" class="stat-chip stat-fortune hidden"><i data-lucide="dices"></i> 0đ</span>
+                <button id="btn-toggle-meta-comps" class="btn-game btn-game-gold" style="margin:0; padding:4px 10px; font-size:0.74rem; font-weight:800; border-color:#f59e0b;" title="Xem gợi ý các đội hình Meta và tỉ lệ thắng từ 840 trận Bot 1v1"><i data-lucide="sparkles"></i> Gợi Ý Meta</button>
                 <button id="btn-toggle-bgm-game" class="btn-audio-pill" title="Bật/Tắt Nhạc Nền"><i data-lucide="volume-2"></i> Nhạc</button>
                 <button id="btn-toggle-dps-meter" class="btn-audio-pill" title="Mở Biểu Đồ Sát Thương DPS"><i data-lucide="bar-chart-3"></i> DPS</button>
                 <button id="btn-combat-speed" class="btn-audio-pill" title="Tốc độ trận đấu Solo Bot (1x / 2x)"><i data-lucide="fast-forward"></i> 1x</button>
@@ -449,13 +476,34 @@
             </div>
         </header>
 
+        <!-- 1V1 PVP HEAD-TO-HEAD HUD BAR (HIỆN TRONG CÁC TRẬN ĐẤU 1V1) -->
+        <div id="banner-1v1-headtohead" class="banner-1v1-headtohead hidden">
+            <div class="h2h-player h2h-left">
+                <span id="h2h-p1-avatar" class="h2h-avatar">👑</span>
+                <span id="h2h-p1-name" class="h2h-name">Bạn</span>
+                <span id="h2h-p1-hp" class="h2h-hp">100 HP</span>
+            </div>
+            <div class="h2h-vs">
+                <span class="h2h-vs-badge">⚡ 1V1 QUYẾT ĐẤU ⚡</span>
+            </div>
+            <div class="h2h-player h2h-right">
+                <span id="h2h-p2-hp" class="h2h-hp">100 HP</span>
+                <span id="h2h-p2-name" class="h2h-name">Đối Thủ</span>
+                <span id="h2h-p2-avatar" class="h2h-avatar">🦊</span>
+            </div>
+        </div>
+
         <!-- SKIRMISH SPECTATOR CONTROL BAR (HIỆN KHI XEM 2 BOT ĐẤU TRÍ 1V1) -->
         <div id="skirmish-spec-control-bar" class="skirmish-spec-bar hidden">
             <div class="spec-cluster-left">
                 <span class="skirmish-live-pill">🎙️ KHÁN GIẢ • 2 BOT TỰ ĐẤU</span>
+                <span id="skirmish-draft-phase-badge" class="skirmish-draft-phase-badge hidden">
+                    🎯 DÀN TRẬN 30V: <strong id="skirmish-draft-timer">8s</strong>
+                </span>
                 <span id="skirmish-spec-status-text" class="spec-status-text">Đang theo dõi: 🤖 Bot Trắng vs 🤖 Bot Đen (Magnus)</span>
             </div>
             <div class="spec-cluster-controls">
+                <button id="btn-skirmish-skip-draft" class="btn-game btn-game-gold hidden" style="padding:4px 12px; font-size:0.75rem; font-weight:700;">⏩ Vào Đấu Ngay</button>
                 <button id="btn-skirmish-spec-pause" class="btn-game btn-game-gold" style="padding:4px 12px; font-size:0.75rem; font-weight:700;">⏸️ Tạm Dừng</button>
                 <div class="spec-speed-group">
                     <span style="font-size:0.72rem; color:#94a3b8; font-weight:700;">Tốc Độ:</span>
@@ -1242,15 +1290,43 @@
                         <!-- Dynamic list of 15 pieces with cost, traits, icons -->
                     </div>
 
-                    <div class="skirmish-action-row">
-                        <button id="btn-skirmish-auto-preset" class="btn-secondary btn-sm" title="Tự động xếp 1 đội hình mẫu cân bằng">🎲 Gợi Ý Đội Hình</button>
+                    <div class="skirmish-action-row" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                        <select id="skirmish-meta-preset-select" class="skirmish-select" style="min-width:210px; font-size:0.75rem; background:#0f172a; border-color:#f59e0b; color:#fbbf24; font-weight:700;">
+                            <option value="" disabled selected>💡 Đội Hình Meta (AI Winrate)...</option>
+                        </select>
+                        <button id="btn-skirmish-auto-preset" class="btn-secondary btn-sm" title="Tự động xếp 1 đội hình mẫu ngẫu nhiên">🎲 Ngẫu Nhiên</button>
                         <button id="btn-skirmish-reset-board" class="btn-secondary btn-sm" title="Xóa hết quân (trừ Vua) và nhận lại 30 Vàng">🔄 Đặt Lại</button>
-                        <button id="btn-skirmish-start-clash" class="btn-combat-go btn-skirmish-clash">
+                        <button id="btn-skirmish-start-clash" class="btn-combat-go btn-skirmish-clash" style="flex:1; min-width:180px;">
                             <span>⚔️</span>
-                            <span>VÀO TRẬN ĐẤU (CLASH)!</span>
+                            <span id="btn-skirmish-clash-text">VÀO TRẬN ĐẤU (CLASH)!</span>
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: GỢI Ý ĐỘI HÌNH META & TỈ LỆ THẮNG MÔ PHỎNG (META COMPS OVERLAY) -->
+    <div id="modal-meta-comps" class="modal-overlay hidden">
+        <div class="modal-card meta-comps-modal-card">
+            <div class="modal-header">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="font-size:1.6rem;">🏆</span>
+                    <div>
+                        <h3 style="margin:0; font-size:1.15rem; color:#f59e0b; font-weight:800;">GỢI Ý ĐỘI HÌNH META & TỈ LỆ THẮNG 1V1</h3>
+                        <p style="margin:0; font-size:0.75rem; color:#94a3b8;">Dữ liệu phân tích thống kê từ 840 trận đấu đối đầu mô phỏng tự động giữa các Bot AI</p>
+                    </div>
+                </div>
+                <button id="btn-close-meta-comps" class="guide-close-btn">✕</button>
+            </div>
+            <div class="meta-comps-filters" style="display:flex; gap:8px; padding:10px 16px; border-bottom:1px solid rgba(255,255,255,0.08);">
+                <button class="meta-filter-btn active" data-tier="all">Tất Cả (8)</button>
+                <button class="meta-filter-btn tier-s-btn" data-tier="S">👑 Tier S (>65% Win)</button>
+                <button class="meta-filter-btn tier-a-btn" data-tier="A">⭐ Tier A (50-65% Win)</button>
+                <button class="meta-filter-btn tier-b-btn" data-tier="B">🔥 Tier B (Cân Bằng)</button>
+            </div>
+            <div id="meta-comps-modal-list" class="meta-comps-grid-list">
+                <!-- Injected via JavaScript from window.CHESS_TFT_META_COMPS -->
             </div>
         </div>
     </div>
@@ -1284,8 +1360,9 @@
     <!-- Socket.IO Client được phục vụ tự động bởi server Node.js (cả localhost:3000 lẫn Render/Production) -->
     <script src="/socket.io/socket.io.js"></script>
     <script src="js/data.js"></script>
+    <script src="js/meta-comps-data.js"></script>
     <script src="js/chess-engine.js"></script>
     <script src="js/tft-manager.js"></script>
-    <script src="js/main.js"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>

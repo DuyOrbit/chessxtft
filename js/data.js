@@ -666,9 +666,17 @@ window.CHESS_TFT_DATA = {
                     grid[`${r},${c}`] = type;
                     grid[`${rows - 1 - r},${cols - 1 - c}`] = type;
                 }
-                const rTop = Math.floor(rows / 2) - 1;
-                const cLeft = Math.max(1, Math.floor(cols / 3));
-                addSym(rTop, cLeft, "rune");
+                const isEven = (rows % 2 === 0);
+                if (isEven) {
+                    const rTop = (rows / 2) - 1;
+                    const cLeft = Math.max(1, Math.floor(cols / 3));
+                    addSym(rTop, cLeft, "rune");
+                } else {
+                    const midR = Math.floor(rows / 2);
+                    const cLeft = Math.max(1, Math.floor(cols / 3));
+                    grid[`${midR},${cLeft}`] = "rune";
+                    grid[`${midR},${cols - 1 - cLeft}`] = "rune";
+                }
                 return grid;
             }
         },
@@ -709,14 +717,22 @@ window.CHESS_TFT_DATA = {
                     grid[`${r},${c}`] = type;
                     grid[`${rows - 1 - r},${cols - 1 - c}`] = type;
                 }
-                const rTop = Math.floor(rows / 2) - 1;
-                const cLeft = 1;
-                addSym(rTop, cLeft, "wall");
-                if (cols >= 6) {
-                    addSym(rTop, cols - 2, "wall");
+                const isEven = (rows % 2 === 0);
+                if (isEven) {
+                    const rTop = (rows / 2) - 1;
+                    const cLeft = 1;
+                    addSym(rTop, cLeft, "wall");
+                    if (cols >= 6) {
+                        addSym(rTop, cols - 2, "wall");
+                    }
+                } else {
+                    const midR = Math.floor(rows / 2);
+                    const cLeft = 1;
+                    grid[`${midR},${cLeft}`] = "wall";
+                    if (cols >= 6) {
+                        grid[`${midR},${cols - 1 - cLeft}`] = "wall";
+                    }
                 }
-                // Central Runes
-                addSym(rTop, Math.floor(cols / 2), "rune");
                 return grid;
             }
         },
@@ -731,11 +747,23 @@ window.CHESS_TFT_DATA = {
                     grid[`${r},${c}`] = type;
                     grid[`${rows - 1 - r},${cols - 1 - c}`] = type;
                 }
-                const rTop = Math.floor(rows / 2) - 1;
-                const midC = Math.floor(cols / 2);
-                addSym(rTop, midC, "lava");
-                if (cols >= 6) {
-                    addSym(rTop, 0, "rune");
+                const isEven = (rows % 2 === 0);
+                if (isEven) {
+                    const rTop = (rows / 2) - 1;
+                    const midC = Math.floor(cols / 2);
+                    addSym(rTop, midC, "lava");
+                    if (cols >= 6) {
+                        addSym(rTop, 0, "rune");
+                    }
+                } else {
+                    const midR = Math.floor(rows / 2);
+                    const midC = Math.floor(cols / 2);
+                    grid[`${midR},${midC}`] = "lava";
+                    grid[`${midR},${cols - 1 - midC}`] = "lava";
+                    if (cols >= 6) {
+                        grid[`${midR},0`] = "rune";
+                        grid[`${midR},${cols - 1}`] = "rune";
+                    }
                 }
                 return grid;
             }
@@ -751,11 +779,21 @@ window.CHESS_TFT_DATA = {
                     grid[`${r},${c}`] = type;
                     grid[`${rows - 1 - r},${cols - 1 - c}`] = type;
                 }
-                const rTop = Math.floor(rows / 2) - 1;
-                // Symmetrical rock pairs across 180° rotation
-                addSym(rTop, 1, "wall");
-                if (cols >= 6) {
-                    addSym(rTop, cols - 2, "wall");
+                const isEven = (rows % 2 === 0);
+                if (isEven) {
+                    const rTop = (rows / 2) - 1;
+                    addSym(rTop, 1, "wall");
+                    if (cols >= 6) {
+                        addSym(rTop, cols - 2, "wall");
+                    }
+                } else {
+                    const midR = Math.floor(rows / 2);
+                    grid[`${midR},0`] = "wall";
+                    grid[`${midR},2`] = "wall";
+                    if (cols >= 6) {
+                        grid[`${midR},${cols - 1 - 2}`] = "wall";
+                        grid[`${midR},${cols - 1}`] = "wall";
+                    }
                 }
                 return grid;
             }

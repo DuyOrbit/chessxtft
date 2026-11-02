@@ -100,17 +100,18 @@ class TFTGameManager {
 
         for (let i = 0; i < otherHumans.length && this.bots.length < 7; i++) {
             const h = otherHumans[i];
+            const isReal = !h.isBot;
             const hMods = h.customModifiers || {};
             const hHp = Number(hMods.startingHp) || 100;
-            const humanParticipant = {
-                id: `human_${h.id}`,
+            const participant = {
+                id: h.isBot ? (h.id.startsWith("bot_") ? h.id : `bot_${h.id}`) : `human_${h.id}`,
                 remoteUserId: h.id,
-                name: `👤 ${h.name}`,
-                avatar: h.avatar || "🦊",
-                style: `Người Chơi (ELO ${h.elo || 1000})`,
-                favTrait: "royal",
-                isBot: false,
-                isRemoteHuman: true,
+                name: h.isBot ? `${h.name}` : `👤 ${h.name}`,
+                avatar: h.avatar || (isReal ? "🦊" : "🤖"),
+                style: h.style || (isReal ? `Người Chơi (ELO ${h.elo || 1000})` : "AI Kiện Tướng"),
+                favTrait: h.favTrait || (isReal ? "royal" : "cavalry"),
+                isBot: !isReal,
+                isRemoteHuman: isReal,
                 hp: hHp,
                 maxHp: hHp,
                 gold: Number(hMods.startingGold) || 6,
@@ -123,11 +124,14 @@ class TFTGameManager {
                 augments: [],
                 eliminated: false
             };
-            this.initBotStarterBoard(humanParticipant, cfg);
-            this.bots.push(humanParticipant);
+            this.initBotStarterBoard(participant, cfg);
+            this.bots.push(participant);
         }
 
-        const shouldFillBots = !roomData || roomData.fillBots !== false || this.bots.length === 0;
+        const is1v1Mode = roomData && (roomData.mode === "tft_1v1" || roomData.mode === "skirmish_1v1" || roomData.maxPlayers === 2);
+        this.is1v1Mode = !!is1v1Mode;
+
+        const shouldFillBots = !is1v1Mode && (!roomData || roomData.fillBots !== false || this.bots.length === 0);
         if (shouldFillBots) {
             const botProfiles = window.CHESS_TFT_DATA.BOT_NAMES || [];
             let botIdx = 0;
@@ -1607,9 +1611,11 @@ class TFTGameManager {
         const baseProfiles = window.CHESS_TFT_DATA.BOT_NAMES || [];
         const itemIds = Object.keys(window.CHESS_TFT_DATA.ITEMS || {});
 
+        const is1v1 = (roomData?.mode === "tft_1v1" || roomData?.mode === "skirmish_1v1" || roomData?.maxPlayers === 2);
+        const maxExpected = is1v1 ? 2 : 8;
         const contestants = Array.isArray(roomData?.players) ? [...roomData.players] : [];
         let fillCounter = 0;
-        while (contestants.length < 8) {
+        while (contestants.length < maxExpected) {
             const bp = baseProfiles[fillCounter % baseProfiles.length] || {
                 name: `Kỳ Thủ AI #${fillCounter + 1}`,
                 avatar: "🤖",
@@ -1626,7 +1632,7 @@ class TFTGameManager {
             fillCounter++;
         }
 
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < maxExpected; i++) {
             const p = contestants[i];
             const isReal = !p.isBot;
             const customMods = p.customModifiers || {};
@@ -1750,16 +1756,24 @@ class TFTGameManager {
             matchIncrement = Math.max(1, cfg.increment - 1);
         }
 
-        // Shuffle alive bots to form 4 pairs
-        const shuffled = [...alive].sort(() => Math.random() - 0.5);
+        // Form pairs: If 1v1 mode (<= 2 contestants), create exactly 1 match! Otherwise create 4 matches
+        const is1v1 = this.spectatorBots.length <= 2;
+        const matchCount = is1v1 ? 1 : 4;
+        const shuffled = is1v1 ? [...alive] : [...alive].sort(() => Math.random() - 0.5);
         const matches = [];
 
-        for (let m = 0; m < 4; m++) {
-            const idxA = (m * 2) % Math.max(1, shuffled.length);
-            const idxB = (m * 2 + 1) % Math.max(1, shuffled.length);
-            const botA = shuffled[idxA];
-            const botB = shuffled[idxB] !== botA ? shuffled[idxB] : (shuffled[(idxA + 1) % shuffled.length] || botA);
-            const isExhibition = (m * 2 >= shuffled.length); // True if fewer than 8 bots alive and this screen is a bonus clone match
+        for (let m = 0; m < matchCount; m++) {
+            let botA, botB;
+            if (is1v1) {
+                botA = alive[0] || this.spectatorBots[0];
+                botB = alive[1] || this.spectatorBots[1] || botA;
+            } else {
+                const idxA = (m * 2) % Math.max(1, shuffled.length);
+                const idxB = (m * 2 + 1) % Math.max(1, shuffled.length);
+                botA = shuffled[idxA];
+                botB = shuffled[idxB] !== botA ? shuffled[idxB] : (shuffled[(idxA + 1) % shuffled.length] || botA);
+            }
+            const isExhibition = !is1v1 && (m * 2 >= shuffled.length); // True if fewer than 8 bots alive in 8P mode
 
             const mapDef = maps[(this.stage + this.roundInStage + m) % maps.length];
             const terrain = mapDef.generateTerrain(cfg.cols, cfg.rows);

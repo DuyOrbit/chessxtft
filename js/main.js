@@ -1,6 +1,38 @@
 // ============================================================================
-// CHESS TFT - MAIN UI CONTROLLER, AUDIO SYNTHESIZER & BLITZ CLOCK LOOP
+// CHESS TFT - MAIN APPLICATION ORCHESTRATOR (ES MODULE)
+// Assembles Core Engine, TFT Manager, UI Controllers, Audio & Network Services
 // ============================================================================
+
+import { getGameDataBundle } from './data/index.js';
+import { BlitzChessEngine } from './core/engine/ChessEngine.js';
+import { TFTGameManager } from './core/tft/TFTGameManager.js';
+import { eventBus } from './core/events/EventBus.js';
+import { GAME_EVENTS } from './core/events/GameEvents.js';
+
+// Services
+import { SoundFX } from './services/AudioService.js';
+import { ApiService } from './services/ApiService.js';
+import { networkService } from './services/NetworkService.js';
+import { InputHandler } from './input/InputHandler.js';
+
+// UI Controllers
+import { ToastManager } from './ui/ToastManager.js';
+import { ScreenRouter } from './ui/ScreenRouter.js';
+import { TooltipManager } from './ui/TooltipManager.js';
+import { HUDController } from './ui/HUDController.js';
+import { UnitInspector } from './ui/UnitInspector.js';
+import { PieceRenderer } from './ui/PieceRenderer.js';
+import { ShopController } from './ui/ShopController.js';
+import { SynergyPanel } from './ui/SynergyPanel.js';
+import { BenchController } from './ui/BenchController.js';
+import { BoardController } from './ui/BoardController.js';
+import { SpectatorController } from './ui/SpectatorController.js';
+import { WaitingRoomController } from './ui/WaitingRoomController.js';
+import { AdminPanelController } from './ui/AdminPanelController.js';
+import { CodexController } from './ui/CodexController.js';
+import { SkirmishController } from './ui/SkirmishController.js';
+import { SandboxController } from './ui/SandboxController.js';
+import { ModalController } from './ui/ModalController.js';
 
 // STUDIO GAME UI HELPERS: LUCIDE VECTOR ICONS & HEXTECH TOOLTIPS
 window.renderLucideIcons = function(targetEl = null) {
@@ -33,384 +65,48 @@ window.initGameTooltips = function(targetEl = null) {
     }
 };
 
-class SoundFX {
+export class ChessTFTApp {
     constructor() {
-        this.ctx = null;
-        this.sfxMuted = false;
-        this.bgmMuted = localStorage.getItem("chess_tft_bgm_muted") === "true";
-        this.bgmVolume = parseFloat(localStorage.getItem("chess_tft_bgm_vol") || "0.45");
+        window.game = this;
+        window.app = this;
+        this.eventBus = eventBus;
 
-        this.currentTrack = null;
-        this.activeTrackSrc = null;
+        // Static Game Data & Engine Globals (Compatibility Bridge)
+        window.CHESS_TFT_DATA = getGameDataBundle();
+        window.BlitzChessEngine = BlitzChessEngine;
+        window.TFTGameManager = TFTGameManager;
 
-        // DUAL-DECK EQUAL-POWER CROSSFADE AUDIO SYSTEM
-        this.deckA = new Audio();
-        this.deckA.loop = true;
-        this.deckB = new Audio();
-        this.deckB.loop = true;
-
-        this.activeDeck = this.deckA;
-        this.idleDeck = this.deckB;
-        this.activeDeck.volume = this.bgmMuted ? 0 : this.bgmVolume;
-        this.idleDeck.volume = 0;
-
-        this.fadeTimer = null;
-        this.fadeDurationMs = 1200; // 1.2s smooth cinematic Equal-Power Crossfade
-        this.duckTimer = null;
-        this.isDucked = false;
-
-        this.currentPack = localStorage.getItem("chess_tft_sound_pack") || "expedition33";
-        this.packs = {
-            expedition33: {
-                name: "Clair Obscur: Expedition 33",
-                tracks: {
-                    title: "assets/audio/expedition33_lumiere.webm",
-                    lobby: "assets/audio/expedition33_lumiere.webm",
-                    prep: "assets/audio/expedition33_yellow_forest.webm",
-                    prep_alt: "assets/audio/expedition33_prep.webm",
-                    carousel: "assets/audio/expedition33_monoco.webm",
-                    armory: "assets/audio/expedition33_monoco.webm",
-                    combat_early: "assets/audio/expedition33_beneath_the_blue_tree.webm",
-                    combat: "assets/audio/expedition33_clea.webm",
-                    combat_climax: "assets/audio/expedition33_combat_climax.webm"
-                },
-                names: {
-                    title: "Lumière (Expedition 33)",
-                    lobby: "Lumière (Expedition 33)",
-                    prep: "Yellow Forest - Number the Hours",
-                    prep_alt: "Camp Preparation - Tactical Briefing",
-                    carousel: "Monoco - Vòng Đi Chợ",
-                    armory: "Monoco - Kho Tiếp Tế",
-                    combat_early: "Spring Meadows - Beneath the Blue Tree",
-                    combat: "The Manor - Clea!",
-                    combat_climax: "Forgotten Battlefield - Divided Swords"
-                }
-            },
-            classic: {
-                name: "Cổ Điển / Classic Theme",
-                tracks: {
-                    title: "assets/audio/lobby_theme.mp3",
-                    lobby: "assets/audio/lobby_theme.mp3",
-                    prep: "assets/audio/lobby_theme.mp3",
-                    carousel: "assets/audio/lobby_theme.mp3",
-                    armory: "assets/audio/lobby_theme.mp3",
-                    combat_early: "assets/audio/combat_theme.ogg",
-                    combat: "assets/audio/combat_theme.ogg",
-                    combat_climax: "assets/audio/combat_theme.ogg"
-                },
-                names: {
-                    title: "Classic Lobby Theme",
-                    lobby: "Classic Lobby Theme",
-                    prep: "Classic Lobby Theme",
-                    carousel: "Classic Lobby Theme",
-                    armory: "Classic Lobby Theme",
-                    combat_early: "Classic Combat Blitz",
-                    combat: "Classic Combat Blitz",
-                    combat_climax: "Classic Combat Blitz"
-                }
-            }
-        };
-
-        this.userUnlocked = false;
-        this.setupUserUnlock();
-    }
-
-    get bgmAudio() {
-        return this.activeDeck;
-    }
-
-    get activePack() {
-        return this.packs[this.currentPack] || this.packs.expedition33;
-    }
-
-    getCurrentTrackName() {
-        if (!this.currentTrack) return "Không có";
-        const pack = this.activePack;
-        return (pack.names && pack.names[this.currentTrack]) || this.currentTrack;
-    }
-
-    cycleSoundPack() {
-        this.currentPack = this.currentPack === "expedition33" ? "classic" : "expedition33";
-        localStorage.setItem("chess_tft_sound_pack", this.currentPack);
-        if (this.currentTrack) {
-            const track = this.currentTrack;
-            this.currentTrack = null;
-            this.activeTrackSrc = null;
-            this.playBgm(track, { duration: 800 });
-        }
-        return this.activePack;
-    }
-
-    setupUserUnlock() {
-        const unlock = () => {
-            this.userUnlocked = true;
-            this.init();
-            if (!this.bgmMuted && this.currentTrack && this.activeDeck.paused) {
-                this.activeDeck.play().catch(() => {});
-            }
-            window.removeEventListener("click", unlock);
-            window.removeEventListener("keydown", unlock);
-            window.removeEventListener("touchstart", unlock);
-        };
-        window.addEventListener("click", unlock, { once: true });
-        window.addEventListener("keydown", unlock, { once: true });
-        window.addEventListener("touchstart", unlock, { once: true });
-    }
-
-    init() {
-        if (!this.ctx) {
-            const AudioCtx = window.AudioContext || window.webkitAudioContext;
-            if (AudioCtx) this.ctx = new AudioCtx();
-        }
-        if (this.ctx && this.ctx.state === "suspended") {
-            this.ctx.resume().catch(() => {});
-        }
-    }
-
-    resolveTrackSrc(trackName) {
-        const pack = this.activePack;
-        let targetSrc = pack.tracks[trackName];
-        if (!targetSrc) {
-            if (trackName === "title" || trackName === "lobby") targetSrc = pack.tracks.lobby || pack.tracks.title;
-            else if (trackName === "carousel" || trackName === "armory") targetSrc = pack.tracks.carousel || pack.tracks.armory || pack.tracks.prep;
-            else if (trackName.startsWith("prep")) targetSrc = pack.tracks.prep || pack.tracks.lobby;
-            else if (trackName.startsWith("combat")) targetSrc = pack.tracks.combat;
-            else return null;
-        }
-        return targetSrc;
-    }
-
-    preloadTrack(trackName) {
-        const targetSrc = this.resolveTrackSrc(trackName);
-        if (!targetSrc) return;
-        if (!this.idleDeck.src || this.idleDeck.src.indexOf(targetSrc) === -1) {
-            this.idleDeck.src = targetSrc;
-            this.idleDeck.preload = "auto";
-        }
-    }
-
-    playBgm(trackName, options = {}) {
-        const targetSrc = this.resolveTrackSrc(trackName);
-        if (!targetSrc) return;
-
-        // Nếu trùng file đang phát thì giữ nguyên luồng âm thanh
-        const currentSrc = this.activeDeck.src || "";
-        const isSameFile = this.activeTrackSrc === targetSrc || (currentSrc && currentSrc.indexOf(targetSrc) !== -1);
-
-        if (isSameFile) {
-            this.currentTrack = trackName;
-            if (this.userUnlocked && !this.bgmMuted && this.activeDeck.paused) {
-                this.activeDeck.play().catch(() => {});
-            }
-            return;
-        }
-
-        // Khởi động chuyển đổi Equal-Power Crossfade mượt mà
-        this.currentTrack = trackName;
-        this.activeTrackSrc = targetSrc;
-
-        const outDeck = this.activeDeck;
-        const inDeck = this.idleDeck;
-        const duration = options.duration || this.fadeDurationMs;
-        const targetVol = this.bgmMuted ? 0 : this.bgmVolume;
-
-        if (this.fadeTimer) {
-            clearInterval(this.fadeTimer);
-            this.fadeTimer = null;
-        }
-
-        if (!inDeck.src || inDeck.src.indexOf(targetSrc) === -1) {
-            try {
-                inDeck.pause();
-            } catch (e) {}
-            inDeck.src = targetSrc;
-            inDeck.load();
-        }
-        inDeck.currentTime = 0;
-        inDeck.volume = 0;
-
-        // Hoán đổi con trỏ Deck ngay lập tức
-        this.activeDeck = inDeck;
-        this.idleDeck = outDeck;
-
-        if (this.userUnlocked && !this.bgmMuted) {
-            const playPromise = inDeck.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(e => {
-                    if (e.name !== "AbortError") {
-                        // Suppress expected track aborts on fast screen changes
-                    }
-                });
-            }
-        }
-
-        if (outDeck.paused || outDeck.volume <= 0.01) {
-            outDeck.pause();
-            outDeck.volume = 0;
-            this.fadeIn(inDeck, targetVol, duration);
-            return;
-        }
-
-        const startTime = performance.now();
-        const startOutVol = outDeck.volume;
-
-        this.fadeTimer = setInterval(() => {
-            const elapsed = performance.now() - startTime;
-            const t = Math.min(1, Math.max(0, elapsed / duration));
-
-            // Equal-Power Crossfade curve (cos & sin)
-            const outFactor = Math.cos(t * Math.PI * 0.5);
-            const inFactor = Math.sin(t * Math.PI * 0.5);
-
-            const curMasterVol = this.bgmMuted ? 0 : this.bgmVolume;
-            outDeck.volume = Math.max(0, Math.min(1, startOutVol * outFactor));
-            inDeck.volume = Math.max(0, Math.min(1, curMasterVol * inFactor));
-
-            if (t >= 1) {
-                clearInterval(this.fadeTimer);
-                this.fadeTimer = null;
-                outDeck.pause();
-                outDeck.currentTime = 0;
-                outDeck.volume = 0;
-                inDeck.volume = curMasterVol;
-            }
-        }, 30);
-    }
-
-    fadeIn(deck, targetVol, duration) {
-        const startTime = performance.now();
-        this.fadeTimer = setInterval(() => {
-            const elapsed = performance.now() - startTime;
-            const t = Math.min(1, Math.max(0, elapsed / duration));
-            const curMasterVol = this.bgmMuted ? 0 : this.bgmVolume;
-            deck.volume = Math.sin(t * Math.PI * 0.5) * curMasterVol;
-            if (t >= 1) {
-                clearInterval(this.fadeTimer);
-                this.fadeTimer = null;
-                deck.volume = curMasterVol;
-            }
-        }, 30);
-    }
-
-    duckBgm(duckFactor = 0.35, durationMs = 1200) {
-        if (this.bgmMuted || !this.activeDeck || this.activeDeck.paused) return;
-        if (this.isDucked) return;
-
-        this.isDucked = true;
-        const normalVol = this.bgmVolume;
-        const duckedVol = normalVol * duckFactor;
-
-        this.activeDeck.volume = duckedVol;
-
-        clearTimeout(this.duckTimer);
-        this.duckTimer = setTimeout(() => {
-            const startTime = performance.now();
-            const rampInterval = setInterval(() => {
-                const elapsed = performance.now() - startTime;
-                const t = Math.min(1, elapsed / 400);
-                if (this.activeDeck && !this.bgmMuted) {
-                    this.activeDeck.volume = duckedVol + (normalVol - duckedVol) * t;
-                }
-                if (t >= 1) {
-                    clearInterval(rampInterval);
-                    this.isDucked = false;
-                    if (this.activeDeck && !this.bgmMuted) {
-                        this.activeDeck.volume = normalVol;
-                    }
-                }
-            }, 30);
-        }, durationMs);
-    }
-
-    toggleBgm() {
-        this.bgmMuted = !this.bgmMuted;
-        localStorage.setItem("chess_tft_bgm_muted", this.bgmMuted ? "true" : "false");
-        if (this.bgmMuted) {
-            this.activeDeck.pause();
-            this.idleDeck.pause();
-            this.activeDeck.volume = 0;
-            this.idleDeck.volume = 0;
-        } else {
-            this.activeDeck.volume = this.bgmVolume;
-            if (this.currentTrack) {
-                this.activeDeck.play().catch(() => {});
-            }
-        }
-        return !this.bgmMuted;
-    }
-
-    setBgmVolume(val) {
-        this.bgmVolume = Math.max(0, Math.min(1, val));
-        localStorage.setItem("chess_tft_bgm_vol", this.bgmVolume.toString());
-        if (!this.bgmMuted && !this.fadeTimer) {
-            this.activeDeck.volume = this.bgmVolume;
-        }
-    }
-
-    playTone(freq, type = "sine", duration = 0.12, vol = 0.12) {
-        if (this.sfxMuted) return;
-        try {
-            this.init();
-            if (!this.ctx) return;
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = type;
-            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-            gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-            osc.start();
-            osc.stop(this.ctx.currentTime + duration);
-        } catch (e) {}
-    }
-
-    move() { this.playTone(340, "triangle", 0.09, 0.12); }
-    ranged() {
-        this.playTone(620, "sawtooth", 0.08, 0.1);
-        setTimeout(() => this.playTone(440, "triangle", 0.12, 0.12), 50);
-    }
-    hitArmor() { this.playTone(190, "square", 0.14, 0.15); }
-    capture() {
-        this.playTone(280, "sawtooth", 0.12, 0.15);
-        setTimeout(() => this.playTone(520, "triangle", 0.15, 0.14), 60);
-    }
-    starUp() {
-        this.duckBgm(0.4, 800);
-        [440, 554, 659, 880].forEach((f, idx) => {
-            setTimeout(() => this.playTone(f, "triangle", 0.16, 0.15), idx * 70);
-        });
-    }
-    victory() {
-        this.duckBgm(0.28, 1600);
-        [523, 659, 784, 1046].forEach((f, idx) => {
-            setTimeout(() => this.playTone(f, "sine", 0.22, 0.16), idx * 90);
-        });
-    }
-    defeat() {
-        this.duckBgm(0.28, 1600);
-        [392, 349, 311, 261].forEach((f, idx) => {
-            setTimeout(() => this.playTone(f, "sawtooth", 0.22, 0.14), idx * 100);
-        });
-    }
-    buy() { this.playTone(520, "triangle", 0.1, 0.12); }
-    sell() { this.playTone(380, "triangle", 0.1, 0.12); }
-    upgrade() { this.starUp(); }
-    combatStart() {
-        this.duckBgm(0.3, 1000);
-        [330, 440, 550, 660].forEach((f, idx) => {
-            setTimeout(() => this.playTone(f, "sine", 0.15, 0.15), idx * 60);
-        });
-    }
-}
-
-class ChessTFTApp {
-    constructor() {
+        // Core Managers & Services
+        this.tft = new TFTGameManager();
+        this.chess = null;
         this.sfx = new SoundFX();
+        this.api = ApiService;
+        this.networkService = networkService;
+        this.inputHandler = new InputHandler(this);
+
+        // UI Controllers
+        this.toastManager = new ToastManager();
+        this.screenRouter = new ScreenRouter();
+        this.tooltipManager = new TooltipManager();
+        this.hudController = new HUDController();
+        this.unitInspector = new UnitInspector();
+        this.shopController = new ShopController();
+        this.synergyPanel = new SynergyPanel();
+        this.boardController = new BoardController(this);
+        this.benchController = new BenchController(this);
+        this.spectatorController = new SpectatorController(this);
+        this.waitingRoomController = new WaitingRoomController(this);
+        this.adminPanelController = new AdminPanelController(this);
+        this.codexController = new CodexController(this);
+        this.skirmishController = new SkirmishController(this);
+        this.sandboxController = new SandboxController(this);
+        this.modalController = new ModalController(this);
+
         this.currentUser = null;
         this.selectedRegAvatar = "👑";
         this.currentRoom = null;
         this.socket = null;
+        this.onlineSkirmishOpponentIsBot = false;
         this.codexActiveTab = "pieces";
         this.adminDbCache = null;
         this.selectedAdminUserId = null;
@@ -489,6 +185,7 @@ class ChessTFTApp {
             ]
         };
 
+
         this.initSocket();
         this.bindStaticEvents();
         this.bindAuthAndLobbyEvents();
@@ -497,6 +194,7 @@ class ChessTFTApp {
         this.bindSpectatorEvents();
         this.loadInitialConfigAndSession();
     }
+
 
     async loadInitialConfigAndSession() {
         try {
@@ -653,6 +351,426 @@ class ChessTFTApp {
         this.sfx.preloadTrack(trackKey);
     }
 
+
+    // ========================================================================
+    // DELEGATION BRIDGES TO MODULAR UI CONTROLLERS
+    // ========================================================================
+    showToast(msg, type = "info") {
+        if (this.toastManager) this.toastManager.show(msg, type);
+        else eventBus.emit(GAME_EVENTS.SHOW_TOAST, { message: msg, type });
+    }
+
+    renderShop() {
+        if (this.shopController) this.shopController.renderShop(this);
+    }
+
+    toggleLockShop() {
+        if (this.shopController) this.shopController.toggleLockShop(this);
+    }
+
+    handleHotkeyReroll() {
+        if (this.shopController) this.shopController.handleHotkeyReroll(this);
+    }
+
+    handleHotkeyBuyXP() {
+        if (this.shopController) this.shopController.handleHotkeyBuyXP(this);
+    }
+
+    handleHotkeySellPiece() {
+        if (this.benchController) this.benchController.handleHotkeySellPiece(this);
+    }
+
+    handleHotkeyDeployOrRecall() {
+        if (this.benchController) this.benchController.handleHotkeyDeployOrRecall(this);
+    }
+
+    renderBench() {
+        if (this.benchController) this.benchController.render(this);
+    }
+
+    renderBoardArea() {
+        if (this.boardController) this.boardController.renderBoardArea(this);
+    }
+
+    renderPrepBoardCells(boardEl, cfg, viewed, isScouting) {
+        if (this.boardController) this.boardController.renderPrepBoardCells(this, boardEl, cfg, viewed, isScouting);
+    }
+
+    handlePrepBoardClick(r, c, unit) {
+        if (this.boardController) this.boardController.handlePrepBoardClick(this, r, c, unit);
+    }
+
+    renderCombatBoardCells(boardEl, cfg) {
+        if (this.boardController) this.boardController.renderCombatBoardCells(this, boardEl, cfg);
+    }
+
+    triggerCombatHitFx(hit) {
+        if (this.boardController) this.boardController.triggerCombatHitFx(hit, this);
+    }
+
+    createPieceDOM(piece) {
+        return PieceRenderer.createPieceDOM(piece, this.tooltipManager);
+    }
+
+    renderSynergies() {
+        if (this.synergyPanel) this.synergyPanel.render(this);
+    }
+
+    showSynergyTooltip(traitId, evt, p) {
+        if (this.tooltipManager) this.tooltipManager.showSynergyTooltip(traitId, evt, p);
+    }
+
+    moveSynergyTooltip(evt) {
+        if (this.tooltipManager) this.tooltipManager.moveSynergyTooltip(evt);
+    }
+
+    hideSynergyTooltip() {
+        if (this.tooltipManager) this.tooltipManager.hideSynergyTooltip();
+    }
+
+    showItemTooltip(itemId, evt) {
+        if (this.tooltipManager) this.tooltipManager.showItemTooltip(itemId, evt);
+    }
+
+    moveItemTooltip(evt) {
+        if (this.tooltipManager) this.tooltipManager.moveItemTooltip(evt);
+    }
+
+    hideItemTooltip() {
+        if (this.tooltipManager) this.tooltipManager.hideItemTooltip();
+    }
+
+    showPieceMovementTooltip(pieceId, evt) {
+        if (this.tooltipManager) this.tooltipManager.showPieceMovementTooltip(pieceId, evt);
+    }
+
+    movePieceMovementTooltip(evt) {
+        if (this.tooltipManager) this.tooltipManager.movePieceMovementTooltip(evt);
+    }
+
+    hidePieceMovementTooltip() {
+        if (this.tooltipManager) this.tooltipManager.hidePieceMovementTooltip();
+    }
+
+    renderSelectedUnitInspector() {
+        if (this.unitInspector) this.unitInspector.render(this);
+    }
+
+    // Codex & Piece Guide
+    renderCodex() {
+        if (this.codexController) this.codexController.renderCodex();
+    }
+
+    openPieceGuide(pieceId) {
+        if (this.codexController) this.codexController.openPieceGuide(pieceId);
+    }
+
+    closePieceGuide() {
+        if (this.codexController) this.codexController.closePieceGuide();
+    }
+
+    renderPieceGuide(selectedId, filter) {
+        if (this.codexController) this.codexController.renderPieceGuide(selectedId, filter);
+    }
+
+    getPieceMovementGrid(pieceId) {
+        return this.codexController ? this.codexController.getPieceMovementGrid(pieceId) : [];
+    }
+
+    highlightPieceMovementPreview(pieceId, r, c) {
+        if (this.codexController) this.codexController.highlightPieceMovementPreview(pieceId, r, c);
+    }
+
+    highlightCombatPieceHover(r, c) {
+        if (this.codexController) this.codexController.highlightCombatPieceHover(r, c);
+    }
+
+    clearMovementPreview() {
+        if (this.codexController) this.codexController.clearMovementPreview();
+    }
+
+    // Waiting Room & Bots
+    renderWaitingRoom() {
+        if (this.waitingRoomController) this.waitingRoomController.render(this);
+    }
+
+    addBotToRoom(profile) {
+        if (this.waitingRoomController) this.waitingRoomController.addBotToRoom(this, profile);
+    }
+
+    removeBotFromRoom(botId) {
+        if (this.waitingRoomController) this.waitingRoomController.removeBotFromRoom(this, botId);
+    }
+
+    fillAllBotsInRoom() {
+        if (this.waitingRoomController) this.waitingRoomController.fillAllBotsInRoom(this);
+    }
+
+    clearAllBotsInRoom() {
+        if (this.waitingRoomController) this.waitingRoomController.clearAllBotsInRoom(this);
+    }
+
+    // Admin Panel
+    bindAdminEvents() {
+        if (this.adminPanelController) this.adminPanelController.bindAdminEvents();
+    }
+
+    openAdminDatabaseModal() {
+        if (this.adminPanelController) this.adminPanelController.openAdminDatabaseModal();
+    }
+
+    renderAdminUsersTab() {
+        if (this.adminPanelController) this.adminPanelController.renderAdminUsersTab();
+    }
+
+    renderAdminRulesTab() {
+        if (this.adminPanelController) this.adminPanelController.renderAdminRulesTab();
+    }
+
+    renderAdminPiecesTab() {
+        if (this.adminPanelController) this.adminPanelController.renderAdminPiecesTab();
+    }
+
+    // Spectator
+    bindSpectatorEvents() {
+        if (this.spectatorController) this.spectatorController.bindSpectatorEvents(this);
+    }
+
+    start8BotSpectatorMode() {
+        if (this.spectatorController) this.spectatorController.start8BotSpectatorMode(this);
+    }
+
+    startMultiplayerSpectatorSession(roomData) {
+        if (this.spectatorController) this.spectatorController.startMultiplayerSpectatorSession(this, roomData);
+    }
+
+    startSpectatorRoundMatches() {
+        if (this.spectatorController) this.spectatorController.startSpectatorRoundMatches(this);
+    }
+
+    scheduleSpectatorTick() {
+        if (this.spectatorController) this.spectatorController.scheduleSpectatorTick(this);
+    }
+
+    tickSpectatorMoves() {
+        if (this.spectatorController) this.spectatorController.tickSpectatorMoves(this);
+    }
+
+    checkAllSpectatorMatchesFinished() {
+        if (this.spectatorController) this.spectatorController.checkAllSpectatorMatchesFinished(this);
+    }
+
+    advanceSpectatorNextRound() {
+        if (this.spectatorController) this.spectatorController.advanceSpectatorNextRound(this);
+    }
+
+    stopSpectatorTimers() {
+        if (this.spectatorController) this.spectatorController.stopSpectatorTimers();
+    }
+
+    updateSpectatorClocksOnly() {
+        if (this.spectatorController) this.spectatorController.updateSpectatorClocksOnly();
+    }
+
+    updateSpectatorPovClocksOnly() {
+        if (this.spectatorController) this.spectatorController.updateSpectatorPovClocksOnly(this);
+    }
+
+    renderSpectatorView() {
+        if (this.spectatorController) this.spectatorController.renderSpectatorView(this);
+    }
+
+    renderSpectatorLeaderboard() {
+        if (this.spectatorController) this.spectatorController.renderSpectatorLeaderboard(this);
+    }
+
+    renderSpectatorMatchCard(m, cfg) {
+        return this.spectatorController ? this.spectatorController.renderSpectatorMatchCard(this, m, cfg) : null;
+    }
+
+    setSpectatorMode(mode, targetId) {
+        if (this.spectatorController) this.spectatorController.setSpectatorMode(this, mode, targetId);
+    }
+
+    cycleSpectatorPOVTarget(dir) {
+        if (this.spectatorController) this.spectatorController.cycleSpectatorPOVTarget(this, dir);
+    }
+
+    getViewedParticipant() {
+        return this.spectatorController ? this.spectatorController.getViewedParticipant(this) : this.tft.player;
+    }
+
+    renderSpectatorPOV() {
+        if (this.spectatorController) this.spectatorController.renderSpectatorPOV(this);
+    }
+
+    renderSpectatorPOVBoard(boardEl, cfg) {
+        if (this.spectatorController) this.spectatorController.renderSpectatorPOVBoard(this, boardEl, cfg);
+    }
+
+    renderSpectatorEngineOnMainBoard(boardEl, cfg, m, viewed) {
+        if (this.spectatorController) this.spectatorController.renderSpectatorEngineOnMainBoard(this, boardEl, cfg, m, viewed);
+    }
+
+    renderSpectatorPOVLeaderboard() {
+        if (this.spectatorController) this.spectatorController.renderSpectatorPOVLeaderboard(this);
+    }
+
+    // Skirmish
+    initSkirmishEvents() {
+        if (this.skirmishController) this.skirmishController.initSkirmishEvents();
+    }
+
+    loadMetaCompToSkirmish(comp) {
+        if (this.skirmishController) this.skirmishController.loadMetaCompToSkirmish(comp);
+    }
+
+    openMetaCompsModal() {
+        if (this.skirmishController) this.skirmishController.openMetaCompsModal();
+    }
+
+    renderMetaCompsModal(tier) {
+        if (this.skirmishController) this.skirmishController.renderMetaCompsModal(tier);
+    }
+
+    openSkirmishBuilderModal() {
+        if (this.skirmishController) this.skirmishController.openSkirmishBuilderModal();
+    }
+
+    closeSkirmishBuilderModal() {
+        if (this.skirmishController) this.skirmishController.closeSkirmishBuilderModal();
+    }
+
+    startSkirmishBattle() {
+        if (this.skirmishController) this.skirmishController.startSkirmishBattle();
+    }
+
+    startOnlineSkirmishBattle(roomData) {
+        if (this.skirmishController) this.skirmishController.startOnlineSkirmishBattle(roomData);
+    }
+
+    // Sandbox & Tutorial
+    startTutorialSession() {
+        if (this.sandboxController) this.sandboxController.startTutorialSession();
+    }
+
+    advanceTutorialStep(step) {
+        if (this.sandboxController) this.sandboxController.advanceTutorialStep(step);
+    }
+
+    finishTutorialSession() {
+        if (this.sandboxController) this.sandboxController.finishTutorialSession();
+    }
+
+    startSandboxSession() {
+        if (this.sandboxController) this.sandboxController.startSandboxSession();
+    }
+
+    renderDpsMeter() {
+        if (this.sandboxController) this.sandboxController.renderDpsMeter();
+    }
+
+    // Modals & Countdowns
+    openStageArmoryModal(choices, newStage) {
+        if (this.modalController) this.modalController.openStageArmoryModal(choices, newStage);
+    }
+
+    openAugmentModal(choices) {
+        if (this.modalController) this.modalController.openAugmentModal(choices);
+    }
+
+    openCarouselModal(items) {
+        if (this.modalController) this.modalController.openCarouselModal(items);
+    }
+
+    startPrepCountdown() {
+        if (this.modalController) this.modalController.startPrepCountdown();
+    }
+
+    clearPrepCountdown() {
+        if (this.modalController) this.modalController.clearPrepCountdown();
+    }
+
+    startAugmentCountdown() {
+        if (this.modalController) this.modalController.startAugmentCountdown();
+    }
+
+    clearAugmentCountdown() {
+        if (this.modalController) this.modalController.clearAugmentCountdown();
+    }
+
+    startCarouselCountdown() {
+        if (this.modalController) this.modalController.startCarouselCountdown();
+    }
+
+    clearCarouselCountdown() {
+        if (this.modalController) this.modalController.clearCarouselCountdown();
+    }
+
+    startRoundResultCountdown() {
+        if (this.modalController) this.modalController.startRoundResultCountdown();
+    }
+
+    clearRoundResultCountdown() {
+        if (this.modalController) this.modalController.clearRoundResultCountdown();
+    }
+
+    clearAllCountdowns() {
+        if (this.modalController) this.modalController.clearAllCountdowns();
+    }
+
+    showRoundResultModal(res) {
+        if (this.modalController) this.modalController.showRoundResultModal(res);
+    }
+
+    proceedAfterRoundModal() {
+        if (this.modalController) this.modalController.proceedAfterRoundModal();
+    }
+
+    startNewGameSession(roomData = null) {
+        this.stopCombatTimers();
+        this.clearAllCountdowns();
+        this.isOnlineSkirmish = false;
+        this.tft.resetGame(this.currentUser, roomData);
+        this.chess = null;
+        this.selectedPrepUnitUid = null;
+
+        const is1v1TFT = roomData && (roomData.mode === "tft_1v1" || roomData.maxPlayers === 2);
+        const roomBadge = document.getElementById("game-room-badge");
+        if (roomBadge) {
+            if (is1v1TFT) {
+                roomBadge.textContent = `⚔️ TFT 1v1: #${roomData.code}`;
+            } else {
+                roomBadge.textContent = roomData ? `Phòng: #${roomData.code}` : "Chế độ: Đấu Đơn";
+            }
+        }
+
+        const h2h = document.getElementById("banner-1v1-headtohead");
+        if (h2h) {
+            if (is1v1TFT) {
+                h2h.classList.remove("hidden");
+                const opp = (roomData.players || []).find(p => p.id !== this.currentUser?.id) || { name: "Đối Thủ 1v1" };
+                const p1Name = document.getElementById("h2h-p1-name");
+                const p2Name = document.getElementById("h2h-p2-name");
+                const p1Hp = document.getElementById("h2h-p1-hp");
+                const p2Hp = document.getElementById("h2h-p2-hp");
+                if (p1Name) p1Name.textContent = this.currentUser?.name || "Bạn";
+                if (p2Name) p2Name.textContent = opp.name || "Đối Thủ";
+                if (p1Hp) p1Hp.textContent = `${this.tft.player.hp} HP`;
+                if (p2Hp) p2Hp.textContent = `${opp.hp !== undefined ? opp.hp : 100} HP`;
+            } else {
+                h2h.classList.add("hidden");
+            }
+        }
+
+        this.showScreen("game");
+        this.renderAll();
+        this.syncMyStateToRoom();
+        this.startPrepCountdown();
+        this.showToast(is1v1TFT ? "⚔️ Trận đấu TFT 1v1 bắt đầu! Đối đầu trực tiếp qua từng vòng cờ!" : "⚔️ Trận đấu bắt đầu! Hãy mua quân, xếp đội hình và chuẩn bị giao tranh!", "success");
+    }
+
+
     initSocket() {
         if (typeof window.io !== "function") {
             const badge = document.getElementById("lobby-online-status");
@@ -699,8 +817,12 @@ class ChessTFTApp {
                 this.currentRoom = room;
                 this.isRankedMode = !!room.isRanked;
 
-                const isSpectator = (room.isSpectatorHost && this.currentUser?.id === room.hostId) ||
-                    (Array.isArray(room.spectators) && room.spectators.some(s => s.id === this.currentUser?.id));
+                const isPlayer = Array.isArray(room.players) && room.players.some(p =>
+                    (this.currentUser && p.id === this.currentUser.id) ||
+                    (this.socket && p.socketId === this.socket.id)
+                );
+                const isSpectator = !isPlayer || (room.isSpectatorHost && this.currentUser?.id === room.hostId) ||
+                    (Array.isArray(room.spectators) && room.spectators.some(s => s.id === this.currentUser?.id || s.socketId === this.socket?.id));
 
                 if (isSpectator) {
                     this.startMultiplayerSpectatorSession(room);
@@ -833,6 +955,148 @@ class ChessTFTApp {
                     }
                 }
             });
+
+            // ================================================================
+            // SKIRMISH 1V1 ONLINE PVP SOCKET EVENTS
+            // ================================================================
+            this.socket.on("skirmish:setupArmy", ({ room }) => {
+                this.currentRoom = room;
+                const isPlayer = Array.isArray(room.players) && room.players.some(p =>
+                    (this.currentUser && p.id === this.currentUser.id) ||
+                    (this.socket && p.socketId === this.socket.id)
+                );
+                if (!isPlayer) {
+                    this.isOnlineSkirmish = true;
+                    this.isSkirmishMode = true;
+                    this.isSkirmishSpectator = true;
+                    this.skirmishRole = "spectator";
+                    this.showToast("👁️ Bạn đang là Khán Giả: Đang chờ các kỳ thủ dàn trận...", "info");
+                    return;
+                }
+                this.isOnlineSkirmish = true;
+                this.isSkirmishMode = true;
+                this.isSkirmishSpectator = false;
+                this.skirmishRole = "player";
+                this.showScreen("lobby");
+                this.openSkirmishBuilderModal();
+                const clashBtnText = document.getElementById("btn-skirmish-clash-text");
+                if (clashBtnText) clashBtnText.textContent = "✅ SẴN SÀNG (ONLINE 1V1)";
+                const roleSel = document.getElementById("skirmish-role-select");
+                if (roleSel && roleSel.parentElement) roleSel.parentElement.style.display = "none";
+                const botSel = document.getElementById("skirmish-bot-select");
+                if (botSel && botSel.parentElement) botSel.parentElement.style.display = "none";
+                this.showToast("⚔️ Trận đấu Cờ Chớp 1v1 bắt đầu! Hãy dùng 30 Vàng dàn đội hình bí mật rồi bấm Sẵn Sàng!", "success");
+            });
+
+            this.socket.on("skirmish:armySubmitted", ({ playerId, readyCount, total }) => {
+                if (playerId === this.currentUser?.id) {
+                    this.showToast(`⏳ Bạn đã sẵn sàng! Đang chờ đối thủ (${readyCount}/${total})...`, "info");
+                    const clashBtn = document.getElementById("btn-skirmish-start-clash");
+                    if (clashBtn) {
+                        clashBtn.disabled = true;
+                        clashBtn.innerHTML = `<span>⏳</span><span>ĐÃ SẴN SÀNG (CHỜ ĐỐI THỦ...)</span>`;
+                    }
+                } else {
+                    this.showToast(`🔔 Đối thủ đã nạp xong đội hình! (${readyCount}/${total})`, "success");
+                }
+            });
+
+            this.socket.on("skirmish:battleStart", ({ room, whitePlayerId, blackPlayerId, whiteName, blackName, mapId, armies }) => {
+                this.currentRoom = room;
+                this.isOnlineSkirmish = true;
+                this.closeSkirmishBuilderModal();
+                this.startOnlineSkirmishBattle({ whitePlayerId, blackPlayerId, whiteName, blackName, mapId, armies });
+            });
+
+            this.socket.on("skirmish:opponentAction", ({ action, playerClock, enemyClock, senderId }) => {
+                if (!this.chess || this.chess.gameOver || !this.isOnlineSkirmish) return;
+
+                const rows = this.chess.rows;
+                const cols = this.chess.cols;
+                let finalAction;
+
+                if (this.isSkirmishSpectator) {
+                    // Góc nhìn Khán Giả: Quân Trắng xếp ở dưới (hàng 4-6), Quân Đen xếp ở trên (hàng 0-2)
+                    // Nếu người đi là Quân Trắng (p0), họ gửi tọa độ gốc từ sân dưới -> giữ nguyên tọa độ
+                    // Nếu người đi là Quân Đen (p1), họ gửi tọa độ từ góc nhìn của họ (hàng 4-6) -> lật lên đỉnh bàn cờ
+                    const isSenderWhite = (this.currentRoom && this.currentRoom.players && this.currentRoom.players[0] && 
+                        (this.currentRoom.players[0].id === senderId || this.currentRoom.players[0].socketId === senderId));
+                    if (isSenderWhite) {
+                        finalAction = { ...action };
+                    } else {
+                        finalAction = {
+                            type: action.type,
+                            fromR: (rows - 1) - action.fromR,
+                            fromC: (cols - 1) - action.fromC,
+                            toR: (rows - 1) - action.toR,
+                            toC: (cols - 1) - action.toC,
+                            stopR: action.stopR !== undefined ? ((rows - 1) - action.stopR) : ((rows - 1) - action.toR),
+                            stopC: action.stopC !== undefined ? ((cols - 1) - action.stopC) : ((cols - 1) - action.toC)
+                        };
+                    }
+                } else {
+                    // Góc nhìn kỳ thủ: đối thủ luôn ngồi ở phía trên đối diện nên lật tọa độ
+                    finalAction = {
+                        type: action.type,
+                        fromR: (rows - 1) - action.fromR,
+                        fromC: (cols - 1) - action.fromC,
+                        toR: (rows - 1) - action.toR,
+                        toC: (cols - 1) - action.toC,
+                        stopR: action.stopR !== undefined ? ((rows - 1) - action.stopR) : ((rows - 1) - action.toR),
+                        stopC: action.stopC !== undefined ? ((cols - 1) - action.stopC) : ((cols - 1) - action.toC)
+                    };
+                }
+
+                this.chess.executeAction(finalAction);
+                this.sfx.move();
+                this.selectedCombatSquare = null;
+                this.validCombatActions = [];
+                this.renderAll();
+                this.renderDpsMeter();
+
+                if (this.chess.gameOver) {
+                    this.finishBlitzCombat();
+                }
+            });
+
+            this.socket.on("skirmish:specDraftUpdate", ({ playerId, army, goldRemaining }) => {
+                if (!this.isSkirmishSpectator) return;
+                const h2h = document.getElementById("banner-1v1-headtohead");
+                if (h2h && this.currentRoom && this.currentRoom.players) {
+                    const p0 = this.currentRoom.players[0];
+                    const p1 = this.currentRoom.players[1];
+                    if (p0 && (p0.id === playerId || p0.socketId === playerId)) {
+                        const p1Hp = document.getElementById("h2h-p1-hp");
+                        if (p1Hp) p1Hp.textContent = `🪙 ${goldRemaining !== undefined ? goldRemaining : 0}/30 Vàng • ${army ? army.length : 0} Quân`;
+                    } else if (p1 && (p1.id === playerId || p1.socketId === playerId)) {
+                        const p2Hp = document.getElementById("h2h-p2-hp");
+                        if (p2Hp) p2Hp.textContent = `🪙 ${goldRemaining !== undefined ? goldRemaining : 0}/30 Vàng • ${army ? army.length : 0} Quân`;
+                    }
+                }
+            });
+
+            this.socket.on("skirmish:matchOver", ({ winnerId, reason, reasonLabel }) => {
+                const isWin = (winnerId === this.currentUser?.id);
+                this.stopCombatTimers();
+                this.clearAllCountdowns();
+                if (this.chess && !this.chess.gameOver) {
+                    const isWhiteWin = (this.currentRoom?.players?.[0]?.id === winnerId);
+                    const winRole = this.isSkirmishSpectator 
+                        ? (isWhiteWin ? "player" : "enemy") 
+                        : (isWin ? "player" : "enemy");
+                    this.chess.endMatch(winRole, reason || "resignation", reasonLabel || "Trận đấu kết thúc");
+                }
+                if (isWin) {
+                    this.showToast(`🏆 CHIẾN THẮNG 1V1! Đối thủ bị hạ gục (${reasonLabel || reason})!`, "success");
+                    this.sfx.victory();
+                } else if (this.isSkirmishSpectator) {
+                    this.showToast(`🏁 Ván đấu kết thúc! (${reasonLabel || reason})`, "info");
+                } else {
+                    this.showToast(`💔 THẤT BẠI 1V1! (${reasonLabel || reason})`, "defeat");
+                    this.sfx.defeat();
+                }
+                this.finishBlitzCombat();
+            });
         } catch (e) {}
     }
 
@@ -873,6 +1137,7 @@ class ChessTFTApp {
             }
         });
     }
+
 
     bindAuthAndLobbyEvents() {
         const tabLogin = document.getElementById("tab-btn-login");
@@ -1213,17 +1478,43 @@ class ChessTFTApp {
             });
         }
 
+        // Mode Select listener
+        const modeSelect = document.getElementById("select-room-gamemode");
+        if (modeSelect) {
+            modeSelect.addEventListener("change", (e) => {
+                const val = e.target.value;
+                const desc = document.getElementById("room-mode-desc-text");
+                if (desc) {
+                    if (val === "tft_1v1") {
+                        desc.textContent = "⚔️ Chế độ Quyết Đấu 1v1: Tối đa 2 người (đấu người hoặc luyện tập với Đại Kiện Tướng AI)! Đối đầu trực tiếp qua từng vòng TFT, trừ máu nhau đến khi 1 người cạn 100 HP.";
+                        desc.style.color = "#fbbf24";
+                    } else if (val === "skirmish_1v1") {
+                        desc.textContent = "♟️ Chế độ Cờ Chớp 1v1: 2 người chơi cầm ngân sách 30 Vàng dàn quân bí mật, sau đó vào bàn cờ 6x7 so tài Cờ Chớp thời gian thực (turn-based) qua mạng!";
+                        desc.style.color = "#38bdf8";
+                    } else {
+                        desc.textContent = "Tạo phòng riêng hoặc nhập mã để so tài cùng bạn bè. Hỗ trợ Đấu Trường 8 Người, Quyết Đấu 1v1 TFT và Cờ Chớp Chiến Thuật 1v1!";
+                        desc.style.color = "";
+                    }
+                }
+            });
+        }
+
         // Create Room (Supports both Socket.IO and WampServer PHP+MySQL)
         document.getElementById("btn-create-room").addEventListener("click", async () => {
+            const mode = document.getElementById("select-room-gamemode")?.value || "tft_8p";
             const timeMode = document.getElementById("select-room-timemode").value;
             const isSpectator = !!document.getElementById("chk-host-as-spectator")?.checked;
+            const is1v1 = (mode === "tft_1v1" || mode === "skirmish_1v1");
+            const fillBots = !is1v1;
+
             if (this.socket && this.socket.connected) {
-                this.socket.emit("room:create", { user: this.currentUser, timeMode, fillBots: true, isSpectator }, (res) => {
+                this.socket.emit("room:create", { user: this.currentUser, mode, timeMode, fillBots, isSpectator }, (res) => {
                     if (res && res.ok) {
                         this.currentRoom = res.room;
                         this.renderWaitingRoom();
                         const roleMsg = isSpectator ? "với tư cách Trọng Tài / Khán Giả (Caster)" : "";
-                        this.showToast(`Đã tạo phòng ${res.room.code} ${roleMsg}! Hãy gửi mã này cho bạn bè!`, "success");
+                        const modeMsg = is1v1 ? (mode === "skirmish_1v1" ? "1v1 Cờ Chớp" : "1v1 TFT") : "8 Người";
+                        this.showToast(`Đã tạo phòng #${res.room.code} (${modeMsg}) ${roleMsg}! Hãy gửi mã cho đối thủ!`, "success");
                     } else {
                         this.showToast(res?.msg || "Không thể tạo phòng!", "warn");
                     }
@@ -1234,7 +1525,7 @@ class ChessTFTApp {
                 const res = await fetch("api.php?action=room_create", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ user: this.currentUser, timeMode, fillBots: true, isSpectator })
+                    body: JSON.stringify({ user: this.currentUser, mode, timeMode, fillBots, isSpectator })
                 });
                 const d = await res.json();
                 if (d.ok && d.room) {
@@ -1251,16 +1542,19 @@ class ChessTFTApp {
 
         // Create Room as Spectator (Caster Mode) directly
         document.getElementById("btn-create-spectator-room")?.addEventListener("click", async () => {
+            const mode = document.getElementById("select-room-gamemode")?.value || "tft_8p";
             const timeMode = document.getElementById("select-room-timemode")?.value || "standard";
+            const is1v1 = (mode === "tft_1v1" || mode === "skirmish_1v1");
+            const fillBots = !is1v1;
             const chk = document.getElementById("chk-host-as-spectator");
             if (chk) chk.checked = true;
 
             if (this.socket && this.socket.connected) {
-                this.socket.emit("room:create", { user: this.currentUser, timeMode, fillBots: true, isSpectator: true }, (res) => {
+                this.socket.emit("room:create", { user: this.currentUser, mode, timeMode, fillBots, isSpectator: true }, (res) => {
                     if (res && res.ok) {
                         this.currentRoom = res.room;
                         this.renderWaitingRoom();
-                        this.showToast(`🎙️ Đã tạo phòng Khán Giả #${res.room.code}! 8 ghế sẽ tự động thêm Bot AI khi bắt đầu.`, "success");
+                        this.showToast(`🎙️ Đã tạo phòng Khán Giả #${res.room.code}!`, "success");
                     } else {
                         this.showToast(res?.msg || "Không thể tạo phòng!", "warn");
                     }
@@ -1271,7 +1565,7 @@ class ChessTFTApp {
                 const res = await fetch("api.php?action=room_create", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ user: this.currentUser, timeMode, fillBots: true, isSpectator: true })
+                    body: JSON.stringify({ user: this.currentUser, mode, timeMode, fillBots, isSpectator: true })
                 });
                 const d = await res.json();
                 if (d.ok && d.room) {
@@ -1339,6 +1633,18 @@ class ChessTFTApp {
             });
         });
 
+        document.getElementById("btn-add-single-bot")?.addEventListener("click", () => {
+            this.addBotToRoom();
+        });
+
+        document.getElementById("btn-fill-all-bots")?.addEventListener("click", () => {
+            this.fillAllBotsInRoom();
+        });
+
+        document.getElementById("btn-clear-all-bots")?.addEventListener("click", () => {
+            this.clearAllBotsInRoom();
+        });
+
         document.getElementById("chk-fill-bots").addEventListener("change", (e) => {
             if (this.currentRoom) {
                 this.currentRoom.fillBots = e.target.checked;
@@ -1393,8 +1699,26 @@ class ChessTFTApp {
         // Back to Lobby buttons
         document.getElementById("btn-back-lobby").addEventListener("click", () => {
             this.stopCombatTimers();
+            this.stopSpectatorTimers();
             this.clearAllCountdowns();
+            this.isSpectatorPOV = false;
+            if (this.isMultiplayerSpectator) {
+                if (this.socket && this.socket.connected) {
+                    this.socket.emit("room:leave");
+                }
+                this.isMultiplayerSpectator = false;
+                this.currentRoom = null;
+            }
             document.getElementById("skirmish-spec-control-bar")?.classList.add("hidden");
+            document.getElementById("spec-pov-control-bar")?.classList.add("hidden");
+            const actionBtns = [
+                document.getElementById("btn-start-combat"),
+                document.getElementById("btn-reroll"),
+                document.getElementById("btn-buy-xp"),
+                document.getElementById("btn-lock-shop"),
+                document.getElementById("btn-surrender-game")
+            ];
+            actionBtns.forEach(b => { if (b) b.style.display = ""; });
             this.isSkirmishSpectator = false;
             this.showScreen("lobby");
             this.refreshMyUserProfile();
@@ -1403,8 +1727,26 @@ class ChessTFTApp {
         document.getElementById("btn-gameover-lobby").addEventListener("click", () => {
             document.getElementById("modal-gameover").classList.add("hidden");
             this.stopCombatTimers();
+            this.stopSpectatorTimers();
             this.clearAllCountdowns();
+            this.isSpectatorPOV = false;
+            if (this.isMultiplayerSpectator) {
+                if (this.socket && this.socket.connected) {
+                    this.socket.emit("room:leave");
+                }
+                this.isMultiplayerSpectator = false;
+                this.currentRoom = null;
+            }
             document.getElementById("skirmish-spec-control-bar")?.classList.add("hidden");
+            document.getElementById("spec-pov-control-bar")?.classList.add("hidden");
+            const actionBtns = [
+                document.getElementById("btn-start-combat"),
+                document.getElementById("btn-reroll"),
+                document.getElementById("btn-buy-xp"),
+                document.getElementById("btn-lock-shop"),
+                document.getElementById("btn-surrender-game")
+            ];
+            actionBtns.forEach(b => { if (b) b.style.display = ""; });
             this.isSkirmishSpectator = false;
             this.showScreen("lobby");
             this.refreshMyUserProfile();
@@ -1577,18 +1919,28 @@ class ChessTFTApp {
             const casterTag = r.isSpectatorHost ? `<span class="badge-pill" style="font-size:0.68rem; background:rgba(56,189,248,0.2); color:#38bdf8; border:1px solid #38bdf8; margin-left:4px;">🎙️ Caster Host</span>` : "";
             const specCountTag = r.spectatorCount > 0 ? `<span style="font-size:0.7rem; color:#94a3b8; margin-left:6px;">👁️ ${r.spectatorCount}</span>` : "";
 
+            let modeBadge = `<span class="badge-pill room-tag-mode mode-tft-8p" style="font-size:0.68rem; background:rgba(168,85,247,0.25); color:#c084fc; border:1px solid #a855f7; padding:2px 6px; border-radius:4px; margin-left:4px;">👑 TFT 8P</span>`;
+            if (r.mode === "tft_1v1") {
+                modeBadge = `<span class="badge-pill room-tag-mode mode-tft-1v1" style="font-size:0.68rem; background:rgba(245,158,11,0.25); color:#fbbf24; border:1px solid #f59e0b; padding:2px 6px; border-radius:4px; margin-left:4px;">⚔️ TFT 1v1</span>`;
+            } else if (r.mode === "skirmish_1v1") {
+                modeBadge = `<span class="badge-pill room-tag-mode mode-skirmish-1v1" style="font-size:0.68rem; background:rgba(56,189,248,0.25); color:#38bdf8; border:1px solid #0284c7; padding:2px 6px; border-radius:4px; margin-left:4px;">♟️ Cờ Chớp 1v1</span>`;
+            }
+
+            const maxP = r.maxPlayers || (r.mode && r.mode.includes("1v1") ? 2 : 8);
+
             row.innerHTML = `
                 <div>
-                    <div style="font-weight:800; color:var(--accent-gold); display:flex; align-items:center; gap:4px;">
+                    <div style="font-weight:800; color:var(--accent-gold); display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
                         <span>Phòng #${r.code} — Chủ phòng: ${r.hostName}</span>
+                        ${modeBadge}
                         ${casterTag}
                         ${specCountTag}
                     </div>
-                    <div style="font-size:0.74rem; color:var(--text-muted);">${modeLabels[r.timeMode] || r.timeMode} • Người chơi: ${r.playerCount}/8 ${r.fillBots ? "(+Bot tự lấp)" : ""}</div>
+                    <div style="font-size:0.74rem; color:var(--text-muted);">${modeLabels[r.timeMode] || r.timeMode} • Người chơi: ${r.playerCount}/${maxP} ${r.fillBots ? "(+Bot tự lấp)" : "(Không Bot)"}</div>
                 </div>
                 <div style="display:flex; gap:6px; align-items:center;">
-                    ${r.playerCount < 8 ? `<button class="btn-primary btn-join-contestant" style="padding:4px 10px; font-size:0.75rem;">⚔️ Thi Đấu</button>` : ""}
-                    <button class="btn-join-spectator" title="Xem trực tiếp 4 bàn cờ 8 người cùng lúc">👁️ Xem Trực Tiếp</button>
+                    ${r.playerCount < maxP ? `<button class="btn-primary btn-join-contestant" style="padding:4px 10px; font-size:0.75rem;">⚔️ Thi Đấu</button>` : ""}
+                    <button class="btn-join-spectator" title="Xem trực tiếp trận đấu">👁️ Xem Trực Tiếp</button>
                 </div>
             `;
             const joinBtn = row.querySelector(".btn-join-contestant");
@@ -1607,3751 +1959,6 @@ class ChessTFTApp {
         }
     }
 
-    renderWaitingRoom() {
-        const controlsBox = document.getElementById("lobby-room-controls");
-        const waitingBox = document.getElementById("lobby-waiting-room");
-        if (!this.currentRoom) {
-            controlsBox.classList.remove("hidden");
-            waitingBox.classList.add("hidden");
-            return;
-        }
-
-        controlsBox.classList.add("hidden");
-        waitingBox.classList.remove("hidden");
-
-        document.getElementById("waiting-room-code").textContent = this.currentRoom.code;
-        document.getElementById("waiting-player-count").textContent = this.currentRoom.players.length;
-        document.getElementById("chk-fill-bots").checked = this.currentRoom.fillBots !== false;
-
-        const isHost = this.currentUser && this.currentRoom.hostId === this.currentUser.id;
-        const isSpectator = (this.currentRoom.isSpectatorHost && isHost) ||
-            (Array.isArray(this.currentRoom.spectators) && this.currentRoom.spectators.some(s => s.id === this.currentUser?.id));
-
-        const specAlert = document.getElementById("waiting-spectator-alert");
-        if (specAlert) specAlert.classList.toggle("hidden", !isSpectator);
-
-        // Role switcher buttons toggle
-        const btnToSpec = document.getElementById("btn-switch-to-spectator");
-        const btnToPlayer = document.getElementById("btn-switch-to-player");
-        if (btnToSpec && btnToPlayer) {
-            btnToSpec.style.display = isSpectator ? "none" : "";
-            btnToPlayer.style.display = isSpectator ? "" : "none";
-            const isFull = this.currentRoom.players.length >= 8;
-            btnToPlayer.disabled = isFull;
-            btnToPlayer.title = isFull ? "Ghế thi đấu đã đủ 8 người!" : "Chuyển vào ghế thi đấu";
-        }
-
-        const specs = this.currentRoom.spectators || [];
-        const specCountEl = document.getElementById("waiting-spectator-count");
-        if (specCountEl) specCountEl.textContent = specs.length;
-
-        const specListEl = document.getElementById("waiting-spectators-list");
-        if (specListEl) {
-            if (specs.length > 0) {
-                specListEl.classList.remove("hidden");
-                specListEl.innerHTML = `👁️ <strong>Trọng Tài / Khán Giả (${specs.length}):</strong> ` +
-                    specs.map(s => `${s.avatar || "👁️"} ${s.name}${s.isHost ? " 👑(Chủ phòng)" : ""}`).join(", ");
-            } else {
-                specListEl.classList.add("hidden");
-            }
-        }
-
-        document.getElementById("chk-fill-bots").disabled = !isHost;
-        const startBtn = document.getElementById("btn-host-start-match");
-        startBtn.disabled = !isHost;
-        if (isHost) {
-            startBtn.textContent = isSpectator
-                ? "🎙️ BẮT ĐẦU GIẢI ĐẤU (CHỦ PHÒNG QUAN SÁT)"
-                : "⚔️ BẮT ĐẦU TRẬN ĐẤU (Đủ 8 ghế cùng Bot)";
-        } else {
-            startBtn.textContent = `⏳ Đang chờ Chủ Phòng (${this.currentRoom.hostName}) bắt đầu...`;
-        }
-
-        const grid = document.getElementById("waiting-players-grid");
-        grid.innerHTML = "";
-
-        for (let i = 0; i < 8; i++) {
-            const p = this.currentRoom.players[i];
-            const slot = document.createElement("div");
-            if (p) {
-                slot.className = "waiting-slot slot-human";
-                slot.innerHTML = `
-                    <span style="font-size:1.3rem;">${p.avatar || "👑"}</span>
-                    <div>
-                        <div style="font-weight:800;">${p.name} ${p.isHost ? "👑" : ""}</div>
-                        <div style="font-size:0.7rem; color:#93c5fd;">Người chơi thật • ELO ${p.elo || 1000}</div>
-                    </div>
-                `;
-            } else {
-                slot.className = "waiting-slot slot-bot";
-                slot.innerHTML = `
-                    <span style="font-size:1.2rem;">🤖</span>
-                    <div>
-                        <div style="font-weight:700; color:var(--text-muted);">Ghế Trống #${i + 1}</div>
-                        <div style="font-size:0.68rem; color:var(--text-muted);">${this.currentRoom.fillBots !== false ? "Sẽ tự lấp bằng Bot AI" : "Đang chờ người vào"}</div>
-                    </div>
-                `;
-            }
-            grid.appendChild(slot);
-        }
-
-        // Render Spectators Grid
-        const specGridEl = document.getElementById("waiting-spectators-grid");
-        if (specGridEl) {
-            specGridEl.innerHTML = "";
-            if (specs.length === 0) {
-                specGridEl.innerHTML = `<div class="empty-hint" style="grid-column:1/-1; padding:10px 0;">Chưa có khán giả nào. Bấm 'Chuyển Sang Khán Giả' để theo dõi trực tiếp trận đấu!</div>`;
-            } else {
-                specs.forEach(s => {
-                    const card = document.createElement("div");
-                    const isMe = s.id === this.currentUser?.id;
-                    card.className = `waiting-spec-card ${isMe ? "self-spec" : ""}`;
-                    card.innerHTML = `
-                        <span class="waiting-spec-av">${s.avatar || "👁️"}</span>
-                        <div>
-                            <div class="waiting-spec-name">${s.name} ${s.isHost ? "👑" : ""} ${isMe ? "(Bạn)" : ""}</div>
-                            <div class="waiting-spec-sub">${s.isHost ? "🎙️ Trọng Tài / Chủ Phòng" : "👁️ Khán Giả Theo Dõi"}</div>
-                        </div>
-                    `;
-                    specGridEl.appendChild(card);
-                });
-            }
-        }
-    }
-
-    // ========================================================================
-    // CODEX / WIKI ENCYCLOPEDIA IN MAIN LOBBY
-    // ========================================================================
-    renderCodex() {
-        const container = document.getElementById("codex-content");
-        if (!container) return;
-        container.innerHTML = "";
-
-        const getCostTierName = (cost, isKing) => {
-            if (isKing) return "Quốc Vương";
-            switch (cost) {
-                case 1: return "1 🪙 Thường";
-                case 2: return "2 🪙 Hiếm";
-                case 3: return "3 🪙 Tinh Anh";
-                case 4: return "4 🪙 Sử Thi";
-                case 5: return "5 🪙 Huyền Thoại";
-                default: return `${cost} 🪙`;
-            }
-        };
-
-        if (this.codexActiveTab === "pieces") {
-            const pieces = Object.values(window.CHESS_TFT_DATA.PIECES).sort((a, b) => a.cost - b.cost);
-            for (const p of pieces) {
-                const traitsBadges = (p.traits || []).map(t => {
-                    const s = window.CHESS_TFT_DATA.SYNERGIES[t];
-                    return s 
-                        ? `<span class="codex-trait-badge" style="border-color:${s.color}; background:rgba(${parseInt(s.color.slice(1,3),16)||20},${parseInt(s.color.slice(3,5),16)||30},${parseInt(s.color.slice(5,7),16)||50},0.28)">${s.icon} ${s.name}</span>`
-                        : `<span class="codex-trait-badge">${t}</span>`;
-                }).join(" ");
-
-                const tierName = getCostTierName(p.cost, p.isKing);
-
-                const card = document.createElement("div");
-                card.className = `game-hero-card cost-tier-${p.cost} ${p.isKing ? "hero-card-king" : ""}`;
-                card.innerHTML = `
-                    <div class="hero-card-header">
-                        <div class="hero-card-tier-pill">${tierName}</div>
-                        ${p.badge ? `<div class="hero-card-badge">${p.badge}</div>` : ""}
-                    </div>
-                    <div class="hero-card-portrait">
-                        <div class="hero-avatar-halo"></div>
-                        <img src="assets/pieces/${p.id}.svg" class="hero-avatar-svg" alt="${p.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
-                        <div class="hero-avatar-icon" style="display:none;">${p.icon}</div>
-                    </div>
-                    <div class="hero-card-title-wrap">
-                        <h4 class="hero-card-name">${p.name}</h4>
-                        <div class="hero-card-traits">${traitsBadges}</div>
-                    </div>
-                    <div class="hero-card-stats-grid">
-                        <div class="hero-stat-cell">
-                            <span class="hero-stat-label"><i data-lucide="shield" class="icon-emerald"></i> Máu (★ / ★★ / ★★★)</span>
-                            <span class="hero-stat-val">${p.baseHp.join(" / ")}</span>
-                        </div>
-                        <div class="hero-stat-cell">
-                            <span class="hero-stat-label"><i data-lucide="crosshair" class="icon-red"></i> Tầm Đánh</span>
-                            <span class="hero-stat-val">${p.range.join(" / ")} ô</span>
-                        </div>
-                    </div>
-                    <div class="hero-card-desc">
-                        <span class="hero-desc-icon"><i data-lucide="zap" class="icon-amber"></i></span>
-                        <span>${p.desc}</span>
-                    </div>
-                    <button class="btn-game btn-game-cyan codex-view-guide-btn" data-piece-id="${p.id}" style="font-size:0.75rem; padding:6px 10px; margin-top:6px; font-weight:700; width:100%; border-radius:6px; cursor:pointer;"><i data-lucide="compass" class="icon-cyan"></i> Xem Bàn Cờ Nước Đi & Mẹo Chơi</button>
-                `;
-
-                const guideBtn = card.querySelector(".codex-view-guide-btn");
-                if (guideBtn) {
-                    guideBtn.addEventListener("click", () => {
-                        this.openPieceGuide(p.id);
-                    });
-                }
-
-                container.appendChild(card);
-            }
-        } else if (this.codexActiveTab === "synergies") {
-            for (const syn of Object.values(window.CHESS_TFT_DATA.SYNERGIES)) {
-                const unitBadges = Object.values(window.CHESS_TFT_DATA.PIECES)
-                    .filter(p => p.traits && p.traits.includes(syn.id))
-                    .map(p => `<span class="syn-unit-chip cost-tier-${p.cost}">${p.icon} ${p.name} (${p.isKing ? "Vua" : p.cost + " Vàng"})</span>`)
-                    .join(" ");
-
-                const tiersHtml = syn.thresholds.map(th => `
-                    <div class="syn-tier-row">
-                        <span class="syn-threshold-badge">Mốc [${th}]</span>
-                        <span class="syn-threshold-effect">${syn.effectText[th]}</span>
-                    </div>
-                `).join("");
-
-                const card = document.createElement("div");
-                card.className = "game-synergy-card";
-                card.innerHTML = `
-                    <div class="synergy-card-head" style="border-left: 4px solid ${syn.color};">
-                        <div class="synergy-card-title">
-                            <span class="synergy-crest" style="background:${syn.color};">${syn.icon}</span>
-                            <div>
-                                <h4 class="synergy-name">${syn.name}</h4>
-                                <span class="synergy-milestone-tag">Yêu cầu mốc: ${syn.thresholds.join(" / ")} quân</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="synergy-card-desc">${syn.desc}</div>
-                    <div class="synergy-thresholds-container">${tiersHtml}</div>
-                    <div class="synergy-units-list">
-                        <span class="synergy-units-title"><i data-lucide="shield" class="icon-cyan"></i> Danh sách quân cờ:</span>
-                        <div class="synergy-units-flex">${unitBadges}</div>
-                    </div>
-                `;
-                container.appendChild(card);
-            }
-        } else if (this.codexActiveTab === "items") {
-            for (const it of Object.values(window.CHESS_TFT_DATA.ITEMS)) {
-                const card = document.createElement("div");
-                card.className = "game-item-card";
-                card.innerHTML = `
-                    <div class="item-card-head">
-                        <div class="item-icon-frame">${it.icon}</div>
-                        <div class="item-title-wrap">
-                            <h4 class="item-name">${it.name}</h4>
-                            <span class="item-type-badge">Trang Bị Hoàn Chỉnh</span>
-                        </div>
-                    </div>
-                    <div class="item-card-desc">${it.desc}</div>
-                `;
-                container.appendChild(card);
-            }
-            for (const mp of window.CHESS_TFT_DATA.MAPS) {
-                const card = document.createElement("div");
-                card.className = "game-item-card game-map-card";
-                card.innerHTML = `
-                    <div class="item-card-head">
-                        <div class="item-icon-frame"><i data-lucide="map" class="icon-cyan"></i></div>
-                        <div class="item-title-wrap">
-                            <h4 class="item-name">${mp.name}</h4>
-                            <span class="item-type-badge map-type-badge">Đấu Trường Chiến Thuật</span>
-                        </div>
-                    </div>
-                    <div class="item-card-desc">${mp.desc}</div>
-                `;
-                container.appendChild(card);
-            }
-        } else if (this.codexActiveTab === "rules") {
-            const st = window.CHESS_TFT_DATA.STAGE_CONFIG;
-            const df = window.CHESS_TFT_DATA.DAMAGE_FORMULA || {};
-            container.style.gridTemplateColumns = "1fr";
-            container.innerHTML = `
-                <div class="game-rule-card">
-                    <div class="rule-card-title"><i data-lucide="clock" class="icon-cyan"></i> 1. Thời Gian Đồng Hồ Cờ Chớp & Mở Rộng Bàn Cờ</div>
-                    <div class="rule-card-content">
-                        <div class="rule-row">
-                            <span class="rule-badge">Stage 1</span>
-                            <span>Bàn cờ <code>${st[1].cols}x${st[1].rows}</code> — Đồng hồ <strong>${st[1].blitzTime}s + ${st[1].increment}s/nước</strong>.</span>
-                        </div>
-                        <div class="rule-row">
-                            <span class="rule-badge">Stage 2</span>
-                            <span>Bàn cờ <code>${st[2].cols}x${st[2].rows}</code> — Đồng hồ <strong>${st[2].blitzTime}s + ${st[2].increment}s/nước</strong>.</span>
-                        </div>
-                        <div class="rule-row">
-                            <span class="rule-badge">Stage 3+</span>
-                            <span>Bàn cờ <code>${st[3].cols}x${st[3].rows}</code> — Đồng hồ <strong>${st[3].blitzTime}s + ${st[3].increment}s/nước</strong>.</span>
-                        </div>
-                        <div class="rule-note">
-                            <i data-lucide="eye-off" class="icon-cyan"></i> <strong>Soi Bài Bảo Mật:</strong> Khi bấm xem nhà đối thủ lúc Chuẩn Bị, toàn bộ địa hình bản đồ bị ẩn đi để bạn không biết trước mình sắp gặp ai!
-                        </div>
-                    </div>
-                </div>
-
-                <div class="game-rule-card">
-                    <div class="rule-card-title"><i data-lucide="swords" class="icon-red"></i> 2. Công Thức Tính Sát Thương Máu Linh Hồn (Player HP)</div>
-                    <div class="rule-card-content">
-                        <div class="rule-row rule-row-danger">
-                            <span class="rule-badge badge-danger">Chiếu Hết (Checkmate) / Hết Giờ</span>
-                            <span>Trừ máu NẶNG = <code>(${df.checkmateBase || 8} + ${df.checkmateStageMult || 2} × Stage) + ${df.checkmatePerUnit || 2} × (Số quân còn sống của bên thắng)</code>.</span>
-                        </div>
-                        <div class="rule-row rule-row-warn">
-                            <span class="rule-badge badge-warn">Ăn Vua (Quên Đỡ Chiếu)</span>
-                            <span>Trừ máu NHẸ HƠN = <code>(${df.kingCaptureBase || 3} + ${df.kingCaptureStageMult || 1} × Stage) + Chênh lệch quân trên sân</code>.</span>
-                        </div>
-                        <div class="rule-row">
-                            <span class="rule-badge">Hòa Cờ Chớp</span>
-                            <span>Cả 2 bên bị trừ <code>(${df.drawBase || 4} + Stage)</code> Máu.</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="game-rule-card">
-                    <div class="rule-card-title"><i data-lucide="flame" class="icon-amber"></i> 3. Cơ Chế Chuỗi Thắng / Thua & Lội Ngược Dòng (Comeback)</div>
-                    <div class="rule-card-content">
-                        <div class="rule-row">
-                            <span class="rule-badge badge-gold">Thưởng Chuỗi Vàng</span>
-                            <span>Chuỗi 2-3 trận: <strong>+1 Vàng</strong> | Chuỗi 4 trận: <strong>+2 Vàng</strong> | Chuỗi 5+ trận: <strong>+3 Vàng</strong> mỗi vòng.</span>
-                        </div>
-                        <div class="rule-row">
-                            <span class="rule-badge badge-purple"><i data-lucide="refresh-cw" class="icon-cyan"></i> Hỗ Trợ Chuỗi Thua (≥ 3 trận)</span>
-                            <span>Mỗi vòng nhận <strong>+1 Lượt Đổi Shop Miễn Phí</strong> giúp người có bài yếu dễ dàng lật kèo.</span>
-                        </div>
-                        <div class="rule-row">
-                            <span class="rule-badge badge-purple"><i data-lucide="package" class="icon-amber"></i> Hòm Cứu Trợ (Chuỗi Thua ≥ 4 trận)</span>
-                            <span>Tặng ngay <strong>+10 Vàng</strong> và <strong>1 Trang Bị Hoàn Chỉnh</strong> ngẫu nhiên!</span>
-                        </div>
-                        <div class="rule-row rule-row-danger">
-                            <span class="rule-badge badge-danger"><i data-lucide="shield-alert" class="icon-red"></i> Ý Chí Phục Thù (Máu ≤ 25 HP)</span>
-                            <span>Khi máu rơi xuống ≤ 25 lần đầu tiên: Lập tức nhận <strong>+15 Vàng</strong>, Quốc Vương được tăng vĩnh viễn <strong>+1 Lớp Máu</strong> và <strong>+15s</strong> thời gian đồng hồ cờ chớp!</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="game-rule-card">
-                    <div class="rule-card-title"><i data-lucide="coins" class="icon-gold"></i> 4. Cơ Chế Bán Tướng & Phí Ghép Sao</div>
-                    <div class="rule-card-content">
-                        <div class="rule-row">
-                            <span class="rule-badge badge-gold">Tướng 1⭐</span>
-                            <span>Bán hoàn lại <strong>100%</strong> giá mua ban đầu (1 Vàng ➔ 1 Vàng, 2 Vàng ➔ 2 Vàng...).</span>
-                        </div>
-                        <div class="rule-row">
-                            <span class="rule-badge badge-purple">Tướng 2⭐ (Ghép từ 3 con)</span>
-                            <span>Bán hoàn lại: <code>(Giá gốc × 3) - 1 Vàng Phí Ghép</code> (Tướng 1 Vàng hoàn 2 Vàng; Tướng 2 Vàng hoàn 5 Vàng; Tướng 3 Vàng hoàn 8 Vàng...). Toàn bộ trang bị trên người sẽ an toàn rơi về kho!</span>
-                        </div>
-                        <div class="rule-row">
-                            <span class="rule-badge badge-gold">Tướng 3⭐ (Ghép từ 9 con)</span>
-                            <span>Bán hoàn lại: <code>(Giá gốc × 9) - 2 Vàng Phí Ghép</code>.</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-            window.renderLucideIcons(container);
-            return;
-        }
-        container.style.gridTemplateColumns = "repeat(auto-fill, minmax(280px, 1fr))";
-        window.renderLucideIcons(container);
-        if (window.gsap) {
-            window.gsap.from(container.children, {
-                y: 12,
-                opacity: 0,
-                duration: 0.22,
-                stagger: 0.02,
-                ease: "power1.out",
-                clearProps: "transform,opacity"
-            });
-        }
-    }
-
-    // ========================================================================
-    // INTERACTIVE PIECE GUIDE & 5x5 MOVEMENT CODEX
-    // ========================================================================
-    openPieceGuide(pieceId = null) {
-        const modal = document.getElementById("modal-piece-guide");
-        if (!modal) return;
-        modal.classList.remove("hidden");
-        this.guideFilter = this.guideFilter || "all";
-
-        // Bind filter tabs if not already bound
-        if (!this._guideFiltersBound) {
-            this._guideFiltersBound = true;
-            modal.querySelectorAll(".guide-filter-pill").forEach(pill => {
-                pill.addEventListener("click", () => {
-                    modal.querySelectorAll(".guide-filter-pill").forEach(p => p.classList.remove("active"));
-                    pill.classList.add("active");
-                    const f = pill.getAttribute("data-filter");
-                    this.guideFilter = f;
-                    this.renderPieceGuide(this.guideSelectedPieceId, f);
-                });
-            });
-        }
-
-        const pieces = Object.values(window.CHESS_TFT_DATA.PIECES);
-        const targetId = pieceId || (pieces.length ? pieces[0].id : "shield_pawn");
-        this.renderPieceGuide(targetId, this.guideFilter);
-    }
-
-    closePieceGuide() {
-        const modal = document.getElementById("modal-piece-guide");
-        if (modal) modal.classList.add("hidden");
-    }
-
-    renderPieceGuide(selectedId, filter = "all") {
-        this.guideSelectedPieceId = selectedId;
-        const allPieces = Object.values(window.CHESS_TFT_DATA.PIECES);
-        // Sort order: 1, 2, 3, 4, 5, then King (0)
-        allPieces.sort((a, b) => {
-            if (a.isKing) return 1;
-            if (b.isKing) return -1;
-            return a.cost - b.cost;
-        });
-
-        let filtered = allPieces;
-        if (filter === "king") {
-            filtered = allPieces.filter(p => p.isKing);
-        } else if (filter !== "all") {
-            const costNum = parseInt(filter, 10);
-            filtered = allPieces.filter(p => !p.isKing && p.cost === costNum);
-        }
-
-        if (!filtered.some(p => p.id === selectedId)) {
-            selectedId = filtered.length ? filtered[0].id : allPieces[0].id;
-            this.guideSelectedPieceId = selectedId;
-        }
-
-        // Render Left Piece List
-        const listEl = document.getElementById("guide-piece-list");
-        if (listEl) {
-            listEl.innerHTML = "";
-            for (const p of filtered) {
-                const item = document.createElement("div");
-                item.className = `guide-piece-item cost-tier-${p.cost} ${p.id === selectedId ? "active" : ""}`;
-                item.innerHTML = `
-                    <div class="guide-item-left">
-                        <img src="assets/pieces/${p.id}.svg" style="width:24px; height:24px; border-radius:4px;" alt="${p.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
-                        <span class="guide-item-icon" style="display:none;">${p.icon}</span>
-                        <span class="guide-item-name">${p.name}</span>
-                    </div>
-                    <span class="guide-item-cost">${p.isKing ? "👑 Vua" : p.cost + "🪙"}</span>
-                `;
-                item.addEventListener("click", () => {
-                    this.renderPieceGuide(p.id, this.guideFilter);
-                });
-                listEl.appendChild(item);
-            }
-        }
-
-        // Render Right Piece Detail
-        const detailEl = document.getElementById("guide-piece-detail");
-        const def = window.CHESS_TFT_DATA.PIECES[selectedId];
-        if (!detailEl || !def) return;
-
-        const traitsHtml = (def.traits || []).map(tId => {
-            const s = window.CHESS_TFT_DATA.SYNERGIES[tId];
-            return s ? `<span class="codex-trait-badge" style="border-color:${s.color}; background:rgba(${parseInt(s.color.slice(1,3),16)||20},${parseInt(s.color.slice(3,5),16)||30},${parseInt(s.color.slice(5,7),16)||50},0.28)">${s.icon} ${s.name}</span>` : `<span class="codex-trait-badge">${tId}</span>`;
-        }).join(" ");
-
-        const grid = this.getPieceMovementGrid(def.id);
-        let hasMove = false, hasAttack = false, hasJump = false, hasPawnAtk = false, hasCannon = false;
-
-        let cellsHtml = "";
-        for (let r = 0; r < 5; r++) {
-            for (let c = 0; c < 5; c++) {
-                const cellType = grid[r][c];
-                const isLight = (r + c) % 2 === 0;
-                let cellClass = `guide-cell ${isLight ? "cell-light" : ""}`;
-                let cellContent = "";
-                let cellTitle = "";
-
-                if (cellType === "center") {
-                    cellClass += " cell-center";
-                    cellContent = def.icon;
-                    cellTitle = `${def.name} (Tọa độ hiện tại)`;
-                } else if (cellType === "move") {
-                    cellClass += " cell-move";
-                    cellContent = "🟢";
-                    cellTitle = "Nước di chuyển hợp lệ";
-                    hasMove = true;
-                } else if (cellType === "attack") {
-                    cellClass += " cell-attack";
-                    cellContent = "🎯";
-                    cellTitle = "Tầm bắn từ xa (không cần bước vào)";
-                    hasAttack = true;
-                } else if (cellType === "jump") {
-                    cellClass += " cell-jump";
-                    cellContent = "⚡";
-                    cellTitle = "Nhảy chữ L (vượt qua mọi địa hình và quân cản)";
-                    hasJump = true;
-                } else if (cellType === "pawn-atk") {
-                    cellClass += " cell-pawn-atk";
-                    cellContent = "⚔️";
-                    cellTitle = "Ăn chéo cận chiến (Tiêu diệt kẻ địch phía trước)";
-                    hasPawnAtk = true;
-                } else if (cellType === "cannon") {
-                    cellClass += " cell-cannon";
-                    cellContent = "💣";
-                    cellTitle = "Bắn đại bác xuyên ngòi nổ (nhảy cóc qua 1 quân cản)";
-                    hasCannon = true;
-                }
-
-                cellsHtml += `<div class="${cellClass}" title="${cellTitle}">${cellContent}</div>`;
-            }
-        }
-
-        const guide = def.guide || {};
-
-        detailEl.innerHTML = `
-            <div class="guide-detail-header">
-                <div class="guide-detail-title-row">
-                    <div class="guide-detail-avatar">
-                        <img src="assets/pieces/${def.id}.svg" class="guide-avatar-img" alt="${def.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
-                        <span style="display:none;">${def.icon}</span>
-                    </div>
-                    <div class="guide-detail-meta">
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <h3 class="guide-detail-name">${def.name}</h3>
-                            <span class="guide-item-cost">${def.isKing ? "👑 Tối Thượng" : def.cost + " 🪙"}</span>
-                        </div>
-                        <div class="guide-detail-traits">${traitsHtml}</div>
-                    </div>
-                </div>
-                <div class="guide-detail-stats-row">
-                    <div class="guide-stat-badge">🛡️ Lớp Máu: ${def.baseHp.join(" / ")} (★/★★/★★★)</div>
-                    <div class="guide-stat-badge">🎯 Tầm Đánh: ${def.range.join(" / ")} ô</div>
-                </div>
-            </div>
-
-            <div class="guide-board-wrap">
-                <div class="guide-5x5-board">${cellsHtml}</div>
-                <div class="guide-board-legend">
-                    <div class="guide-legend-title">📖 KÝ HIỆU MINH HỌA NƯỚC ĐI</div>
-                    <div class="guide-legend-row">
-                        <span class="guide-legend-chip chip-center">♟️</span>
-                        <span><strong>Vị trí hiện tại:</strong> Trung tâm bàn cờ</span>
-                    </div>
-                    ${hasMove ? `<div class="guide-legend-row"><span class="guide-legend-chip chip-move">🟢</span><span><strong>Nước di chuyển:</strong> Bước vào ô trống</span></div>` : ""}
-                    ${hasAttack ? `<div class="guide-legend-row"><span class="guide-legend-chip chip-attack">🎯</span><span><strong>Tầm bắn từ xa:</strong> Bắn hạ địch mà không cần di chuyển</span></div>` : ""}
-                    ${hasJump ? `<div class="guide-legend-row"><span class="guide-legend-chip chip-jump">⚡</span><span><strong>Nhảy chữ L:</strong> Nhảy qua đầu quân cờ & địa hình</span></div>` : ""}
-                    ${hasPawnAtk ? `<div class="guide-legend-row"><span class="guide-legend-chip chip-pawn">⚔️</span><span><strong>Ăn chéo cận chiến:</strong> Ăn quân địch ở ô chéo phía trước</span></div>` : ""}
-                    ${hasCannon ? `<div class="guide-legend-row"><span class="guide-legend-chip chip-cannon">💣</span><span><strong>Đại bác xuyên thấu:</strong> Nhảy qua đúng 1 quân cản để nổ tung mục tiêu</span></div>` : ""}
-                </div>
-            </div>
-
-            <div class="guide-cards-grid">
-                <div class="guide-info-card">
-                    <div class="guide-card-head">🧭 1. QUY LUẬT DI CHUYỂN</div>
-                    <div class="guide-card-text">${guide.moveRule || def.desc}</div>
-                </div>
-                <div class="guide-info-card">
-                    <div class="guide-card-head">⚔️ 2. TẤN CÔNG & KỸ NĂNG</div>
-                    <div class="guide-card-text">${guide.attackRule || "Cận chiến 1 ô."} ${guide.skillRule || ""}</div>
-                </div>
-                <div class="guide-info-card full-width">
-                    <div class="guide-card-head">💡 3. VỊ TRÍ ĐẶT & MẸO TÂN THỦ</div>
-                    <div class="guide-card-text">
-                        • <strong>Vị trí khuyến nghị:</strong> <span style="color:#fde047; font-weight:700;">${guide.recommendedPos || "Tiền tuyến"}</span><br/>
-                        • <strong>Vai trò chiến thuật:</strong> <span style="color:#60a5fa; font-weight:700;">${guide.role || "Đa dụng"}</span><br/>
-                        • <strong>Mẹo hay:</strong> ${guide.tips || def.desc}
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    getPieceMovementGrid(pieceId) {
-        const grid = Array.from({ length: 5 }, () => Array(5).fill(null));
-        grid[2][2] = "center";
-        const def = window.CHESS_TFT_DATA.PIECES[pieceId];
-        if (!def) return grid;
-
-        const orthoDirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-        const diagDirs = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
-        const allDirs = [...orthoDirs, ...diagDirs];
-        const knightJumps = [
-            [-2, -1], [-2, 1], [-1, -2], [-1, 2],
-            [1, -2], [1, 2], [2, -1], [2, 1]
-        ];
-
-        const in5 = (r, c) => r >= 0 && r < 5 && c >= 0 && c < 5;
-
-        switch (def.id) {
-            case "king": {
-                for (const [dr, dc] of allDirs) {
-                    const nr = 2 + dr, nc = 2 + dc;
-                    if (in5(nr, nc)) grid[nr][nc] = "move";
-                }
-                break;
-            }
-            case "shield_pawn": {
-                grid[1][2] = "move";
-                grid[1][1] = "pawn-atk";
-                grid[1][3] = "pawn-atk";
-                break;
-            }
-            case "mercenary": {
-                for (const [dr, dc] of allDirs) {
-                    const nr = 2 + dr, nc = 2 + dc;
-                    if (in5(nr, nc)) grid[nr][nc] = "move";
-                }
-                break;
-            }
-            case "fire_mage": {
-                for (const [dr, dc] of orthoDirs) {
-                    grid[2 + dr][2 + dc] = "move";
-                    grid[2 + dr * 2][2 + dc * 2] = "attack";
-                }
-                break;
-            }
-            case "archer": {
-                for (const [dr, dc] of allDirs) {
-                    grid[2 + dr][2 + dc] = "move";
-                    if (in5(2 + dr * 2, 2 + dc * 2)) grid[2 + dr * 2][2 + dc * 2] = "attack";
-                }
-                break;
-            }
-            case "knight":
-            case "frost_knight": {
-                for (const [dr, dc] of knightJumps) {
-                    const nr = 2 + dr, nc = 2 + dc;
-                    if (in5(nr, nc)) grid[nr][nc] = "jump";
-                }
-                break;
-            }
-            case "pyro_bishop": {
-                for (const [dr, dc] of diagDirs) {
-                    grid[2 + dr][2 + dc] = "move";
-                    grid[2 + dr * 2][2 + dc * 2] = "attack";
-                }
-                break;
-            }
-            case "juggernaut": {
-                for (const [dr, dc] of orthoDirs) {
-                    grid[2 + dr][2 + dc] = "move";
-                    grid[2 + dr * 2][2 + dc * 2] = "move";
-                }
-                break;
-            }
-            case "cannon": {
-                for (const [dr, dc] of orthoDirs) {
-                    grid[2 + dr][2 + dc] = "move";
-                    grid[2 + dr * 2][2 + dc * 2] = "cannon";
-                }
-                break;
-            }
-            case "frost_rook": {
-                for (const [dr, dc] of orthoDirs) {
-                    grid[2 + dr][2 + dc] = "move";
-                    grid[2 + dr * 2][2 + dc * 2] = "move";
-                }
-                break;
-            }
-            case "grand_queen": {
-                for (const [dr, dc] of allDirs) {
-                    grid[2 + dr][2 + dc] = "move";
-                    if (in5(2 + dr * 2, 2 + dc * 2)) grid[2 + dr * 2][2 + dc * 2] = "attack";
-                }
-                break;
-            }
-            case "chancellor": {
-                for (const [dr, dc] of orthoDirs) {
-                    grid[2 + dr][2 + dc] = "move";
-                    grid[2 + dr * 2][2 + dc * 2] = "move";
-                }
-                for (const [dr, dc] of knightJumps) {
-                    const nr = 2 + dr, nc = 2 + dc;
-                    if (in5(nr, nc)) grid[nr][nc] = "jump";
-                }
-                break;
-            }
-            case "gambler": {
-                for (const [dr, dc] of orthoDirs) {
-                    grid[2 + dr][2 + dc] = "move";
-                    grid[2 + dr * 2][2 + dc * 2] = "attack";
-                }
-                break;
-            }
-            case "corsair": {
-                for (const [dr, dc] of allDirs) {
-                    grid[2 + dr][2 + dc] = "move";
-                    if (in5(2 + dr * 2, 2 + dc * 2)) grid[2 + dr * 2][2 + dc * 2] = "attack";
-                }
-                break;
-            }
-            case "target_dummy": {
-                // Dummy stands still, no moves
-                break;
-            }
-            default: {
-                for (const [dr, dc] of allDirs) {
-                    const nr = 2 + dr, nc = 2 + dc;
-                    if (in5(nr, nc)) grid[nr][nc] = "move";
-                }
-                break;
-            }
-        }
-
-        return grid;
-    }
-
-    highlightPieceMovementPreview(pieceId, centerR, centerC) {
-        this.clearMovementPreview();
-        if (!Number.isInteger(centerR) || !Number.isInteger(centerC)) return;
-        const boardEl = document.getElementById("chess-board");
-        if (!boardEl) return;
-
-        const totalRows = (this.chess && this.chess.rows) ? this.chess.rows : (this.tft ? this.tft.getStageConfig().rows : 6);
-        const totalCols = (this.chess && this.chess.cols) ? this.chess.cols : (this.tft ? this.tft.getStageConfig().cols : 5);
-
-        const r0 = centerR;
-        const c0 = centerC;
-
-        const grid = this.getPieceMovementGrid(pieceId);
-        // grid is 5x5, center is (2,2)
-        for (let dr = -2; dr <= 2; dr++) {
-            for (let dc = -2; dc <= 2; dc++) {
-                if (dr === 0 && dc === 0) continue;
-                const type = grid[dr + 2][dc + 2];
-                if (!type) continue;
-
-                const tr = r0 + dr;
-                const tc = c0 + dc;
-                if (tr >= 0 && tr < totalRows && tc >= 0 && tc < totalCols) {
-                    let cellEl = boardEl.querySelector(`.board-cell[data-row='${tr}'][data-col='${tc}']`);
-                    if (!cellEl) {
-                        const cellIdx = tr * totalCols + tc;
-                        cellEl = boardEl.children[cellIdx];
-                    }
-                    if (cellEl) {
-                        if (type === "attack" || type === "pawn-atk" || type === "cannon") {
-                            cellEl.classList.add("cell-preview-attack");
-                        } else {
-                            cellEl.classList.add("cell-preview-move");
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    highlightCombatPieceHover(r, c) {
-        this.clearMovementPreview();
-        if (!this.chess) return;
-        const boardEl = document.getElementById("chess-board");
-        if (!boardEl) return;
-
-        const piece = this.chess.board[r] && this.chess.board[r][c];
-        if (!piece) return;
-
-        // Use real engine actions for the hovered piece (both player and enemy)
-        const actions = this.chess.getPieceActions(r, c, true);
-        if (actions && actions.length > 0) {
-            actions.forEach(act => {
-                const cellEl = boardEl.querySelector(`.board-cell[data-row='${act.toR}'][data-col='${act.toC}']`);
-                if (cellEl) {
-                    if (act.type === "ranged" || act.type === "melee" || act.type === "pawn-capture" || act.type === "cannon-fire") {
-                        cellEl.classList.add("cell-preview-attack");
-                    } else {
-                        cellEl.classList.add("cell-preview-move");
-                    }
-                }
-            });
-        } else {
-            // Show theoretical movement range if temporarily blocked or in opening grace
-            this.highlightPieceMovementPreview(piece.id, r, c);
-        }
-    }
-
-    clearMovementPreview() {
-        const boardEl = document.getElementById("chess-board");
-        if (!boardEl) return;
-        const activeMoves = boardEl.querySelectorAll(".cell-preview-move, .cell-preview-attack");
-        activeMoves.forEach(el => {
-            el.classList.remove("cell-preview-move", "cell-preview-attack");
-        });
-    }
-
-    startNewGameSession(roomData = null) {
-        this.stopCombatTimers();
-        this.clearAllCountdowns();
-        this.tft.resetGame(this.currentUser, roomData);
-        this.chess = null;
-        this.selectedPrepUnitUid = null;
-        const roomBadge = document.getElementById("game-room-badge");
-        if (roomBadge) roomBadge.textContent = roomData ? `Phòng: #${roomData.code}` : "Chế độ: Đấu Đơn";
-        this.showScreen("game");
-        this.renderAll();
-        this.syncMyStateToRoom();
-        this.startPrepCountdown();
-        this.showToast("⚔️ Trận đấu bắt đầu! Hãy mua quân, xếp đội hình và chuẩn bị giao tranh!", "success");
-    }
-
-    // ========================================================================
-    // INTERACTIVE TUTORIAL WITH COACH BOT (CHẾ ĐỘ HƯỚNG DẪN TỪNG BƯỚC)
-    // ========================================================================
-    startTutorialSession() {
-        this.isTutorialMode = true;
-        this.tutorialStep = 1;
-        this.isRankedMode = false;
-
-        const coachBot = {
-            id: "bot_coach_martin",
-            name: "Bot Martin (Huấn Luyện Viên)",
-            avatar: "🎓",
-            isBot: true,
-            hp: 60,
-            maxHp: 60,
-            level: 3,
-            gold: 6,
-            elo: 250,
-            board: [],
-            bench: []
-        };
-
-        const tutorialRoom = {
-            code: "TUTORIAL",
-            timeMode: "relaxed",
-            fillBots: false,
-            players: [
-                { id: this.currentUser ? this.currentUser.id : "guest", name: "Bạn (Học Viên)", avatar: "👑" },
-                coachBot
-            ]
-        };
-
-        this.startNewGameSession(tutorialRoom);
-        this.tft.bots = [coachBot];
-        this.tft.player.gold = 10;
-        this.renderAll();
-
-        const overlay = document.getElementById("tutorial-coach-overlay");
-        if (overlay) overlay.classList.remove("hidden");
-        this.renderTutorialStep(1);
-    }
-
-    renderTutorialStep(step) {
-        this.tutorialStep = step;
-        const ind = document.getElementById("tutorial-step-indicator");
-        const text = document.getElementById("tutorial-coach-text");
-        const nextBtn = document.getElementById("btn-tutorial-next-step");
-
-        document.querySelectorAll(".tutorial-highlight-target").forEach(el => el.classList.remove("tutorial-highlight-target"));
-
-        if (step === 1) {
-            if (ind) ind.textContent = "BƯỚC 1 / 4: MUA QUÂN";
-            if (text) text.textContent = "Chào bạn đến với Chess TFT! Mỗi lượt bạn sẽ nhận Vàng (🪙). Ở hàng dưới cùng là Cửa Hàng. Hãy bấm mua 1 quân cờ để đưa vào Hàng Chờ (Bench)!";
-            if (nextBtn) nextBtn.style.display = "none";
-            document.getElementById("shop-cards")?.classList.add("tutorial-highlight-target");
-        } else if (step === 2) {
-            if (ind) ind.textContent = "BƯỚC 2 / 4: XẾP ĐỘI HÌNH";
-            if (text) text.textContent = "Rất tốt! Quân cờ đã vào Hàng Chờ. Hãy bấm vào quân đó rồi bấm vào 1 ô trên nửa sân của bạn để xếp đội hình. Quân Đỡ Đòn xếp hàng trước, Quân Bắn Xa xếp hàng sau!";
-            if (nextBtn) nextBtn.style.display = "none";
-            document.querySelector(".tft-player-bench")?.classList.add("tutorial-highlight-target");
-        } else if (step === 3) {
-            if (ind) ind.textContent = "BƯỚC 3 / 4: TỘC / HỆ";
-            if (text) text.textContent = "Nhìn sang Bảng Tộc / Hệ bên trái! Khi có đủ quân cùng Tộc (Thiết Giáp, Kỵ Binh, Băng Quốc...), hiệu ứng buff sẽ kích hoạt. Tôi vừa tặng bạn 1 quân cùng Tộc vào Hàng Chờ, hãy xếp lên sân để kích hoạt Tộc!";
-            if (nextBtn) {
-                nextBtn.style.display = "inline-block";
-                nextBtn.textContent = "Tiếp Theo ➔";
-            }
-            // Tặng 1 quân cùng Tộc vào Bench để kích hoạt
-            const emptyBench = this.tft.player.bench.findIndex(b => b === null);
-            if (emptyBench !== -1) {
-                const boughtPieceId = this.tft.player.board.find(u => u.id !== "king")?.id || "shield_pawn";
-                const matchingDef = window.CHESS_TFT_DATA.PIECES[boughtPieceId];
-                const matchingTrait = (matchingDef && matchingDef.traits && matchingDef.traits[0]) || "guardian";
-                const partnerPiece = Object.values(window.CHESS_TFT_DATA.PIECES).find(p => p.id !== boughtPieceId && p.traits.includes(matchingTrait)) || window.CHESS_TFT_DATA.PIECES["frost_knight"];
-                this.tft.player.bench[emptyBench] = {
-                    uid: this.tft.nextUid("unit"),
-                    id: partnerPiece.id,
-                    stars: 1,
-                    items: []
-                };
-                this.renderAll();
-                this.showToast(`🎁 Martin đã tặng bạn 1 quân [${partnerPiece.name}] để ghép Tộc!`, "success");
-            }
-            document.getElementById("synergy-list")?.classList.add("tutorial-highlight-target");
-        } else if (step === 4) {
-            if (ind) ind.textContent = "BƯỚC 4 / 4: GIAO TRANH";
-            if (text) text.textContent = "Quân cờ có nhiều Lớp Máu (thanh xanh dưới chân). Mất Vua hoặc bị Chiếu Hết là THUA NGAY! Giờ hãy bấm nút '⚔️ VÀO TRẬN' để chiến đấu thử cùng tôi!";
-            if (nextBtn) nextBtn.style.display = "none";
-            document.getElementById("btn-start-combat")?.classList.add("tutorial-highlight-target");
-        }
-    }
-
-    advanceTutorialStep(step) {
-        if (!this.isTutorialMode) return;
-        this.sfx.starUp();
-        this.renderTutorialStep(step);
-    }
-
-    finishTutorialSession() {
-        this.isTutorialMode = false;
-        document.querySelectorAll(".tutorial-highlight-target").forEach(el => el.classList.remove("tutorial-highlight-target"));
-        document.getElementById("tutorial-coach-overlay")?.classList.add("hidden");
-        const modal = document.getElementById("modal-tutorial-complete");
-        if (modal) modal.classList.remove("hidden");
-        this.sfx.victory();
-
-        if (this.currentUser) {
-            if (!this.currentUser.stats) this.currentUser.stats = {};
-            this.currentUser.stats.elo = (this.currentUser.stats.elo || 1000) + 100;
-            if (!this.currentUser.customModifiers) this.currentUser.customModifiers = {};
-            this.currentUser.customModifiers.startingGold = (this.currentUser.customModifiers.startingGold || 6) + 20;
-            localStorage.setItem("chesstft_user", JSON.stringify(this.currentUser));
-            this.updateUserProfileUI(this.currentUser);
-        }
-    }
-
-    // ========================================================================
-    // SANDBOX / TRAINING MODE WITH GOD MODE TOOLKIT & DPS METER
-    // ========================================================================
-    startSandboxSession() {
-        this.isSandboxMode = true;
-        this.isTutorialMode = false;
-        this.isRankedMode = false;
-        this.sandboxEnemyAI = true;
-
-        const dummyBot = {
-            id: "bot_sandbox_dummy",
-            name: "Hình Nhân & Bot Thử Nghiệm",
-            avatar: "🎯",
-            isBot: true,
-            hp: 200,
-            maxHp: 200,
-            level: 8,
-            gold: 999,
-            elo: 1000,
-            board: [
-                { uid: "enemy_dummy_1", id: "target_dummy", r: 1, c: 1, stars: 2, items: [] },
-                { uid: "enemy_dummy_2", id: "target_dummy", r: 1, c: 2, stars: 3, items: [] },
-                { uid: "enemy_dummy_3", id: "target_dummy", r: 1, c: 3, stars: 2, items: [] }
-            ],
-            bench: []
-        };
-
-        const sandboxRoom = {
-            code: "SANDBOX",
-            timeMode: "relaxed",
-            fillBots: false,
-            players: [
-                { id: this.currentUser ? this.currentUser.id : "guest", name: "Kỳ Thủ Thử Nghiệm", avatar: "🛠️" },
-                dummyBot
-            ]
-        };
-
-        this.startNewGameSession(sandboxRoom);
-        this.tft.bots = [dummyBot];
-        this.tft.currentOpponent = dummyBot;
-
-        // Cấp tài nguyên dồi dào
-        this.tft.player.gold = 999;
-        this.tft.player.level = 8;
-        this.tft.player.xp = 0;
-        this.tft.player.hp = 100;
-
-        // Tặng sẵn bộ trang bị để test
-        this.tft.player.items = ["iron_armor", "stun_hammer", "burn_cloak", "sniper_scope", "phase_boots"];
-
-        // Khởi tạo giao diện
-        this.renderAll();
-        this.initSandboxModalEvents();
-        this.renderSandboxChampions();
-        this.renderSandboxItems();
-
-        // Mở panel DPS meter mặc định
-        const dpsPanel = document.getElementById("panel-dps-meter");
-        if (dpsPanel) dpsPanel.classList.remove("hidden");
-        this.renderDpsMeter();
-
-        this.showToast("🛠️ Đã vào Chế Độ Phòng Tập! Bấm nút '🛠️ PHÒNG TẬP' để triệu hồi tướng 3⭐, đồ đạc và hình nhân!", "success");
-    }
-
-    initSandboxModalEvents() {
-        const modal = document.getElementById("modal-sandbox-control");
-        const btnToggle = document.getElementById("btn-sandbox-panel-toggle");
-        const btnClose = document.getElementById("btn-close-sandbox-modal");
-        const btnFooterClose = document.getElementById("btn-footer-close-sandbox");
-
-        btnToggle?.replaceWith(btnToggle.cloneNode(true));
-        document.getElementById("btn-sandbox-panel-toggle")?.addEventListener("click", () => {
-            modal?.classList.remove("hidden");
-            this.renderSandboxChampions();
-            this.renderSandboxItems();
-        });
-
-        btnClose?.replaceWith(btnClose.cloneNode(true));
-        document.getElementById("btn-close-sandbox-modal")?.addEventListener("click", () => {
-            modal?.classList.add("hidden");
-        });
-
-        btnFooterClose?.replaceWith(btnFooterClose.cloneNode(true));
-        document.getElementById("btn-footer-close-sandbox")?.addEventListener("click", () => {
-            modal?.classList.add("hidden");
-        });
-
-        // Tab navigation inside sandbox modal
-        document.querySelectorAll(".sandbox-tab-btn").forEach(btn => {
-            btn.replaceWith(btn.cloneNode(true));
-        });
-        document.querySelectorAll(".sandbox-tab-btn").forEach(btn => {
-            btn.addEventListener("click", () => {
-                document.querySelectorAll(".sandbox-tab-btn").forEach(b => b.classList.remove("active"));
-                document.querySelectorAll(".sandbox-view-pane").forEach(p => p.classList.add("hidden"));
-                btn.classList.add("active");
-                const tab = btn.getAttribute("data-tab");
-                const targetPane = document.getElementById(`sandbox-view-${tab}`);
-                if (targetPane) targetPane.classList.remove("hidden");
-            });
-        });
-
-        // Enemy AI Toggle Checkbox
-        const chkAi = document.getElementById("chk-enemy-ai-active");
-        if (chkAi) {
-            chkAi.checked = this.sandboxEnemyAI;
-            chkAi.onchange = () => {
-                this.sandboxEnemyAI = chkAi.checked;
-                this.showToast(this.sandboxEnemyAI ? "🤖 Đã bật: Địch sẽ tấn công và di chuyển!" : "🎯 Đã tắt: Địch sẽ đứng yên làm bia thử nghiệm!", "info");
-            };
-        }
-
-        // Enemy Presets
-        document.getElementById("btn-enemy-preset-dummy")?.addEventListener("click", () => {
-            if (!this.tft.currentOpponent) return;
-            this.tft.currentOpponent.board = [
-                { uid: `dummy_${Date.now()}_1`, id: "target_dummy", r: 1, c: 1, stars: 2, items: [] },
-                { uid: `dummy_${Date.now()}_2`, id: "target_dummy", r: 1, c: 2, stars: 3, items: [] },
-                { uid: `dummy_${Date.now()}_3`, id: "target_dummy", r: 1, c: 3, stars: 2, items: [] }
-            ];
-            this.showToast("🎯 Đã tạo 3 Hình Nhân Tập Đánh (Dummy) 2⭐-3⭐ bên phía địch!", "success");
-            this.renderAll();
-        });
-
-        document.getElementById("btn-enemy-preset-vanguard")?.addEventListener("click", () => {
-            if (!this.tft.currentOpponent) return;
-            this.tft.currentOpponent.board = [
-                { uid: `vang_${Date.now()}_0`, id: "king", r: 0, c: 2, stars: 1, items: [] },
-                { uid: `vang_${Date.now()}_1`, id: "shield_pawn", r: 1, c: 1, stars: 3, items: ["iron_armor"] },
-                { uid: `vang_${Date.now()}_2`, id: "heavy_rook", r: 1, c: 2, stars: 3, items: ["iron_armor", "stun_hammer"] },
-                { uid: `vang_${Date.now()}_3`, id: "shield_pawn", r: 1, c: 3, stars: 3, items: ["iron_armor"] }
-            ];
-            this.showToast("🛡️ Đã đặt Đội Hình Siêu Thiết Giáp 3⭐ cho đối thủ!", "success");
-            this.renderAll();
-        });
-
-        document.getElementById("btn-enemy-preset-assassin")?.addEventListener("click", () => {
-            if (!this.tft.currentOpponent) return;
-            this.tft.currentOpponent.board = [
-                { uid: `ass_${Date.now()}_0`, id: "king", r: 0, c: 2, stars: 1, items: [] },
-                { uid: `ass_${Date.now()}_1`, id: "shadow_bishop", r: 1, c: 0, stars: 3, items: ["burn_cloak"] },
-                { uid: `ass_${Date.now()}_2`, id: "shadow_bishop", r: 1, c: 4, stars: 3, items: ["sniper_scope"] },
-                { uid: `ass_${Date.now()}_3`, id: "cavalry_knight", r: 1, c: 2, stars: 3, items: ["phase_boots"] }
-            ];
-            this.showToast("🗡️ Đã đặt Đội Hình Sát Thủ Đột Kích 3⭐ cho đối thủ!", "success");
-            this.renderAll();
-        });
-
-        document.getElementById("btn-enemy-preset-boss")?.addEventListener("click", () => {
-            if (!this.tft.currentOpponent) return;
-            this.tft.currentOpponent.board = [
-                { uid: `boss_${Date.now()}_0`, id: "king", r: 0, c: 2, stars: 1, items: [] },
-                { uid: `boss_${Date.now()}_1`, id: "grand_marshal", r: 1, c: 2, stars: 3, items: ["iron_armor", "burn_cloak", "stun_hammer"] }
-            ];
-            this.showToast("👑 Đã triệu hồi Đại Thừa Tướng 3⭐ Full Đồ cho đối thủ!", "warn");
-            this.renderAll();
-        });
-
-        document.getElementById("btn-enemy-clear-all")?.addEventListener("click", () => {
-            if (!this.tft.currentOpponent) return;
-            this.tft.currentOpponent.board = [
-                { uid: `enemy_king_only`, id: "king", r: 0, c: 2, stars: 1, items: [] }
-            ];
-            this.showToast("🧹 Đã dọn sạch quân trợ chiến của đối thủ (chỉ giữ Vua)!", "info");
-            this.renderAll();
-        });
-
-        // Cheats actions
-        document.getElementById("btn-cheat-add-gold")?.addEventListener("click", () => {
-            this.tft.player.gold += 999;
-            this.sfx.starUp();
-            this.renderAll();
-            this.showToast("🪙 +999 Vàng thành công!", "success");
-        });
-
-        document.getElementById("btn-cheat-max-level")?.addEventListener("click", () => {
-            this.tft.player.level = 8;
-            this.tft.player.xp = 0;
-            this.sfx.starUp();
-            this.renderAll();
-            this.showToast("⬆️ Đã nâng cấp sàn đấu lên Cấp 8 (Tối đa 8 quân)! ", "success");
-        });
-
-        document.getElementById("btn-cheat-heal-hp")?.addEventListener("click", () => {
-            this.tft.player.hp = 100;
-            this.sfx.starUp();
-            this.renderAll();
-            this.showToast("❤️ Đã hồi đầy 100 Máu!", "success");
-        });
-
-        document.getElementById("btn-cheat-upgrade-selected")?.addEventListener("click", () => {
-            if (!this.selectedPrepUnitUid) {
-                this.showToast("Vui lòng bấm chọn 1 quân cờ trên bàn hoặc hàng chờ trước!", "warn");
-                return;
-            }
-            let target = this.tft.player.board.find(u => u.uid === this.selectedPrepUnitUid);
-            if (!target) {
-                target = this.tft.player.bench.find(u => u && u.uid === this.selectedPrepUnitUid);
-            }
-            if (target) {
-                target.stars = 3;
-                this.sfx.starUp();
-                this.renderAll();
-                this.showToast(`⭐ Đã thăng cấp ${window.CHESS_TFT_DATA.PIECES[target.id]?.name} lên 3⭐ (MAX)!`, "success");
-            }
-        });
-
-        document.getElementById("btn-cheat-reset-board")?.addEventListener("click", () => {
-            this.stopCombatTimers();
-            this.chess = null;
-            this.tft.phase = "prep";
-            this.selectedCombatSquare = null;
-            this.validCombatActions = [];
-            this.renderAll();
-            this.renderDpsMeter();
-            this.showToast("🔄 Đã khôi phục bàn cờ về Giai Đoạn Chuẩn Bị!", "info");
-        });
-
-        document.getElementById("btn-cheat-start-combat")?.addEventListener("click", () => {
-            modal?.classList.add("hidden");
-            this.startBlitzCombat();
-        });
-    }
-
-    renderSandboxChampions() {
-        const grid = document.getElementById("sandbox-champion-grid");
-        if (!grid) return;
-        grid.innerHTML = "";
-
-        const pieces = window.CHESS_TFT_DATA.PIECES || {};
-        Object.values(pieces).forEach(p => {
-            const btn = document.createElement("div");
-            btn.className = "sandbox-champ-btn";
-            btn.innerHTML = `
-                <div class="sandbox-champ-icon">${p.icon}</div>
-                <div class="sandbox-champ-name">${p.name}</div>
-                <div class="sandbox-champ-cost">${p.cost === 0 ? "0 Vàng (Đặc biệt)" : `${p.cost} 🪙`}</div>
-            `;
-            btn.title = `Nhận ${p.name} vào Hàng Chờ`;
-
-            btn.addEventListener("click", () => {
-                const checkedRadio = document.querySelector('input[name="sandbox-star-val"]:checked');
-                const stars = checkedRadio ? parseInt(checkedRadio.value, 10) : 1;
-                this.spawnSandboxUnit(p.id, stars);
-            });
-
-            grid.appendChild(btn);
-        });
-    }
-
-    spawnSandboxUnit(pieceId, stars = 1) {
-        const emptyBench = this.tft.player.bench.findIndex(b => b === null);
-        const def = window.CHESS_TFT_DATA.PIECES[pieceId];
-        if (!def) return;
-
-        const newUnit = {
-            uid: this.tft.nextUid("unit"),
-            id: pieceId,
-            stars: stars,
-            items: []
-        };
-
-        if (emptyBench !== -1) {
-            this.tft.player.bench[emptyBench] = newUnit;
-            this.sfx.starUp();
-            this.showToast(`✨ Đã thêm [${stars}⭐ ${def.name}] vào Hàng Chờ!`, "success");
-            this.renderAll();
-        } else {
-            // Nếu bench đầy, thử tìm ô trống ở sân nhà
-            const cfg = this.tft.getStageConfig();
-            const freeSpot = this.tft.findFreeDeploySquare(this.tft.player, cfg);
-            if (freeSpot) {
-                newUnit.r = freeSpot.r;
-                newUnit.c = freeSpot.c;
-                this.tft.player.board.push(newUnit);
-                this.sfx.starUp();
-                this.showToast(`✨ Hàng chờ đầy, đã đưa [${stars}⭐ ${def.name}] thẳng lên sàn đấu!`, "success");
-                this.renderAll();
-            } else {
-                this.showToast("Cả Hàng Chờ lẫn Sàn Đấu đều đã đầy, hãy bán bớt quân!", "warn");
-            }
-        }
-    }
-
-    renderSandboxItems() {
-        const itemsGrid = document.getElementById("sandbox-items-grid");
-        if (itemsGrid) {
-            itemsGrid.innerHTML = "";
-            const items = window.CHESS_TFT_DATA.ITEMS || {};
-            Object.values(items).forEach(it => {
-                const card = document.createElement("div");
-                card.className = "sandbox-item-card";
-                card.innerHTML = `
-                    <span class="sandbox-item-icon">${it.icon}</span>
-                    <div class="sandbox-item-info">
-                        <div class="sandbox-item-name">${it.name}</div>
-                    </div>
-                `;
-                card.title = `${it.name}: ${it.desc}`;
-                card.addEventListener("click", () => {
-                    if (this.tft.player.items.length >= 10) {
-                        this.showToast("Kho trang bị đã đầy (tối đa 10 món)!", "warn");
-                        return;
-                    }
-                    this.tft.player.items.push(it.id);
-                    this.sfx.starUp();
-                    this.renderAll();
-                    this.showToast(`🎒 Đã nhận [${it.name}] vào Kho Đồ!`, "success");
-                });
-                itemsGrid.appendChild(card);
-            });
-        }
-
-        const augGrid = document.getElementById("sandbox-augments-grid");
-        if (augGrid) {
-            augGrid.innerHTML = "";
-            const augs = window.CHESS_TFT_DATA.AUGMENTS || [];
-            augs.forEach(aug => {
-                const card = document.createElement("div");
-                card.className = "sandbox-aug-card";
-                const isOwned = this.tft.player.augments.includes(aug.id);
-                card.style.opacity = isOwned ? "0.6" : "1";
-                card.innerHTML = `
-                    <div style="font-weight:700; color:#c084fc; font-size:0.78rem;">${aug.icon} ${aug.name} ${isOwned ? "✅ Đã Có" : ""}</div>
-                    <div style="font-size:0.68rem; color:#94a3b8; margin-top:2px;">${aug.desc}</div>
-                `;
-                card.addEventListener("click", () => {
-                    if (this.tft.player.augments.includes(aug.id)) {
-                        this.tft.player.augments = this.tft.player.augments.filter(id => id !== aug.id);
-                        this.showToast(`Đã gỡ Lõi [${aug.name}]`, "info");
-                    } else {
-                        this.tft.player.augments.push(aug.id);
-                        this.sfx.starUp();
-                        this.showToast(`🔮 Đã kích hoạt Lõi [${aug.name}]!`, "success");
-                    }
-                    this.renderAll();
-                    this.renderSandboxItems();
-                });
-                augGrid.appendChild(card);
-            });
-        }
-    }
-
-    renderDpsMeter() {
-        const dpsContainer = document.getElementById("dps-meter-list");
-        const totalLabel = document.getElementById("dps-total-label");
-        if (!dpsContainer) return;
-
-        if (!this.chess || !this.chess.damageStats || Object.keys(this.chess.damageStats).length === 0) {
-            dpsContainer.innerHTML = `<div class="empty-hint" style="font-size:0.72rem; padding:4px 0;">Chưa ghi nhận sát thương trong giao tranh...</div>`;
-            if (totalLabel) totalLabel.textContent = "0 dmg";
-            return;
-        }
-
-        const statsArray = Object.values(this.chess.damageStats).sort((a, b) => b.totalDamage - a.totalDamage);
-        const maxDamage = Math.max(1, statsArray[0]?.totalDamage || 1);
-        let sumDamage = 0;
-
-        dpsContainer.innerHTML = "";
-        statsArray.forEach(stat => {
-            sumDamage += stat.totalDamage;
-            const pct = Math.min(100, Math.round((stat.totalDamage / maxDamage) * 100));
-            const row = document.createElement("div");
-            row.className = `dps-row ${stat.side === "enemy" ? "enemy" : ""}`;
-            row.innerHTML = `
-                <div class="dps-bar-bg" style="width: ${pct}%;"></div>
-                <span class="dps-piece-icon">${stat.icon}</span>
-                <span class="dps-piece-name">${stat.name} ${"⭐".repeat(stat.stars || 1)}</span>
-                <span class="dps-value-box">${stat.totalDamage} 💥</span>
-            `;
-            row.title = `${stat.name}: ${stat.totalDamage} sát thương (${stat.hits} đòn đánh, ${stat.kills} mạng hạ gục)`;
-            dpsContainer.appendChild(row);
-        });
-
-        if (totalLabel) {
-            totalLabel.textContent = `${sumDamage} dmg`;
-        }
-    }
-
-    // ========================================================================
-    // 1V1 TACTICAL SKIRMISH BUILDER & ARENA
-    // ========================================================================
-    initSkirmishEvents() {
-        document.getElementById("btn-close-skirmish-builder")?.addEventListener("click", () => {
-            this.closeSkirmishBuilderModal();
-        });
-
-        document.getElementById("skirmish-map-select")?.addEventListener("change", (e) => {
-            this.skirmishState.mapId = e.target.value;
-            this.renderSkirmishBoard();
-        });
-
-        document.getElementById("skirmish-bot-select")?.addEventListener("change", (e) => {
-            this.skirmishState.botDifficulty = e.target.value;
-        });
-
-        document.getElementById("skirmish-time-select")?.addEventListener("change", (e) => {
-            this.skirmishState.timeControl = e.target.value;
-        });
-
-        document.getElementById("skirmish-role-select")?.addEventListener("change", (e) => {
-            this.skirmishRole = e.target.value;
-            const clashBtn = document.getElementById("btn-skirmish-start-clash");
-            if (clashBtn) {
-                if (this.skirmishRole === "spectator") {
-                    clashBtn.innerHTML = `<span>👁️</span><span>VÀO XEM 2 BOT ĐẤU (CLASH)!</span>`;
-                    this.showToast("👁️ Chế Độ Khán Giả: Trận đấu 1v1 sẽ tự động diễn ra giữa Bot Trắng và Bot Đen!", "info");
-                } else {
-                    clashBtn.innerHTML = `<span>⚔️</span><span>VÀO TRẬN ĐẤU (CLASH)!</span>`;
-                    this.showToast("⚔️ Chế Độ Thi Đấu: Bạn trực tiếp điều khiển quân cờ!", "info");
-                }
-            }
-        });
-
-        document.getElementById("skirmish-guide-select")?.addEventListener("change", (e) => {
-            this.guideMode = e.target.value;
-            localStorage.setItem("chesstft_guide_mode", this.guideMode);
-            if (this.updateGuideButtons) this.updateGuideButtons();
-            this.showToast(this.guideMode === "beginner" ? "🎓 Đã chọn: Chế độ Tân Thủ (Gợi ý đầy đủ)" : "♟️ Đã chọn: Chế độ Kỳ Thủ (Tắt gợi ý)", "info");
-        });
-
-        // Skirmish Spectator Control Bar events
-        document.getElementById("btn-skirmish-spec-pause")?.addEventListener("click", () => {
-            this.skirmishSpecPaused = !this.skirmishSpecPaused;
-            const pauseBtn = document.getElementById("btn-skirmish-spec-pause");
-            if (pauseBtn) pauseBtn.textContent = this.skirmishSpecPaused ? "▶️ Tiếp Tục" : "⏸️ Tạm Dừng";
-            this.showToast(this.skirmishSpecPaused ? "⏸️ Đã tạm dừng trận đấu 2 Bot!" : "▶️ Tiếp tục trận đấu!", "info");
-            if (!this.skirmishSpecPaused) {
-                this.scheduleSkirmishSpectatorTurn();
-            }
-        });
-
-        document.querySelectorAll(".skirmish-speed-btn").forEach(btn => {
-            btn.addEventListener("click", () => {
-                document.querySelectorAll(".skirmish-speed-btn").forEach(b => b.classList.remove("active"));
-                btn.classList.add("active");
-                this.skirmishSpecSpeed = Number(btn.getAttribute("data-speed")) || 1;
-                this.showToast(`⚡ Tốc độ xem: ${this.skirmishSpecSpeed}x`, "info");
-            });
-        });
-
-        document.getElementById("btn-skirmish-spec-back")?.addEventListener("click", () => {
-            this.stopCombatTimers();
-            document.getElementById("skirmish-spec-control-bar")?.classList.add("hidden");
-            this.isSkirmishSpectator = false;
-            this.showScreen("lobby");
-            this.openSkirmishBuilderModal();
-        });
-
-        document.getElementById("btn-skirmish-auto-preset")?.addEventListener("click", () => {
-            this.autoGenerateSkirmishPreset();
-        });
-
-        document.getElementById("btn-skirmish-reset-board")?.addEventListener("click", () => {
-            this.resetSkirmishBoard();
-        });
-
-        document.getElementById("btn-skirmish-start-clash")?.addEventListener("click", () => {
-            this.startSkirmishBattle();
-        });
-
-        document.getElementById("btn-skirmish-upgrade-star")?.addEventListener("click", () => {
-            this.upgradeSkirmishUnitStar();
-        });
-
-        document.getElementById("btn-skirmish-sell-unit")?.addEventListener("click", () => {
-            this.sellSkirmishUnit();
-        });
-    }
-
-    openSkirmishBuilderModal() {
-        this.isSkirmishMode = false;
-        const modal = document.getElementById("modal-skirmish-builder");
-        if (!modal) return;
-
-        // Ensure state has King
-        if (!this.skirmishState.units || this.skirmishState.units.length === 0) {
-            this.skirmishState.units = [
-                { uid: "skirmish_king", id: "king", r: 6, c: 2, stars: 1, cost: 0, isKing: true }
-            ];
-        }
-
-        this.calculateSkirmishGold();
-        this.renderSkirmishBoard();
-        this.renderSkirmishRoster();
-        this.renderSkirmishSynergies();
-
-        const roleSel = document.getElementById("skirmish-role-select");
-        if (roleSel) roleSel.value = this.skirmishRole || "player";
-
-        const clashBtn = document.getElementById("btn-skirmish-start-clash");
-        if (clashBtn) {
-            if (this.skirmishRole === "spectator") {
-                clashBtn.innerHTML = `<span>👁️</span><span>VÀO XEM 2 BOT ĐẤU (CLASH)!</span>`;
-            } else {
-                clashBtn.innerHTML = `<span>⚔️</span><span>VÀO TRẬN ĐẤU (CLASH)!</span>`;
-            }
-        }
-
-        const guideSel = document.getElementById("skirmish-guide-select");
-        if (guideSel) guideSel.value = this.guideMode || "beginner";
-
-        modal.classList.remove("hidden");
-    }
-
-    closeSkirmishBuilderModal() {
-        document.getElementById("modal-skirmish-builder")?.classList.add("hidden");
-    }
-
-    calculateSkirmishGold() {
-        const totalBudget = window.CHESS_TFT_DATA.SKIRMISH_CONFIG?.budget || 30;
-        let spent = 0;
-        for (const u of this.skirmishState.units) {
-            spent += Number(u.cost || 0);
-        }
-        this.skirmishState.budget = totalBudget;
-        this.skirmishState.goldRemaining = Math.max(0, totalBudget - spent);
-
-        const goldValEl = document.getElementById("skirmish-gold-val");
-        if (goldValEl) {
-            goldValEl.textContent = this.skirmishState.goldRemaining;
-        }
-
-        const countTagEl = document.getElementById("skirmish-unit-count-tag");
-        if (countTagEl) {
-            countTagEl.textContent = `${this.skirmishState.units.length} / 10 Quân`;
-        }
-    }
-
-    renderSkirmishBoard() {
-        const boardGrid = document.getElementById("skirmish-board");
-        if (!boardGrid) return;
-        boardGrid.innerHTML = "";
-
-        const cols = 6;
-        const rows = 7;
-        const mapDef = window.CHESS_TFT_DATA.MAPS.find(m => m.id === this.skirmishState.mapId) || window.CHESS_TFT_DATA.MAPS[2];
-        const terrain = mapDef.generateTerrain(cols, rows);
-
-        const selectedRosterPiece = this.skirmishState.selectedRosterPieceId 
-            ? window.CHESS_TFT_DATA.PIECES[this.skirmishState.selectedRosterPieceId] 
-            : null;
-
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                const cell = document.createElement("div");
-                cell.className = "skirmish-cell";
-                cell.dataset.r = r;
-                cell.dataset.c = c;
-
-                const terr = terrain[`${r},${c}`];
-                if (terr) {
-                    cell.classList.add(`terrain-${terr}`);
-                }
-
-                // Check zone
-                if (r <= 2) {
-                    cell.classList.add("enemy-zone");
-                } else if (r === 3) {
-                    cell.classList.add("terrain-zone");
-                } else {
-                    cell.classList.add("deploy-zone");
-                    // Valid drop indicator if placing from roster
-                    if (selectedRosterPiece && !terr) {
-                        const occupied = this.skirmishState.units.find(u => u.r === r && u.c === c);
-                        if (!occupied) {
-                            cell.classList.add("valid-target-drop");
-                        }
-                    }
-                }
-
-                // Check unit
-                const unit = this.skirmishState.units.find(u => u.r === r && u.c === c);
-                if (unit) {
-                    cell.classList.add("occupied");
-                    const def = window.CHESS_TFT_DATA.PIECES[unit.id];
-                    const starIdx = Math.min(2, (unit.stars || 1) - 1);
-                    const baseHp = def ? def.baseHp[starIdx] : 1;
-
-                    const starStr = unit.stars === 3 ? "⭐⭐⭐" : (unit.stars === 2 ? "⭐⭐" : "⭐");
-                    cell.innerHTML = `
-                        <span class="skirmish-piece-stars">${starStr}</span>
-                        <span class="skirmish-piece-avatar">${def?.icon || "♟️"}</span>
-                        <span class="skirmish-piece-hp">❤️x${baseHp}</span>
-                    `;
-
-                    if (this.skirmishState.selectedBoardPos && this.skirmishState.selectedBoardPos.r === r && this.skirmishState.selectedBoardPos.c === c) {
-                        cell.classList.add("selected");
-                    }
-                }
-
-                cell.addEventListener("mouseenter", (e) => {
-                    if (unit) {
-                        this.showPieceMovementTooltip(unit.id, e);
-                    }
-                });
-                cell.addEventListener("mousemove", (e) => {
-                    if (unit) {
-                        this.movePieceMovementTooltip(e);
-                    }
-                });
-                cell.addEventListener("mouseleave", () => {
-                    this.hidePieceMovementTooltip();
-                });
-
-                cell.addEventListener("click", () => {
-                    this.handleSkirmishCellClick(r, c);
-                });
-
-                boardGrid.appendChild(cell);
-            }
-        }
-    }
-
-    renderSkirmishRoster() {
-        const grid = document.getElementById("skirmish-roster-grid");
-        if (!grid) return;
-        grid.innerHTML = "";
-
-        const allPieces = window.CHESS_TFT_DATA.PIECES;
-        const validPieceIds = Object.keys(allPieces).filter(id => {
-            const p = allPieces[id];
-            return !p.isKing && id !== "stone_minion" && id !== "stone_golem" && id !== "target_dummy";
-        });
-
-        validPieceIds.forEach(id => {
-            const def = allPieces[id];
-            const card = document.createElement("div");
-            const canAfford = this.skirmishState.goldRemaining >= def.cost;
-            const isSelected = this.skirmishState.selectedRosterPieceId === id;
-
-            card.className = `skirmish-roster-card ${isSelected ? "selected" : ""} ${!canAfford && !isSelected ? "disabled" : ""}`;
-            card.innerHTML = `
-                <div class="roster-card-icon"><img src="assets/pieces/${def.id}.svg" class="roster-svg" alt="${def.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" /><span class="roster-fallback" style="display:none;">${def.icon}</span></div>
-                <div class="roster-card-info">
-                    <span class="roster-card-name">${def.name}</span>
-                    <div class="roster-card-meta">
-                        <span class="roster-card-cost">🪙 ${def.cost}g</span>
-                        <span>❤️x${def.baseHp[0]}</span>
-                    </div>
-                    <span class="roster-card-traits">${def.traits.map(t => window.CHESS_TFT_DATA.SYNERGIES[t]?.name || t).join(" • ")}</span>
-                </div>
-            `;
-
-            card.title = `${def.name} (${def.cost} Vàng)\n${def.desc}\nTộc Hệ: ${def.traits.join(", ")}`;
-
-            card.addEventListener("click", () => {
-                if (!canAfford && !isSelected) {
-                    this.showToast(`Không đủ Vàng để mua ${def.name} (${def.cost} Vàng)!`, "warn");
-                    return;
-                }
-                if (this.skirmishState.selectedRosterPieceId === id) {
-                    this.skirmishState.selectedRosterPieceId = null;
-                } else {
-                    this.skirmishState.selectedRosterPieceId = id;
-                    this.skirmishState.selectedBoardPos = null;
-                    this.showToast(`Đã chọn ${def.name} — Bấm vào ô sáng ở hàng 4, 5, 6 để đặt!`, "info");
-                }
-                this.updateSkirmishToolbar();
-                this.renderSkirmishRoster();
-                this.renderSkirmishBoard();
-            });
-
-            card.addEventListener("mouseenter", (e) => {
-                this.showPieceMovementTooltip(id, e);
-            });
-            card.addEventListener("mousemove", (e) => {
-                this.movePieceMovementTooltip(e);
-            });
-            card.addEventListener("mouseleave", () => {
-                this.hidePieceMovementTooltip();
-            });
-
-            grid.appendChild(card);
-        });
-    }
-
-    renderSkirmishSynergies() {
-        const box = document.getElementById("skirmish-synergies-box");
-        if (!box) return;
-        box.innerHTML = "";
-
-        const syn = this.tft.calculateSynergies({ board: this.skirmishState.units });
-        let hasActive = false;
-
-        Object.keys(syn).forEach(traitId => {
-            const count = syn[traitId];
-            const def = window.CHESS_TFT_DATA.SYNERGIES[traitId];
-            if (!def) return;
-            const activeThreshold = [...def.thresholds].reverse().find(t => count >= t);
-
-            if (count > 0) {
-                hasActive = true;
-                const pill = document.createElement("span");
-                pill.className = `skirmish-syn-pill ${activeThreshold ? "active" : ""}`;
-                pill.innerHTML = `<span>${def.icon}</span> <span>${def.name}</span> <span>(${count})</span>`;
-                pill.title = `${def.name}: ${count} quân trên sân.\n${def.desc}`;
-                box.appendChild(pill);
-            }
-        });
-
-        if (!hasActive) {
-            box.innerHTML = `<span style="font-size:0.7rem; color:#64748b;">Chưa kích hoạt Tộc Hệ nào</span>`;
-        }
-    }
-
-    handleSkirmishCellClick(r, c) {
-        if (r <= 2) {
-            this.showToast("Đây là nửa sân đối thủ (Bí mật)! Bạn chỉ được xếp quân ở hàng 4, 5, 6.", "warn");
-            return;
-        }
-
-        const mapDef = window.CHESS_TFT_DATA.MAPS.find(m => m.id === this.skirmishState.mapId) || window.CHESS_TFT_DATA.MAPS[2];
-        const terrain = mapDef.generateTerrain(6, 7);
-        if (terrain[`${r},${c}`] === "wall") {
-            this.showToast("Ô này có đá tảng cản đường, không thể đặt quân!", "warn");
-            return;
-        }
-
-        const existingUnit = this.skirmishState.units.find(u => u.r === r && u.c === c);
-
-        // 1. If clicking on an occupied cell -> Select unit
-        if (existingUnit) {
-            this.skirmishState.selectedBoardPos = { r, c };
-            this.skirmishState.selectedRosterPieceId = null;
-            this.updateSkirmishToolbar(existingUnit);
-            this.renderSkirmishBoard();
-            this.renderSkirmishRoster();
-            return;
-        }
-
-        // 2. If clicking on an empty cell AND a roster piece was selected -> Place new piece
-        if (this.skirmishState.selectedRosterPieceId) {
-            const pieceId = this.skirmishState.selectedRosterPieceId;
-            const def = window.CHESS_TFT_DATA.PIECES[pieceId];
-            if (!def) return;
-
-            if (this.skirmishState.goldRemaining < def.cost) {
-                this.showToast(`Không đủ Vàng để mua ${def.name}!`, "warn");
-                return;
-            }
-
-            if (this.skirmishState.units.length >= 10) {
-                this.showToast("Đã đạt giới hạn tối đa 10 quân trên sân!", "warn");
-                return;
-            }
-
-            this.skirmishState.units.push({
-                uid: `skirmish_${pieceId}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
-                id: pieceId,
-                r,
-                c,
-                stars: 1,
-                cost: def.cost,
-                isKing: false
-            });
-
-            this.sfx.buy();
-            this.calculateSkirmishGold();
-            this.renderSkirmishBoard();
-            this.renderSkirmishRoster();
-            this.renderSkirmishSynergies();
-            return;
-        }
-
-        // 3. If clicking on an empty cell AND a placed unit was selected -> Move unit to this cell
-        if (this.skirmishState.selectedBoardPos) {
-            const unit = this.skirmishState.units.find(u => u.r === this.skirmishState.selectedBoardPos.r && u.c === this.skirmishState.selectedBoardPos.c);
-            if (unit) {
-                unit.r = r;
-                unit.c = c;
-                this.sfx.move();
-                this.skirmishState.selectedBoardPos = null;
-                this.updateSkirmishToolbar();
-                this.renderSkirmishBoard();
-            }
-        }
-    }
-
-    updateSkirmishToolbar(unit = null) {
-        const toolbar = document.getElementById("skirmish-selected-unit-toolbar");
-        const titleEl = document.getElementById("skirmish-selected-unit-title");
-        const btnUpgrade = document.getElementById("btn-skirmish-upgrade-star");
-        const btnSell = document.getElementById("btn-skirmish-sell-unit");
-        if (!toolbar) return;
-
-        if (!unit) {
-            toolbar.classList.add("hidden");
-            return;
-        }
-
-        toolbar.classList.remove("hidden");
-        const def = window.CHESS_TFT_DATA.PIECES[unit.id];
-        const starsStr = unit.stars === 3 ? "⭐⭐⭐" : (unit.stars === 2 ? "⭐⭐" : "⭐");
-        titleEl.textContent = `${unit.name || def?.name} (${starsStr}) • Tọa độ [${unit.r}, ${unit.c}]`;
-
-        if (unit.isKing) {
-            btnUpgrade.classList.add("hidden");
-            btnSell.classList.add("hidden");
-        } else {
-            btnUpgrade.classList.remove("hidden");
-            btnSell.classList.remove("hidden");
-
-            // Upgrade star cost
-            const maxStars = def.cost <= 2 ? 3 : 2;
-            if (unit.stars >= maxStars) {
-                btnUpgrade.textContent = `⭐ Đã đạt tối đa (${unit.stars}⭐)`;
-                btnUpgrade.disabled = true;
-                btnUpgrade.style.opacity = "0.5";
-            } else {
-                const upgradeCost = def.cost;
-                btnUpgrade.textContent = `⭐ Nâng ${unit.stars + 1}⭐ (+${upgradeCost}g)`;
-                btnUpgrade.disabled = this.skirmishState.goldRemaining < upgradeCost;
-                btnUpgrade.style.opacity = this.skirmishState.goldRemaining < upgradeCost ? "0.5" : "1";
-            }
-
-            btnSell.textContent = `🗑️ Thu Hồi (Hoàn ${unit.cost}g)`;
-        }
-    }
-
-    upgradeSkirmishUnitStar() {
-        if (!this.skirmishState.selectedBoardPos) return;
-        const unit = this.skirmishState.units.find(u => u.r === this.skirmishState.selectedBoardPos.r && u.c === this.skirmishState.selectedBoardPos.c);
-        if (!unit || unit.isKing) return;
-
-        const def = window.CHESS_TFT_DATA.PIECES[unit.id];
-        const maxStars = def.cost <= 2 ? 3 : 2;
-        if (unit.stars >= maxStars) {
-            this.showToast(`Quân này đã đạt cấp sao tối đa (${maxStars}⭐)!`, "warn");
-            return;
-        }
-
-        const upgradeCost = def.cost;
-        if (this.skirmishState.goldRemaining < upgradeCost) {
-            this.showToast(`Không đủ Vàng để nâng sao (Cần thêm ${upgradeCost} Vàng)!`, "warn");
-            return;
-        }
-
-        unit.stars += 1;
-        unit.cost += upgradeCost;
-        this.sfx.upgrade();
-        this.showToast(`✨ Đã thăng cấp ${def.name} lên ${unit.stars}⭐!`, "success");
-
-        this.calculateSkirmishGold();
-        this.updateSkirmishToolbar(unit);
-        this.renderSkirmishBoard();
-        this.renderSkirmishRoster();
-        this.renderSkirmishSynergies();
-    }
-
-    sellSkirmishUnit() {
-        if (!this.skirmishState.selectedBoardPos) return;
-        const unitIdx = this.skirmishState.units.findIndex(u => u.r === this.skirmishState.selectedBoardPos.r && u.c === this.skirmishState.selectedBoardPos.c);
-        if (unitIdx === -1) return;
-        const unit = this.skirmishState.units[unitIdx];
-
-        if (unit.isKing) {
-            this.showToast("Quốc Vương là chỉ huy tối cao, không thể thu hồi khỏi chiến trường!", "error");
-            return;
-        }
-
-        const refund = unit.cost;
-        this.skirmishState.units.splice(unitIdx, 1);
-        this.skirmishState.selectedBoardPos = null;
-        this.sfx.sell();
-        this.showToast(`Đã thu hồi quân cờ và nhận lại +${refund} Vàng.`, "info");
-
-        this.calculateSkirmishGold();
-        this.updateSkirmishToolbar();
-        this.renderSkirmishBoard();
-        this.renderSkirmishRoster();
-        this.renderSkirmishSynergies();
-    }
-
-    resetSkirmishBoard() {
-        this.skirmishState.units = [
-            { uid: "skirmish_king", id: "king", r: 6, c: 2, stars: 1, cost: 0, isKing: true }
-        ];
-        this.skirmishState.selectedBoardPos = null;
-        this.skirmishState.selectedRosterPieceId = null;
-        this.calculateSkirmishGold();
-        this.updateSkirmishToolbar();
-        this.renderSkirmishBoard();
-        this.renderSkirmishRoster();
-        this.renderSkirmishSynergies();
-        this.showToast("Đã đặt lại bàn cờ về vị trí ban đầu (Hoàn đủ 30 Vàng).", "info");
-    }
-
-    autoGenerateSkirmishPreset() {
-        this.skirmishState.units = [
-            { uid: "sk_king", id: "king", r: 6, c: 2, stars: 1, cost: 0, isKing: true },
-            { uid: "sk_jug", id: "juggernaut", r: 4, c: 2, stars: 2, cost: 4, isKing: false },
-            { uid: "sk_arch", id: "archer", r: 5, c: 0, stars: 2, cost: 4, isKing: false },
-            { uid: "sk_fk", id: "frost_knight", r: 4, c: 4, stars: 2, cost: 4, isKing: false },
-            { uid: "sk_sp1", id: "shield_pawn", r: 4, c: 1, stars: 2, cost: 2, isKing: false },
-            { uid: "sk_sp2", id: "shield_pawn", r: 4, c: 3, stars: 2, cost: 2, isKing: false },
-            { uid: "sk_fm", id: "fire_mage", r: 5, c: 3, stars: 2, cost: 2, isKing: false },
-            { uid: "sk_pb", id: "pyro_bishop", r: 5, c: 5, stars: 2, cost: 6, isKing: false },
-            { uid: "sk_merc", id: "mercenary", r: 5, c: 1, stars: 2, cost: 2, isKing: false },
-            { uid: "sk_knt", id: "knight", r: 4, c: 0, stars: 2, cost: 4, isKing: false }
-        ];
-
-        this.skirmishState.selectedBoardPos = null;
-        this.skirmishState.selectedRosterPieceId = null;
-        this.sfx.upgrade();
-        this.calculateSkirmishGold();
-        this.updateSkirmishToolbar();
-        this.renderSkirmishBoard();
-        this.renderSkirmishRoster();
-        this.renderSkirmishSynergies();
-        this.showToast("🎲 Đã nạp Đội Hình Mẫu Cân Bằng (Đầy đủ 30 Vàng & 4 Tộc Hệ)!", "success");
-    }
-
-    generateBotSkirmishArmy(difficulty = "grandmaster", cols = 6, rows = 7) {
-        if (difficulty === "apprentice") {
-            return [
-                { id: "king", r: 6, c: 2, stars: 1, isKing: true },
-                { id: "shield_pawn", r: 4, c: 1, stars: 1, isKing: false },
-                { id: "shield_pawn", r: 4, c: 3, stars: 1, isKing: false },
-                { id: "mercenary", r: 4, c: 2, stars: 1, isKing: false },
-                { id: "archer", r: 5, c: 0, stars: 1, isKing: false },
-                { id: "knight", r: 5, c: 4, stars: 1, isKing: false }
-            ];
-        } else if (difficulty === "veteran") {
-            return [
-                { id: "king", r: 6, c: 3, stars: 1, isKing: true },
-                { id: "juggernaut", r: 4, c: 2, stars: 2, isKing: false },
-                { id: "shield_pawn", r: 4, c: 1, stars: 2, isKing: false },
-                { id: "frost_knight", r: 4, c: 4, stars: 2, isKing: false },
-                { id: "archer", r: 5, c: 0, stars: 2, isKing: false },
-                { id: "fire_mage", r: 5, c: 4, stars: 2, isKing: false }
-            ];
-        } else {
-            return [
-                { id: "king", r: 6, c: 1, stars: 1, isKing: true },
-                { id: "juggernaut", r: 4, c: 1, stars: 2, isKing: false },
-                { id: "frost_knight", r: 4, c: 4, stars: 2, isKing: false },
-                { id: "archer", r: 5, c: 0, stars: 2, isKing: false },
-                { id: "pyro_bishop", r: 5, c: 5, stars: 2, isKing: false },
-                { id: "shield_pawn", r: 4, c: 3, stars: 2, isKing: false },
-                { id: "knight", r: 4, c: 0, stars: 2, isKing: false },
-                { id: "fire_mage", r: 5, c: 2, stars: 2, isKing: false }
-            ];
-        }
-    }
-
-    startSkirmishBattle() {
-        const kingUnit = this.skirmishState.units.find(u => u.isKing || u.id === "king");
-        if (!kingUnit) {
-            this.showToast("Đội hình bắt buộc phải có 1 Quốc Vương (King)!", "error");
-            return;
-        }
-
-        this.isSkirmishMode = true;
-        this.isSandboxMode = false;
-        this.isTutorialMode = false;
-        this.isRankedMode = false;
-
-        document.getElementById("modal-skirmish-builder")?.classList.add("hidden");
-
-        this.showScreen("game");
-        document.body.classList.add("skirmish-active");
-
-        const shopHud = document.querySelector(".tft-bottom-hud");
-        if (shopHud) shopHud.classList.add("hidden");
-        const benchRow = document.querySelector(".bench-container");
-        if (benchRow) benchRow.classList.add("hidden");
-        const prepTimer = document.getElementById("prep-timer-badge");
-        if (prepTimer) prepTimer.classList.add("hidden");
-
-        const cols = 6;
-        const rows = 7;
-        const mapDef = window.CHESS_TFT_DATA.MAPS.find(m => m.id === this.skirmishState.mapId) || window.CHESS_TFT_DATA.MAPS[2];
-        const terrain = mapDef.generateTerrain(cols, rows);
-
-        const playerPieces = this.skirmishState.units.map(u => ({
-            ...u,
-            uid: `player_${u.id}_${u.r}_${u.c}`,
-            items: []
-        }));
-
-        const botArmy = this.generateBotSkirmishArmy(this.skirmishState.botDifficulty, cols, rows);
-        const enemyMirrored = botArmy.map(u => ({
-            ...u,
-            r: (rows - 1) - u.r,
-            c: (cols - 1) - u.c,
-            uid: `enemy_${u.id}_${(rows - 1) - u.r}_${(cols - 1) - u.c}`,
-            items: []
-        }));
-
-        const playerSyn = this.tft.calculateSynergies({ board: playerPieces });
-        const enemySyn = this.tft.calculateSynergies({ board: botArmy });
-
-        this.chess = new window.BlitzChessEngine({
-            cols,
-            rows,
-            terrain,
-            maxTurns: 55,
-            playerSynergies: playerSyn,
-            enemySynergies: enemySyn,
-            playerAugments: [],
-            enemyAugments: []
-        });
-
-        this.chess.setupBoard(playerPieces, enemyMirrored);
-
-        const tc = this.skirmishState.timeControl || "300_5";
-        const [clockSecs, clockInc] = tc.split("_").map(Number);
-        this.playerClock = clockSecs || 300;
-        this.enemyClock = clockSecs || 300;
-        this.skirmishClockIncrement = clockInc || 5;
-
-        // Setup Spectator mode state & bar if in spectator role
-        this.isSkirmishSpectator = (this.skirmishRole === "spectator");
-        this.skirmishSpecPaused = false;
-        this.skirmishSpecSpeed = 1;
-
-        const specBar = document.getElementById("skirmish-spec-control-bar");
-        const pauseBtn = document.getElementById("btn-skirmish-spec-pause");
-        if (pauseBtn) pauseBtn.textContent = "⏸️ Tạm Dừng";
-
-        if (this.isSkirmishSpectator) {
-            if (specBar) specBar.classList.remove("hidden");
-            const modeBadge = document.getElementById("game-mode-badge");
-            if (modeBadge) modeBadge.textContent = "👁️ KHÁN GIẢ • 2 BOT TỰ ĐẤU";
-            const statusText = document.getElementById("skirmish-spec-status-text");
-            if (statusText) statusText.textContent = `Đang theo dõi: 🤖 Bot Trắng vs 🤖 Bot Đen (${this.skirmishState.botDifficulty === 'grandmaster' ? 'Magnus' : 'AI'})`;
-        } else {
-            if (specBar) specBar.classList.add("hidden");
-            const modeBadge = document.getElementById("game-mode-badge");
-            if (modeBadge) modeBadge.textContent = "⚔️ ĐẤU TRÍ 1V1 (SKIRMISH)";
-        }
-
-        this.playCombatBgm();
-        this.sfx.combatStart();
-
-        this.renderAll();
-        this.renderDpsMeter();
-
-        this.stopCombatTimers();
-        this.clockInterval = setInterval(() => {
-            if (!this.chess || this.chess.gameOver) return;
-
-            if (this.chess.turn === "player") {
-                this.playerClock = Math.max(0, this.playerClock - 0.1);
-                if (this.playerClock <= 0) {
-                    this.chess.endMatch("enemy", "timeout", this.isSkirmishSpectator ? "Bot Trắng hết thời gian Cờ Chớp!" : "Bạn hết thời gian đồng hồ Cờ Chớp!");
-                    this.finishBlitzCombat();
-                }
-            } else {
-                this.enemyClock = Math.max(0, this.enemyClock - 0.1);
-                if (this.enemyClock <= 0) {
-                    this.chess.endMatch("player", "timeout", this.isSkirmishSpectator ? "Bot Đen hết thời gian Cờ Chớp!" : "Đối thủ hết thời gian đồng hồ Cờ Chớp!");
-                    this.finishBlitzCombat();
-                }
-            }
-            this.renderRightPanel();
-        }, 100);
-
-        if (this.isSkirmishSpectator) {
-            this.scheduleSkirmishSpectatorTurn();
-            this.showToast(`👁️ Bạn đang là Khán Giả theo dõi 2 Bot AI đấu trí trên bản đồ ${mapDef.name}!`, "info");
-        } else {
-            this.showToast(`⚔️ Đấu Trí 1v1 Bắt Đầu! Bản đồ: ${mapDef.name}`, "success");
-        }
-    }
-
-    scheduleSkirmishSpectatorTurn() {
-        if (!this.chess || this.chess.gameOver || !this.isSkirmishSpectator) return;
-        if (this.skirmishSpecPaused) return;
-
-        if (this.skirmishSpecTimeout) {
-            clearTimeout(this.skirmishSpecTimeout);
-            this.skirmishSpecTimeout = null;
-        }
-
-        const side = this.chess.turn; // "player" (Bot Trắng) or "enemy" (Bot Đen)
-        const speed = this.skirmishSpecSpeed || 1;
-        const delay = Math.max(140, Math.round(750 / speed));
-
-        this.skirmishSpecTimeout = setTimeout(() => {
-            if (!this.chess || this.chess.gameOver || !this.isSkirmishSpectator || this.skirmishSpecPaused) return;
-
-            const inc = this.skirmishClockIncrement || 5;
-            const diff = this.skirmishState.botDifficulty;
-            const blunder = side === "player" ? 0.15 : (diff === "apprentice" ? 0.35 : (diff === "veteran" ? 0.18 : 0.05));
-            const botAct = this.chess.chooseBotAction(side, blunder);
-
-            if (!botAct) {
-                const opp = side === "player" ? "enemy" : "player";
-                this.chess.endMatch(opp, "checkmate", `Không còn nước đi hợp lệ cho ${side === "player" ? "Bot Trắng" : "Bot Đen"}!`);
-                this.finishBlitzCombat();
-                return;
-            }
-
-            const res = this.chess.executeAction(botAct);
-            if (res) {
-                if (side === "player") this.playerClock += inc + (res.clockBonus || 0);
-                else this.enemyClock += inc + (res.clockBonus || 0);
-
-                if (botAct.type === "ranged") this.sfx.ranged();
-                else if (botAct.type === "melee") this.sfx.hitArmor();
-                else this.sfx.move();
-
-                this.renderAll();
-
-                if (res.combatHit) {
-                    this.triggerCombatHitFx(res.combatHit);
-                }
-
-                if (res.gameOver || this.chess.gameOver) {
-                    this.finishBlitzCombat();
-                    return;
-                }
-
-                this.scheduleSkirmishSpectatorTurn();
-            }
-        }, delay);
-    }
-
-    bindAdminEvents() {
-        document.getElementById("btn-open-admin").addEventListener("click", () => {
-            this.openAdminDatabaseModal();
-        });
-
-        document.getElementById("btn-close-admin").addEventListener("click", () => {
-            document.getElementById("modal-admin-db").classList.add("hidden");
-        });
-
-        const searchInput = document.getElementById("admin-user-search");
-        if (searchInput) {
-            searchInput.addEventListener("input", () => {
-                this.renderAdminUsersTab();
-            });
-        }
-
-        const addBtn = document.getElementById("btn-admin-add-user");
-        if (addBtn) {
-            addBtn.addEventListener("click", () => {
-                this.adminUserCreateMode = true;
-                this.renderAdminUsersTab();
-            });
-        }
-
-        const resetBtn = document.getElementById("btn-admin-reset-users");
-        if (resetBtn) {
-            resetBtn.addEventListener("click", async () => {
-                try {
-                    const res = await fetch("api.php?action=admin_seed_defaults", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" }
-                    });
-                    const data = await res.json();
-                    if (data.ok) {
-                        this.showToast(data.msg || "Đã nạp bổ sung các tài khoản chuẩn!", "success");
-                        this.openAdminDatabaseModal();
-                    }
-                } catch (e) {
-                    this.showToast("Không thể kết nối đến máy chủ!", "warn");
-                }
-            });
-        }
-
-        document.querySelectorAll(".admin-tab").forEach(tab => {
-            tab.addEventListener("click", () => {
-                document.querySelectorAll(".admin-tab").forEach(t => t.classList.remove("active"));
-                tab.classList.add("active");
-                const target = tab.getAttribute("data-admintab");
-                document.getElementById("admin-panel-users").classList.toggle("hidden", target !== "users");
-                document.getElementById("admin-panel-rules").classList.toggle("hidden", target !== "rules");
-                document.getElementById("admin-panel-pieces").classList.toggle("hidden", target !== "pieces");
-            });
-        });
-    }
-
-    async openAdminDatabaseModal() {
-        const modal = document.getElementById("modal-admin-db");
-        modal.classList.remove("hidden");
-        try {
-            const res = await fetch("api.php?action=admin_db");
-            const data = await res.json();
-            if (data.ok) {
-                this.adminDbCache = data;
-                if (!this.selectedAdminPieceId || !data.entities?.PIECES?.[this.selectedAdminPieceId]) {
-                    const firstKey = Object.keys(data.entities?.PIECES || {})[0];
-                    if (firstKey) this.selectedAdminPieceId = firstKey;
-                }
-                this.renderAdminUsersTab();
-                this.renderAdminRulesTab();
-                this.renderAdminPiecesTab();
-            }
-        } catch (e) {
-            this.showToast("Không thể tải Database từ Server!", "warn");
-        }
-    }
-
-    renderAdminUsersTab() {
-        const listEl = document.getElementById("admin-users-list");
-        if (!listEl) return;
-        listEl.innerHTML = "";
-        if (!this.adminDbCache || !this.adminDbCache.users) return;
-
-        const allUsers = this.adminDbCache.users;
-        const searchInput = document.getElementById("admin-user-search");
-        const query = (searchInput?.value || "").trim().toLowerCase();
-
-        const filtered = query
-            ? allUsers.filter(u =>
-                (u.username && u.username.toLowerCase().includes(query)) ||
-                (u.displayName && u.displayName.toLowerCase().includes(query))
-              )
-            : allUsers;
-
-        const countEl = document.getElementById("admin-users-count");
-        if (countEl) countEl.textContent = `${filtered.length}/${allUsers.length}`;
-
-        if (!this.adminUserCreateMode && !this.selectedAdminUserId && filtered.length > 0) {
-            this.selectedAdminUserId = filtered[0].id;
-        }
-
-        if (filtered.length === 0) {
-            listEl.innerHTML = `<div class="empty-hint" style="font-size:0.75rem;">Không tìm thấy tài khoản nào khớp với "${query}".</div>`;
-        } else {
-            for (const u of filtered) {
-                const item = document.createElement("div");
-                const isSelected = (!this.adminUserCreateMode) && (this.selectedAdminUserId === u.id);
-                item.className = `admin-list-item ${isSelected ? "active" : ""}`;
-                item.innerHTML = `
-                    <span>${u.avatar || "👤"} ${u.displayName} (<code>${u.username}</code>)</span>
-                    <span class="badge-pill" style="font-size:0.65rem;">${u.role}</span>
-                `;
-                item.addEventListener("click", () => {
-                    this.adminUserCreateMode = false;
-                    this.selectedAdminUserId = u.id;
-                    this.renderAdminUsersTab();
-                });
-                listEl.appendChild(item);
-            }
-        }
-
-        const editor = document.getElementById("admin-user-editor");
-        if (!editor) return;
-
-        // MODE 1: CREATE NEW USER
-        if (this.adminUserCreateMode) {
-            const allItemsHtml = Object.values(window.CHESS_TFT_DATA.ITEMS).map(it => `
-                <label class="checkbox-label">
-                    <input type="checkbox" class="adm-new-user-item-chk" value="${it.id}" />
-                    <span>${it.icon} ${it.name}</span>
-                </label>
-            `).join("");
-
-            editor.innerHTML = `
-                <div class="lobby-box-title" style="display:flex; justify-content:space-between; align-items:center;">
-                    <span>➕ Tạo Mới Tài Khoản Kỳ Thủ</span>
-                    <button id="btn-cancel-create-user" class="btn-sm-admin" style="background:#475569;">Quay Lại Sửa</button>
-                </div>
-                <div class="admin-grid-2">
-                    <div class="form-group">
-                        <label>Tên đăng nhập (Username) *</label>
-                        <input type="text" id="adm-new-username" placeholder="VD: kithu9, pro_player..." />
-                    </div>
-                    <div class="form-group">
-                        <label>Tên hiển thị (DisplayName)</label>
-                        <input type="text" id="adm-new-display" placeholder="VD: Kỳ Thủ Đại Sư..." />
-                    </div>
-                    <div class="form-group">
-                        <label>Mật khẩu ban đầu</label>
-                        <input type="text" id="adm-new-pass" value="123" />
-                    </div>
-                    <div class="form-group">
-                        <label>Quyền hạn (Role)</label>
-                        <select id="adm-new-role" class="lobby-select">
-                            <option value="player" selected>Player (Kỳ thủ thi đấu)</option>
-                            <option value="admin">Admin (Quản trị viên)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Avatar Biểu tượng</label>
-                        <input type="text" id="adm-new-avatar" value="👤" />
-                    </div>
-                    <div class="form-group">
-                        <label>Điểm Xếp Hạng (ELO)</label>
-                        <input type="number" id="adm-new-elo" value="1000" />
-                    </div>
-                </div>
-
-                <div class="panel-section-title" style="margin-top:8px;">⚡ Can Thiệp Chỉ Số Khởi Đầu Khi Vào Trận</div>
-                <div class="admin-grid-2">
-                    <div class="form-group">
-                        <label>❤️ Máu Linh Hồn Khởi Đầu</label>
-                        <input type="number" id="adm-new-hp" value="100" />
-                    </div>
-                    <div class="form-group">
-                        <label>🪙 Vàng Khởi Đầu Ván Đấu</label>
-                        <input type="number" id="adm-new-gold" value="6" />
-                    </div>
-                    <div class="form-group">
-                        <label>⬆️ Cấp Độ Khởi Đầu (3 -> 8)</label>
-                        <input type="number" id="adm-new-level" min="3" max="8" value="3" />
-                    </div>
-                    <div class="form-group">
-                        <label>⏱️ Cộng Giây Cờ Chớp</label>
-                        <input type="number" id="adm-new-clock" value="0" />
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>🎒 Trang Bị Tặng Sẵn Đầu Trận:</label>
-                    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:4px;">${allItemsHtml}</div>
-                </div>
-
-                <div style="margin-top:10px;">
-                    <button id="btn-submit-create-user" class="btn-combat-go">➕ Lưu Tài Khoản Mới Vào Database</button>
-                </div>
-            `;
-
-            document.getElementById("btn-cancel-create-user")?.addEventListener("click", () => {
-                this.adminUserCreateMode = false;
-                this.renderAdminUsersTab();
-            });
-
-            document.getElementById("btn-submit-create-user")?.addEventListener("click", async () => {
-                const username = document.getElementById("adm-new-username").value.trim();
-                const displayName = document.getElementById("adm-new-display").value.trim();
-                const password = document.getElementById("adm-new-pass").value.trim();
-                const role = document.getElementById("adm-new-role").value;
-                const avatar = document.getElementById("adm-new-avatar").value.trim() || "👤";
-                const elo = Number(document.getElementById("adm-new-elo").value) || 1000;
-                const selectedItems = Array.from(editor.querySelectorAll(".adm-new-user-item-chk:checked")).map(c => c.value);
-
-                if (!username || !password) {
-                    this.showToast("Vui lòng điền đầy đủ Tên đăng nhập và Mật khẩu!", "warn");
-                    return;
-                }
-
-                try {
-                    const res = await fetch("api.php?action=admin_user_create", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            username,
-                            displayName,
-                            password,
-                            role,
-                            avatar,
-                            elo,
-                            customModifiers: {
-                                startingHp: Number(document.getElementById("adm-new-hp").value) || 100,
-                                startingGold: Number(document.getElementById("adm-new-gold").value) || 6,
-                                startingLevel: Number(document.getElementById("adm-new-level").value) || 3,
-                                extraClockSeconds: Number(document.getElementById("adm-new-clock").value) || 0,
-                                bonusItems: selectedItems,
-                                isBanned: false
-                            }
-                        })
-                    });
-                    const data = await res.json();
-                    if (data.ok) {
-                        this.showToast(data.msg || "Đã tạo tài khoản thành công!", "success");
-                        this.adminUserCreateMode = false;
-                        this.selectedAdminUserId = data.user?.id;
-                        this.openAdminDatabaseModal();
-                    } else {
-                        this.showToast(data.msg || "Tạo tài khoản thất bại!", "warn");
-                    }
-                } catch (e) {
-                    this.showToast("Lỗi khi kết nối đến server!", "warn");
-                }
-            });
-
-            return;
-        }
-
-        // MODE 2: EDIT EXISTING USER
-        const user = allUsers.find(u => u.id === this.selectedAdminUserId) || filtered[0];
-        if (!user) {
-            editor.innerHTML = `<div class="empty-hint">Chưa chọn tài khoản nào để chỉnh sửa.</div>`;
-            return;
-        }
-
-        const mods = user.customModifiers || {};
-        const ownedItems = new Set(mods.bonusItems || []);
-        const allItemsHtml = Object.values(window.CHESS_TFT_DATA.ITEMS).map(it => `
-            <label class="checkbox-label">
-                <input type="checkbox" class="adm-user-item-chk" value="${it.id}" ${ownedItems.has(it.id) ? "checked" : ""} />
-                <span>${it.icon} ${it.name}</span>
-            </label>
-        `).join("");
-
-        const isMainAdmin = user.username === "admin";
-
-        editor.innerHTML = `
-            <div class="lobby-box-title" style="display:flex; justify-content:space-between; align-items:center;">
-                <span>Chỉnh Sửa Tài Khoản: <code>${user.username}</code> (${user.displayName})</span>
-                ${isMainAdmin ? `<span class="badge-role-tag">👑 TỐI CAO</span>` : `<button id="btn-delete-admin-user" class="btn-delete-admin-user">🗑️ Xóa Tài Khoản</button>`}
-            </div>
-            <div class="admin-grid-2">
-                <div class="form-group">
-                    <label>Tên hiển thị</label>
-                    <input type="text" id="adm-u-display" value="${user.displayName || ""}" />
-                </div>
-                <div class="form-group">
-                    <label>Quyền hạn (Role)</label>
-                    <select id="adm-u-role" class="lobby-select">
-                        <option value="player" ${user.role === "player" ? "selected" : ""}>Player (Người chơi)</option>
-                        <option value="admin" ${user.role === "admin" ? "selected" : ""}>Admin (Quản trị viên)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Điểm Xếp Hạng (ELO)</label>
-                    <input type="number" id="adm-u-elo" value="${user.stats?.elo || 1000}" />
-                </div>
-                <div class="form-group">
-                    <label>Đổi Mật Khẩu Mới (Để trống nếu giữ nguyên)</label>
-                    <input type="text" id="adm-u-pass" placeholder="Mật khẩu hiện tại: ${user.password || "***"}" />
-                </div>
-            </div>
-
-            <div class="panel-section-title" style="margin-top:8px;">⚡ Can Thiệp Chỉ Số Khởi Đầu Trong Trận Của Riêng Tài Khoản Này</div>
-            <div class="admin-grid-2">
-                <div class="form-group">
-                    <label>❤️ Máu Linh Hồn Khởi Đầu (Mặc định: 100)</label>
-                    <input type="number" id="adm-u-hp" value="${mods.startingHp || 100}" />
-                </div>
-                <div class="form-group">
-                    <label>🪙 Vàng Khởi Đầu Ván Đấu (Mặc định: 6)</label>
-                    <input type="number" id="adm-u-gold" value="${mods.startingGold !== undefined ? mods.startingGold : 6}" />
-                </div>
-                <div class="form-group">
-                    <label>⬆️ Cấp Độ Khởi Đầu (3 -> 8)</label>
-                    <input type="number" id="adm-u-level" min="3" max="8" value="${mods.startingLevel || 3}" />
-                </div>
-                <div class="form-group">
-                    <label>⏱️ Cộng/Trừ Giây Đồng Hồ Cờ Chớp Mỗi Hiệp</label>
-                    <input type="number" id="adm-u-clock" value="${mods.extraClockSeconds || 0}" />
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>🎒 Trang Bị Tặng Sẵn Vào Kho Đồ Đầu Trận:</label>
-                <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:4px;">${allItemsHtml}</div>
-            </div>
-
-            <label class="checkbox-label" style="color:#f87171;">
-                <input type="checkbox" id="adm-u-banned" ${mods.isBanned ? "checked" : ""} />
-                <span>🚫 Khóa tài khoản này (Không cho đăng nhập)</span>
-            </label>
-
-            <button id="btn-save-admin-user" class="btn-combat-go">💾 Lưu Tài Khoản Vào Database (MySQL users / JSON)</button>
-        `;
-
-        document.getElementById("btn-save-admin-user")?.addEventListener("click", async () => {
-            const selectedItems = Array.from(editor.querySelectorAll(".adm-user-item-chk:checked")).map(c => c.value);
-            const updates = {
-                displayName: document.getElementById("adm-u-display").value.trim(),
-                role: document.getElementById("adm-u-role").value,
-                elo: Number(document.getElementById("adm-u-elo").value),
-                password: document.getElementById("adm-u-pass").value,
-                customModifiers: {
-                    startingHp: Number(document.getElementById("adm-u-hp").value),
-                    startingGold: Number(document.getElementById("adm-u-gold").value),
-                    startingLevel: Number(document.getElementById("adm-u-level").value),
-                    extraClockSeconds: Number(document.getElementById("adm-u-clock").value),
-                    bonusItems: selectedItems,
-                    isBanned: document.getElementById("adm-u-banned").checked
-                }
-            };
-
-            const res = await fetch("api.php?action=admin_user", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userId: user.id, updates })
-            });
-            const data = await res.json();
-            if (data.ok) {
-                this.showToast(data.msg, "success");
-                if (this.currentUser && this.currentUser.id === user.id) {
-                    this.currentUser = data.user;
-                    localStorage.setItem("chesstft_user", JSON.stringify(data.user));
-                    this.renderLobbyHeader();
-                }
-                this.openAdminDatabaseModal();
-            }
-        });
-
-        document.getElementById("btn-delete-admin-user")?.addEventListener("click", async () => {
-            if (!confirm(`Bạn có chắc chắn muốn xóa tài khoản '${user.username}' khỏi hệ thống?`)) return;
-            try {
-                const res = await fetch("api.php?action=admin_user_delete", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ userId: user.id })
-                });
-                const data = await res.json();
-                if (data.ok) {
-                    this.showToast(data.msg, "info");
-                    this.selectedAdminUserId = null;
-                    this.openAdminDatabaseModal();
-                } else {
-                    this.showToast(data.msg || "Không thể xóa tài khoản!", "warn");
-                }
-            } catch (e) {
-                this.showToast("Lỗi khi kết nối đến máy chủ!", "warn");
-            }
-        });
-    }
-
-    renderAdminRulesTab() {
-        const box = document.getElementById("admin-rules-editor");
-        if (!this.adminDbCache || !this.adminDbCache.rules) return;
-        const r = this.adminDbCache.rules;
-        const s1 = r.STAGE_CONFIG["1"];
-        const s2 = r.STAGE_CONFIG["2"];
-        const s3 = r.STAGE_CONFIG["3"];
-        const cb = r.combatRules || {};
-        const ec = r.economy || {};
-        const df = r.damageFormula || {};
-
-        box.innerHTML = `
-            <div class="lobby-box-title">⏱️ Cấu Hình Thời Gian Đồng Hồ Cờ Chớp & Bàn Cờ Theo Stage</div>
-            <div class="admin-grid-3">
-                <div class="form-group">
-                    <label>Stage 1 (5x6) — Đồng hồ (Giây)</label>
-                    <input type="number" id="adm-r-s1time" value="${s1.blitzTime}" />
-                </div>
-                <div class="form-group">
-                    <label>Stage 2 (6x7) — Đồng hồ (Giây)</label>
-                    <input type="number" id="adm-r-s2time" value="${s2.blitzTime}" />
-                </div>
-                <div class="form-group">
-                    <label>Stage 3 (8x8) — Đồng hồ (Giây)</label>
-                    <input type="number" id="adm-r-s3time" value="${s3.blitzTime}" />
-                </div>
-                <div class="form-group">
-                    <label>Giây cộng thêm mỗi nước (Stage 1-2)</label>
-                    <input type="number" id="adm-r-inc1" value="${s1.increment}" />
-                </div>
-                <div class="form-group">
-                    <label>Vàng thưởng mỗi vòng (Base Gold)</label>
-                    <input type="number" id="adm-r-basegold" value="${ec.baseRoundGold || 5}" />
-                </div>
-                <div class="form-group">
-                    <label>Lãi suất tối đa mỗi vòng</label>
-                    <input type="number" id="adm-r-maxint" value="${ec.maxInterest || 5}" />
-                </div>
-            </div>
-
-            <div class="panel-section-title" style="margin-top:8px;">💥 Công Thức Trừ Máu Linh Hồn (Chiếu Hết vs Ăn Vua)</div>
-            <div class="admin-grid-3">
-                <div class="form-group">
-                    <label>Sát thương cơ bản CHIẾU HẾT</label>
-                    <input type="number" id="adm-r-cmbase" value="${df.checkmateBase ?? 8}" />
-                </div>
-                <div class="form-group">
-                    <label>Máu trừ mỗi quân sống (Chiếu Hết)</label>
-                    <input type="number" id="adm-r-cmunit" value="${df.checkmatePerUnit ?? 2}" />
-                </div>
-                <div class="form-group">
-                    <label>Sát thương cơ bản ĂN VUA (Quên chiếu)</label>
-                    <input type="number" id="adm-r-kcbase" value="${df.kingCaptureBase ?? 3}" />
-                </div>
-            </div>
-
-            <label class="checkbox-label">
-                <input type="checkbox" id="adm-r-grace" ${cb.turnOneGrace !== false ? "checked" : ""} />
-                <span>🛡️ Bật Luật Lượt 1 Công Bằng (Nước đầu tiên chỉ di chuyển dàn trận, không tấn công ngay)</span>
-            </label>
-
-            <button id="btn-save-admin-rules" class="btn-combat-go">💾 Lưu Luật Chơi Vào Database (MySQL game_rules / JSON)</button>
-        `;
-
-        document.getElementById("btn-save-admin-rules").addEventListener("click", async () => {
-            const updatedRules = JSON.parse(JSON.stringify(r));
-            updatedRules.STAGE_CONFIG["1"].blitzTime = Number(document.getElementById("adm-r-s1time").value) || 45;
-            updatedRules.STAGE_CONFIG["2"].blitzTime = Number(document.getElementById("adm-r-s2time").value) || 60;
-            updatedRules.STAGE_CONFIG["3"].blitzTime = Number(document.getElementById("adm-r-s3time").value) || 75;
-            const inc = Number(document.getElementById("adm-r-inc1").value) || 3;
-            updatedRules.STAGE_CONFIG["1"].increment = inc;
-            updatedRules.STAGE_CONFIG["2"].increment = inc;
-
-            updatedRules.economy.baseRoundGold = Number(document.getElementById("adm-r-basegold").value) || 5;
-            updatedRules.economy.maxInterest = Number(document.getElementById("adm-r-maxint").value) || 5;
-
-            updatedRules.damageFormula.checkmateBase = Number(document.getElementById("adm-r-cmbase").value);
-            updatedRules.damageFormula.checkmatePerUnit = Number(document.getElementById("adm-r-cmunit").value);
-            updatedRules.damageFormula.kingCaptureBase = Number(document.getElementById("adm-r-kcbase").value);
-            updatedRules.combatRules.turnOneGrace = document.getElementById("adm-r-grace").checked;
-
-            const res = await fetch("api.php?action=admin_rules", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ rules: updatedRules })
-            });
-            const data = await res.json();
-            if (data.ok) {
-                if (data.rules && window.applyDatabaseConfigToRuntime) {
-                    window.applyDatabaseConfigToRuntime(data.rules, data.entities);
-                }
-                this.showToast(data.msg, "success");
-                this.renderCodex();
-                this.openAdminDatabaseModal();
-            }
-        });
-    }
-
-    renderAdminPiecesTab() {
-        const listEl = document.getElementById("admin-pieces-list");
-        const editor = document.getElementById("admin-piece-editor");
-        if (!this.adminDbCache || !this.adminDbCache.entities) return;
-
-        const pieces = this.adminDbCache.entities.PIECES;
-        listEl.innerHTML = "";
-
-        for (const p of Object.values(pieces)) {
-            const item = document.createElement("div");
-            item.className = `admin-list-item ${this.selectedAdminPieceId === p.id ? "active" : ""}`;
-            item.innerHTML = `
-                <span>${p.icon} ${p.name}</span>
-                <span class="badge-pill">${p.isKing ? "Vua" : p.cost + "🪙"}</span>
-            `;
-            item.addEventListener("click", () => {
-                this.selectedAdminPieceId = p.id;
-                this.renderAdminPiecesTab();
-            });
-            listEl.appendChild(item);
-        }
-
-        const p = pieces[this.selectedAdminPieceId];
-        if (!p) return;
-
-        editor.innerHTML = `
-            <div class="lobby-box-title">${p.icon} Chỉnh Sửa Quân Cờ: ${p.name} (<code>${p.id}</code>)</div>
-            <div class="admin-grid-2">
-                <div class="form-group">
-                    <label>Tên Quân Cờ</label>
-                    <input type="text" id="adm-p-name" value="${p.name}" />
-                </div>
-                <div class="form-group">
-                    <label>Giá Mua Trong Shop (1 -> 5 Vàng)</label>
-                    <input type="number" id="adm-p-cost" min="0" max="5" value="${p.cost}" ${p.isKing ? "disabled" : ""} />
-                </div>
-            </div>
-
-            <div class="panel-section-title">🛡️ Số Lớp Máu (Phải ăn bao nhiêu lần mới chết ở 1★ / 2★ / 3★)</div>
-            <div class="admin-grid-3">
-                <div class="form-group">
-                    <label>Lớp Máu 1 Sao (★)</label>
-                    <input type="number" id="adm-p-hp1" min="1" max="20" value="${p.baseHp[0]}" />
-                </div>
-                <div class="form-group">
-                    <label>Lớp Máu 2 Sao (★★)</label>
-                    <input type="number" id="adm-p-hp2" min="1" max="25" value="${p.baseHp[1]}" />
-                </div>
-                <div class="form-group">
-                    <label>Lớp Máu 3 Sao (★★★)</label>
-                    <input type="number" id="adm-p-hp3" min="1" max="30" value="${p.baseHp[2]}" />
-                </div>
-            </div>
-
-            <div class="panel-section-title">🎯 Tầm Đánh / Tầm Bắn Xa (1★ / 2★ / 3★)</div>
-            <div class="admin-grid-3">
-                <div class="form-group">
-                    <label>Tầm 1 Sao (★)</label>
-                    <input type="number" id="adm-p-rng1" min="1" max="8" value="${p.range[0]}" />
-                </div>
-                <div class="form-group">
-                    <label>Tầm 2 Sao (★★)</label>
-                    <input type="number" id="adm-p-rng2" min="1" max="8" value="${p.range[1]}" />
-                </div>
-                <div class="form-group">
-                    <label>Tầm 3 Sao (★★★)</label>
-                    <input type="number" id="adm-p-rng3" min="1" max="8" value="${p.range[2]}" />
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>Mô tả kỹ năng & bước đi</label>
-                <input type="text" id="adm-p-desc" value="${p.desc}" />
-            </div>
-
-            <button id="btn-save-admin-piece" class="btn-combat-go">💾 Lưu Quân Cờ Vào Database (MySQL pieces / JSON)</button>
-        `;
-
-        document.getElementById("btn-save-admin-piece").addEventListener("click", async () => {
-            const pieceData = {
-                name: document.getElementById("adm-p-name").value.trim(),
-                cost: Number(document.getElementById("adm-p-cost").value),
-                baseHp: [
-                    Number(document.getElementById("adm-p-hp1").value) || 1,
-                    Number(document.getElementById("adm-p-hp2").value) || 2,
-                    Number(document.getElementById("adm-p-hp3").value) || 3
-                ],
-                range: [
-                    Number(document.getElementById("adm-p-rng1").value) || 1,
-                    Number(document.getElementById("adm-p-rng2").value) || 1,
-                    Number(document.getElementById("adm-p-rng3").value) || 1
-                ],
-                desc: document.getElementById("adm-p-desc").value.trim()
-            };
-
-            const res = await fetch("api.php?action=admin_piece", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ pieceId: p.id, pieceData })
-            });
-            const data = await res.json();
-            if (data.ok) {
-                if (data.entities && window.applyDatabaseConfigToRuntime) {
-                    window.applyDatabaseConfigToRuntime(data.rules, data.entities);
-                }
-                this.showToast(data.msg, "success");
-                this.renderCodex();
-                this.openAdminDatabaseModal();
-            }
-        });
-    }
-
-    // ========================================================================
-    // ADMIN SPECTATOR MODE: 8-BOT ARENA (4 SIMULTANEOUS SPLIT SCREENS 2x2)
-    // ========================================================================
-    bindSpectatorEvents() {
-        const openBtn1 = document.getElementById("btn-open-spectator-top");
-        const openBtn2 = document.getElementById("btn-start-spectator-8bots");
-        if (openBtn1) openBtn1.addEventListener("click", () => this.start8BotSpectatorMode());
-        if (openBtn2) openBtn2.addEventListener("click", () => this.start8BotSpectatorMode());
-
-        const backBtn = document.getElementById("btn-spec-back-lobby");
-        if (backBtn) {
-            backBtn.addEventListener("click", () => {
-                this.stopSpectatorTimers();
-                if (this.isMultiplayerSpectator) {
-                    if (this.socket && this.socket.connected) {
-                        this.socket.emit("room:leave");
-                    }
-                    this.isMultiplayerSpectator = false;
-                    this.currentRoom = null;
-                    const brandTitle = document.getElementById("spec-brand-title");
-                    if (brandTitle) brandTitle.innerHTML = "👁️ QUAN SÁT GIẢI ĐẤU 8 BOT (4 MÀN HÌNH)";
-                    const newBtn = document.getElementById("btn-spec-new-8bots");
-                    if (newBtn) newBtn.style.display = "";
-                }
-                this.showScreen("lobby");
-            });
-        }
-
-        const newBtn = document.getElementById("btn-spec-new-8bots");
-        if (newBtn) {
-            newBtn.addEventListener("click", () => {
-                this.start8BotSpectatorMode();
-            });
-        }
-
-        const pauseBtn = document.getElementById("btn-spec-pause");
-        if (pauseBtn) {
-            pauseBtn.addEventListener("click", () => {
-                this.specPaused = !this.specPaused;
-                pauseBtn.textContent = this.specPaused ? "▶️ Tiếp Tục" : "⏸️ Tạm Dừng";
-                this.showToast(this.specPaused ? "⏸️ Đã tạm dừng 4 bàn đấu!" : "▶️ Tiếp tục 4 bàn đấu!", "info");
-            });
-        }
-
-        const nextBtn = document.getElementById("btn-spec-next-round");
-        if (nextBtn) {
-            nextBtn.addEventListener("click", () => {
-                this.advanceSpectatorNextRound();
-            });
-        }
-
-        document.querySelectorAll(".spec-speed-btn").forEach(btn => {
-            btn.addEventListener("click", () => {
-                document.querySelectorAll(".spec-speed-btn").forEach(b => b.classList.remove("active"));
-                btn.classList.add("active");
-                this.specSpeed = Number(btn.getAttribute("data-speed")) || 1;
-                this.scheduleSpectatorTick();
-            });
-        });
-
-        const specToPovBtn = document.getElementById("btn-spec-switch-to-pov");
-        if (specToPovBtn) {
-            specToPovBtn.addEventListener("click", () => {
-                const firstAlive = (this.tft.spectatorBots || []).find(b => !b.eliminated) || this.tft.spectatorBots?.[0];
-                this.setSpectatorMode("pov", firstAlive?.id);
-            });
-        }
-
-        const povToMultiBtn = document.getElementById("btn-spec-switch-to-multi");
-        if (povToMultiBtn) {
-            povToMultiBtn.addEventListener("click", () => {
-                this.setSpectatorMode("multi");
-            });
-        }
-
-        const prevPlayerBtn = document.getElementById("btn-spec-prev-player");
-        if (prevPlayerBtn) {
-            prevPlayerBtn.addEventListener("click", () => {
-                this.cycleSpectatorPOVTarget(-1);
-            });
-        }
-
-        const nextPlayerBtn = document.getElementById("btn-spec-next-player");
-        if (nextPlayerBtn) {
-            nextPlayerBtn.addEventListener("click", () => {
-                this.cycleSpectatorPOVTarget(1);
-            });
-        }
-    }
-
-    start8BotSpectatorMode() {
-        this.isMultiplayerSpectator = false;
-        this.stopCombatTimers();
-        this.stopSpectatorTimers();
-        this.specPaused = false;
-        this.specZoomIndex = null;
-        this.specGlobalLogs = [
-            "🎬 Khởi tạo Giải Đấu 8 Kỳ Thủ AI! 8 Bot được chia thành 4 cặp đấu Cờ Chớp trực tiếp trên 4 màn hình!"
-        ];
-
-        const pauseBtn = document.getElementById("btn-spec-pause");
-        if (pauseBtn) pauseBtn.textContent = "⏸️ Tạm Dừng";
-
-        const brandTitle = document.getElementById("spec-brand-title");
-        if (brandTitle) brandTitle.innerHTML = "👁️ QUAN SÁT GIẢI ĐẤU 8 BOT (4 MÀN HÌNH)";
-        const newBtn = document.getElementById("btn-spec-new-8bots");
-        if (newBtn) newBtn.style.display = "";
-
-        this.tft.reset8BotTournament();
-        this.showScreen("spectator");
-        this.startSpectatorRoundMatches();
-        this.showToast("👁️ Đang phát trực tiếp 4 bàn đấu của 8 Bot AI cùng lúc!", "success");
-    }
-
-    startMultiplayerSpectatorSession(roomData) {
-        this.isMultiplayerSpectator = true;
-        this.currentRoom = roomData;
-        this.stopCombatTimers();
-        this.stopSpectatorTimers();
-        this.specPaused = false;
-        this.specZoomIndex = null;
-
-        const realCount = (roomData?.players || []).filter(p => !p.isBot).length;
-        this.specGlobalLogs = [
-            `🎬 TRỰC TIẾP GIẢI ĐẤU 8 KỲ THỦ (PHÒNG #${roomData.code})!`,
-            `👥 Có ${realCount} người chơi thật cùng tranh tài trên 4 bàn Cờ Chớp cùng lúc!`,
-            `🎙️ Chế độ Caster / Trọng Tài: Bạn đang theo dõi toàn cảnh 4 màn hình 2x2 siêu mượt.`
-        ];
-
-        const pauseBtn = document.getElementById("btn-spec-pause");
-        if (pauseBtn) pauseBtn.textContent = "⏸️ Tạm Dừng";
-
-        const brandTitle = document.getElementById("spec-brand-title");
-        if (brandTitle) {
-            brandTitle.innerHTML = `🎙️ TRỰC TIẾP GIẢI ĐẤU 8 KỲ THỦ • PHÒNG #${roomData.code}`;
-        }
-
-        const newBtn = document.getElementById("btn-spec-new-8bots");
-        if (newBtn) {
-            newBtn.style.display = "none";
-        }
-
-        this.tft.resetMultiplayerSpectatorTournament(roomData);
-        this.showScreen("spectator");
-        this.startSpectatorRoundMatches();
-        this.showToast(`🎙️ Đang phát sóng trực tiếp 4 bàn đấu của Phòng #${roomData.code}!`, "success");
-    }
-
-    startSpectatorRoundMatches() {
-        this.stopSpectatorTimers();
-        this.specMatches = this.tft.prepare8BotRoundMatches();
-        this.renderSpectatorView();
-        this.scheduleSpectatorTick();
-
-        // 100ms clock tick for all 4 boards
-        this.specClockInterval = setInterval(() => {
-            if (this.specPaused) return;
-            let anyClockUpdated = false;
-            const dt = 0.1 * this.specSpeed;
-
-            for (const m of this.specMatches) {
-                if (m.engine.gameOver) continue;
-                anyClockUpdated = true;
-                if (m.engine.turn === "player") {
-                    m.clockA = Math.max(0, m.clockA - dt);
-                    if (m.clockA <= 0) {
-                        m.engine.endMatch("enemy", "timeout", `${m.botA.name} hết giờ!`);
-                        const logLine = this.tft.resolveSingleBotMatch(m);
-                        if (logLine) this.specGlobalLogs.unshift(logLine);
-                    }
-                } else {
-                    m.clockB = Math.max(0, m.clockB - dt);
-                    if (m.clockB <= 0) {
-                        m.engine.endMatch("player", "timeout", `${m.botB.name} hết giờ!`);
-                        const logLine = this.tft.resolveSingleBotMatch(m);
-                        if (logLine) this.specGlobalLogs.unshift(logLine);
-                    }
-                }
-            }
-
-            if (anyClockUpdated) {
-                if (this.isSpectatorPOV) {
-                    this.updateSpectatorPovClocksOnly();
-                } else {
-                    this.updateSpectatorClocksOnly();
-                }
-                this.checkAllSpectatorMatchesFinished();
-            }
-        }, 100);
-    }
-
-    scheduleSpectatorTick() {
-        if (this.specMoveInterval) {
-            clearInterval(this.specMoveInterval);
-            this.specMoveInterval = null;
-        }
-        const intervalMs = Math.max(110, Math.round(520 / this.specSpeed));
-        this.specMoveInterval = setInterval(() => {
-            if (this.specPaused) return;
-            this.tickSpectatorMoves();
-        }, intervalMs);
-    }
-
-    tickSpectatorMoves() {
-        let anyMoved = false;
-
-        for (const m of this.specMatches) {
-            if (m.engine.gameOver) continue;
-            anyMoved = true;
-            const side = m.engine.turn;
-            const act = m.engine.chooseBotAction(side, 0.18);
-            if (!act) {
-                const winnerSide = side === "player" ? "enemy" : "player";
-                m.engine.endMatch(winnerSide, "checkmate", "Không còn nước đi hợp lệ!");
-            } else {
-                const res = m.engine.executeAction(act);
-                if (res) {
-                    if (side === "player") m.clockA += m.increment + (res.clockBonus || 0);
-                    else m.clockB += m.increment + (res.clockBonus || 0);
-                }
-            }
-
-            if (m.engine.gameOver && !m.resolved) {
-                const logLine = this.tft.resolveSingleBotMatch(m);
-                if (logLine) {
-                    this.specGlobalLogs.unshift(logLine);
-                }
-            }
-        }
-
-        if (anyMoved) {
-            this.sfx.move();
-            if (this.isSpectatorPOV) {
-                this.renderSpectatorPOV();
-            } else {
-                this.renderSpectatorView();
-            }
-            this.checkAllSpectatorMatchesFinished();
-        }
-    }
-
-    checkAllSpectatorMatchesFinished() {
-        if (this.specMatches.length === 0) return;
-        const allDone = this.specMatches.every(m => m.engine.gameOver);
-        if (!allDone) return;
-
-        // Ensure all matches are resolved
-        for (const m of this.specMatches) {
-            if (!m.resolved) {
-                const logLine = this.tft.resolveSingleBotMatch(m);
-                if (logLine) this.specGlobalLogs.unshift(logLine);
-            }
-        }
-
-        if (this.specMoveInterval) {
-            clearInterval(this.specMoveInterval);
-            this.specMoveInterval = null;
-        }
-        if (this.specClockInterval) {
-            clearInterval(this.specClockInterval);
-            this.specClockInterval = null;
-        }
-
-        if (this.isSpectatorPOV) {
-            this.renderSpectatorPOV();
-        } else {
-            this.renderSpectatorView();
-        }
-
-        const aliveBots = this.tft.spectatorBots.filter(b => !b.eliminated);
-        if (aliveBots.length <= 1) {
-            const champ = aliveBots[0] || this.tft.spectatorBots[0];
-            this.specGlobalLogs.unshift(`👑 NHÀ VÔ ĐỊCH GIẢI ĐẤU 8 BOT: ${champ.avatar} ${champ.name} (${champ.hp} ❤️ còn lại)!`);
-            this.sfx.victory();
-            this.renderSpectatorView();
-            this.showToast(`👑 ${champ.name} đã vô địch giải đấu 8 Bot!`, "success");
-            return;
-        }
-
-        const autoChk = document.getElementById("chk-spec-auto");
-        if (autoChk && autoChk.checked && !this.specAutoNextTimeout) {
-            this.specAutoNextTimeout = setTimeout(() => {
-                this.specAutoNextTimeout = null;
-                if (!this.specPaused) {
-                    this.advanceSpectatorNextRound();
-                }
-            }, 2200);
-        }
-    }
-
-    advanceSpectatorNextRound() {
-        this.stopSpectatorTimers();
-        // Force-resolve any unfinished match before advancing
-        for (const m of this.specMatches) {
-            if (!m.engine.gameOver) {
-                m.engine.endMatch("draw", "draw", "Qua vòng nhanh");
-            }
-            if (!m.resolved) {
-                const logLine = this.tft.resolveSingleBotMatch(m);
-                if (logLine) this.specGlobalLogs.unshift(logLine);
-            }
-        }
-
-        const aliveBots = this.tft.spectatorBots.filter(b => !b.eliminated);
-        if (aliveBots.length <= 1) {
-            this.showToast("Giải đấu đã tìm ra Nhà Vô Địch! Hãy bấm 'Tạo Ván 8 Bot Mới' để xem giải mới.", "info");
-            return;
-        }
-
-        const info = this.tft.advance8BotRound();
-        const cfg = this.tft.getStageConfig();
-        if (info.boardScaled) {
-            this.specGlobalLogs.unshift(`📐 Bước sang Stage ${this.tft.stage}: Bàn cờ của cả 4 màn hình mở rộng thành ${cfg.cols}x${cfg.rows}!`);
-            this.showToast(`📐 Sang Stage ${this.tft.stage}: Bàn cờ mở rộng thành ${cfg.cols}x${cfg.rows}!`, "success");
-        }
-        this.startSpectatorRoundMatches();
-    }
-
-    stopSpectatorTimers() {
-        if (this.specMoveInterval) {
-            clearInterval(this.specMoveInterval);
-            this.specMoveInterval = null;
-        }
-        if (this.specClockInterval) {
-            clearInterval(this.specClockInterval);
-            this.specClockInterval = null;
-        }
-        if (this.specAutoNextTimeout) {
-            clearTimeout(this.specAutoNextTimeout);
-            this.specAutoNextTimeout = null;
-        }
-    }
-
-    updateSpectatorClocksOnly() {
-        for (const m of this.specMatches) {
-            const cA = document.getElementById(`spec-clock-a-${m.matchIndex}`);
-            const cB = document.getElementById(`spec-clock-b-${m.matchIndex}`);
-            if (cA) cA.textContent = `⏱️ ${m.clockA.toFixed(1)}s`;
-            if (cB) cB.textContent = `⏱️ ${m.clockB.toFixed(1)}s`;
-        }
-    }
-
-    updateSpectatorPovClocksOnly() {
-        if (!this.isSpectatorPOV || !this.tft) return;
-        const viewed = this.getViewedParticipant();
-        if (!viewed) return;
-        const m = this.specMatches?.find(match => match.botA.id === viewed.id || match.botB.id === viewed.id);
-        if (!m) return;
-        const pClock = document.getElementById("clock-player");
-        const eClock = document.getElementById("clock-enemy");
-        const pBox = document.getElementById("clock-box-player");
-        const eBox = document.getElementById("clock-box-enemy");
-        if (pClock) pClock.textContent = `${m.clockA.toFixed(1)}s`;
-        if (eClock) eClock.textContent = `${m.clockB.toFixed(1)}s`;
-        if (pBox) pBox.classList.toggle("clock-active", m.engine.turn === "player" && !m.engine.gameOver);
-        if (eBox) eBox.classList.toggle("clock-active", m.engine.turn === "enemy" && !m.engine.gameOver);
-    }
-
-    renderSpectatorView() {
-        if (this.isSpectatorPOV) {
-            this.renderSpectatorPOV();
-            return;
-        }
-
-        const cfg = this.tft.getStageConfig();
-        const aliveCount = this.tft.spectatorBots.filter(b => !b.eliminated).length;
-
-        const roleLabel = this.isMultiplayerSpectator ? "Kỳ thủ" : "Bot";
-        document.getElementById("spec-alive-badge").textContent = `${this.isMultiplayerSpectator ? "👥" : "🤖"} Còn sống: ${aliveCount}/8 ${roleLabel}`;
-
-        const lbTitleEl = document.getElementById("spec-leaderboard-title");
-        if (lbTitleEl) {
-            lbTitleEl.textContent = this.isMultiplayerSpectator
-                ? "👥 Bảng Xếp Hạng 8 Kỳ Thủ (Trực Tiếp)"
-                : "🤖 Bảng Xếp Hạng 8 Bot (Can Thiệp Nhanh)";
-        }
-
-        this.renderSpectatorLeaderboard();
-
-        // Global log
-        const logEl = document.getElementById("spec-global-log");
-        logEl.innerHTML = "";
-        for (const line of this.specGlobalLogs.slice(0, 25)) {
-            const d = document.createElement("div");
-            d.className = "log-row";
-            d.textContent = line;
-            logEl.appendChild(d);
-        }
-
-        // 4 Split Screens Grid
-        const gridEl = document.getElementById("spec-grid-4");
-        gridEl.classList.toggle("zoomed-single", this.specZoomIndex !== null);
-        gridEl.innerHTML = "";
-
-        for (const m of this.specMatches) {
-            if (this.specZoomIndex !== null && this.specZoomIndex !== m.matchIndex) continue;
-            gridEl.appendChild(this.renderSpectatorMatchCard(m, cfg));
-        }
-    }
-
-    renderSpectatorLeaderboard() {
-        const lbEl = document.getElementById("spec-leaderboard");
-        lbEl.innerHTML = "";
-
-        const sorted = [...this.tft.spectatorBots].sort((a, b) => b.hp - a.hp);
-        sorted.forEach((bot, idx) => {
-            const row = document.createElement("div");
-            const isReal = !!bot.isRealPlayer;
-            row.className = `spec-bot-row ${bot.eliminated ? "eliminated" : ""} ${isReal ? "real-player" : ""}`;
-
-            const unitsHtml = bot.board.map(u => {
-                const def = window.CHESS_TFT_DATA.PIECES[u.id];
-                return `<span class="spec-bot-unit-pill" title="${def.name}"><img src="assets/pieces/${def.id}.svg" class="spec-unit-svg" alt="${def.name}" />${"★".repeat(u.stars || 1)}</span>`;
-            }).join("");
-
-            const realTag = isReal
-                ? `<span class="spec-real-player-pill">👤 NGƯỜI THẬT</span>`
-                : `<span style="font-size:0.65rem; color:#94a3b8;">🤖 BOT</span>`;
-
-            // Augments badges
-            const augsHtml = (bot.augments || []).map(augId => {
-                const def = (window.CHESS_TFT_DATA.AUGMENTS || []).find(a => a.id === augId);
-                if (!def) return "";
-                return `<span class="lb-aug-badge" title="[Lõi] ${def.name}: ${def.desc}">${def.icon} ${def.name}</span>`;
-            }).join("");
-
-            row.innerHTML = `
-                <div class="spec-bot-top">
-                    <span>#${idx + 1} ${bot.avatar} ${bot.name} ${realTag} <button class="btn-pov-card btn-view-bot-pov" title="Xem góc nhìn 1 người">👁️ POV</button></span>
-                    <span style="color:${bot.hp > 40 ? "#4ade80" : "#f87171"}; font-weight:800;">❤️ ${bot.hp}</span>
-                </div>
-                <div class="spec-bot-meta">
-                    <span>Lv.${bot.level} • 🪙 ${bot.gold} • ${isReal ? `ELO ${bot.elo || 1000}` : `Hệ: ${bot.style}`}</span>
-                    <span>${bot.streak > 0 ? `🔥+${bot.streak}` : (bot.streak < 0 ? `❄️${bot.streak}` : "⚖️0")}</span>
-                </div>
-                ${augsHtml ? `<div class="lb-badges-cluster" style="margin:2px 0 4px;">${augsHtml}</div>` : ""}
-                <div class="spec-bot-units">${unitsHtml}</div>
-                ${this.currentUser && this.currentUser.role === "admin" ? `
-                <div class="spec-bot-admin-btns">
-                    <button class="spec-mini-btn btn-buff-hp" title="Admin cộng +25 Máu cho Kỳ thủ này">+25 ❤️</button>
-                    <button class="spec-mini-btn btn-buff-star" title="Admin nâng toàn bộ đội hình lên +1 Sao">⬆️ Nâng Sao</button>
-                    <button class="spec-mini-btn btn-buff-item" title="Admin tặng thêm Trang bị">🎁 +Đồ</button>
-                </div>
-                ` : ""}
-            `;
-
-            row.querySelector(".btn-view-bot-pov")?.addEventListener("click", (e) => {
-                e.stopPropagation();
-                this.setSpectatorMode("pov", bot.id);
-            });
-
-            if (this.currentUser && this.currentUser.role === "admin") {
-                row.querySelector(".btn-buff-hp")?.addEventListener("click", () => {
-                    bot.hp = Math.min(200, bot.hp + 25);
-                    bot.eliminated = false;
-                    this.showToast(`⚡ Admin đã bơm +25 Máu cho ${bot.name}!`, "success");
-                    this.renderSpectatorLeaderboard();
-                });
-
-                row.querySelector(".btn-buff-star")?.addEventListener("click", () => {
-                    for (const u of bot.board) {
-                        u.stars = Math.min(3, (u.stars || 1) + 1);
-                    }
-                    this.sfx.starUp();
-                    this.showToast(`🌟 Admin đã nâng Sao toàn bộ đội hình của ${bot.name}!`, "success");
-                    this.renderSpectatorLeaderboard();
-                });
-
-                row.querySelector(".btn-buff-item")?.addEventListener("click", () => {
-                    const itemIds = Object.keys(window.CHESS_TFT_DATA.ITEMS);
-                    const nonKings = bot.board.filter(u => u.id !== "king");
-                    if (nonKings.length > 0) {
-                        const target = nonKings[Math.floor(Math.random() * nonKings.length)];
-                        const randItem = itemIds[Math.floor(Math.random() * itemIds.length)];
-                        target.items.push(randItem);
-                        this.showToast(`🎁 Admin đã trang bị ${window.CHESS_TFT_DATA.ITEMS[randItem].name} cho ${bot.name}!`, "success");
-                        this.renderSpectatorLeaderboard();
-                    }
-                });
-            }
-
-            lbEl.appendChild(row);
-        });
-    }
-
-    renderSpectatorMatchCard(m, cfg) {
-        const card = document.createElement("div");
-        const eng = m.engine;
-        card.className = `spec-match-card ${eng.gameOver ? "match-finished" : ""}`;
-
-        // Calculate optimal square pixel size so 4 boards fit cleanly in 2x2 grid
-        const isZoomed = this.specZoomIndex === m.matchIndex;
-        const baseCellPx = isZoomed
-            ? (cfg.rows <= 6 ? 58 : (cfg.rows === 7 ? 50 : 44))
-            : (cfg.rows <= 6 ? 34 : (cfg.rows === 7 ? 30 : 26));
-
-        const lastMove = eng.moveHistory.length > 0
-            ? eng.moveHistory[eng.moveHistory.length - 1]
-            : null;
-        const footerText = eng.gameOver
-            ? m.summaryText
-            : (lastMove ? `[Lượt ${lastMove.turn}] ${lastMove.text}` : "⏳ Bắt đầu ván đấu...");
-
-        let statusPillText = `Lượt ${eng.turnCount}/${eng.maxTurns}`;
-        if (eng.gameOver && eng.result) {
-            statusPillText = `🏁 ${eng.result.reasonLabel}`;
-        }
-
-        card.innerHTML = `
-            <div class="spec-match-header">
-                <div class="spec-match-title">
-                    <span>📺 BÀN #${m.matchIndex + 1} ${m.isExhibition ? "(Bản Sao)" : ""}</span>
-                    <span class="badge-pill" style="font-size:0.68rem; padding:1px 6px;">${m.mapDef.name}</span>
-                </div>
-                <div style="display:flex; gap:6px; align-items:center;">
-                    <span style="font-size:0.68rem; color:#94a3b8;">${statusPillText}</span>
-                    <button class="spec-mini-btn btn-zoom-board">${isZoomed ? "🗗 Xem 4 Màn Hình" : "🔍 Phóng To"}</button>
-                </div>
-            </div>
-
-            <div class="spec-fighters-bar">
-                <div class="spec-fighter side-blue ${!eng.gameOver && eng.turn === "player" ? "turn-active" : ""}">
-                    <span>${m.botA.avatar} ${m.botA.name} ${m.botA.isRealPlayer ? '<span class="spec-real-player-pill">👤 THẬT</span>' : ''} (❤️${m.botA.hp}) <button class="btn-pov-card btn-card-pov-a" title="Xem camera 1 người">👁️ POV</button></span>
-                    <span id="spec-clock-a-${m.matchIndex}">⏱️ ${m.clockA.toFixed(1)}s</span>
-                </div>
-                <span class="spec-vs-pill">VS</span>
-                <div class="spec-fighter side-red ${!eng.gameOver && eng.turn === "enemy" ? "turn-active" : ""}">
-                    <span>${m.botB.avatar} ${m.botB.name} ${m.botB.isRealPlayer ? '<span class="spec-real-player-pill">👤 THẬT</span>' : ''} (❤️${m.botB.hp}) <button class="btn-pov-card btn-card-pov-b" title="Xem camera 1 người">👁️ POV</button></span>
-                    <span id="spec-clock-b-${m.matchIndex}">⏱️ ${m.clockB.toFixed(1)}s</span>
-                </div>
-            </div>
-
-            <div class="spec-board-wrap">
-                <div class="spec-board-grid" style="grid-template-columns: repeat(${cfg.cols}, ${baseCellPx}px); grid-template-rows: repeat(${cfg.rows}, ${baseCellPx}px);"></div>
-            </div>
-
-            <div class="spec-match-footer">${footerText}</div>
-        `;
-
-        card.querySelector(".btn-card-pov-a")?.addEventListener("click", (e) => {
-            e.stopPropagation();
-            this.setSpectatorMode("pov", m.botA.id);
-        });
-        card.querySelector(".btn-card-pov-b")?.addEventListener("click", (e) => {
-            e.stopPropagation();
-            this.setSpectatorMode("pov", m.botB.id);
-        });
-
-        card.querySelector(".btn-zoom-board").addEventListener("click", () => {
-            this.specZoomIndex = isZoomed ? null : m.matchIndex;
-            this.renderSpectatorView();
-        });
-
-        const boardGrid = card.querySelector(".spec-board-grid");
-        const lastAct = eng.lastAction;
-
-        for (let r = 0; r < cfg.rows; r++) {
-            for (let c = 0; c < cfg.cols; c++) {
-                const cell = document.createElement("div");
-                const isLight = (r + c) % 2 === 0;
-                cell.className = `spec-cell ${isLight ? "light" : "dark"}`;
-
-                const terr = typeof eng.getTerrain === "function" ? eng.getTerrain(r, c) : (eng.terrain && eng.terrain[`${r},${c}`]);
-                if (terr === "river") cell.style.background = "rgba(14, 165, 233, 0.32)";
-                else if (terr === "lava") cell.style.background = "rgba(239, 68, 68, 0.32)";
-                else if (terr === "wall") {
-                    cell.style.background = "#090d16";
-                    cell.innerHTML = `<span style="font-size:0.75rem; opacity:0.65;">🧱</span>`;
-                }
-
-                if (lastAct) {
-                    if (lastAct.fromR === r && lastAct.fromC === c) cell.classList.add("last-from");
-                    if (lastAct.toR === r && lastAct.toC === c) cell.classList.add("last-to");
-                }
-
-                const unit = eng.board[r][c];
-                if (unit) {
-                    const hpSegs = [];
-                    for (let i = 0; i < unit.maxHp; i++) {
-                        hpSegs.push(`<span class="spec-hp-seg ${i >= unit.hp ? "lost" : ""}"></span>`);
-                    }
-                    let statusBadge = "";
-                    if (unit.stunnedTurns > 0) statusBadge = "💫";
-                    else if (unit.burnTurns > 0) statusBadge = `🔥`;
-                    else if (unit.reloadTurns > 0) statusBadge = "⏳";
-
-                    cell.innerHTML = `
-                        <div class="spec-unit-token side-${unit.side}" style="font-size:${Math.max(12, Math.round(baseCellPx * 0.52))}px;">
-                            <span class="spec-unit-stars">${"★".repeat(unit.stars || 1)}</span>
-                            <span>${unit.icon}</span>
-                            ${statusBadge ? `<span class="spec-unit-status">${statusBadge}</span>` : ""}
-                            <div class="spec-unit-hpbar">${hpSegs.join("")}</div>
-                        </div>
-                    `;
-                }
-
-                boardGrid.appendChild(cell);
-            }
-        }
-
-        return card;
-    }
-
-    // ========================================================================
-    // IN-MATCH SPECTATOR MODES: POV 1 KỲ THỦ & 4 BÀN ĐẤU MULTI-SCREEN
-    // ========================================================================
-    setSpectatorMode(mode, targetId = null) {
-        this.spectatorMode = mode;
-        if (mode === "pov") {
-            this.isSpectatorPOV = true;
-            const participants = this.tft.spectatorBots || (this.tft.getAllParticipants ? this.tft.getAllParticipants() : []);
-            if (targetId) {
-                this.spectatorPovTargetId = targetId;
-            } else if (!this.spectatorPovTargetId || !participants.some(p => p.id === this.spectatorPovTargetId)) {
-                const firstAlive = participants.find(p => !p.eliminated) || participants[0];
-                this.spectatorPovTargetId = firstAlive?.id || "bot_0";
-            }
-
-            // Show game screen with POV controls
-            this.showScreen("game");
-            const povBar = document.getElementById("spec-pov-control-bar");
-            if (povBar) povBar.classList.remove("hidden");
-
-            // Disable / hide interactive buttons for spectator
-            const actionBtns = [
-                document.getElementById("btn-start-combat"),
-                document.getElementById("btn-reroll"),
-                document.getElementById("btn-buy-xp"),
-                document.getElementById("btn-lock-shop"),
-                document.getElementById("btn-surrender-game")
-            ];
-            actionBtns.forEach(b => { if (b) b.style.display = "none"; });
-
-            this.renderSpectatorPOV();
-            const target = participants.find(p => p.id === this.spectatorPovTargetId);
-            this.showToast(`👁️ Đang theo dõi góc nhìn POV của ${target?.name || "Kỳ thủ"}!`, "info");
-        } else {
-            // Mode "multi" (4-board split view)
-            this.isSpectatorPOV = false;
-            const povBar = document.getElementById("spec-pov-control-bar");
-            if (povBar) povBar.classList.add("hidden");
-
-            // Restore action buttons
-            const actionBtns = [
-                document.getElementById("btn-start-combat"),
-                document.getElementById("btn-reroll"),
-                document.getElementById("btn-buy-xp"),
-                document.getElementById("btn-lock-shop"),
-                document.getElementById("btn-surrender-game")
-            ];
-            actionBtns.forEach(b => { if (b) b.style.display = ""; });
-
-            this.showScreen("spectator");
-            this.renderSpectatorView();
-            this.showToast("📺 Đã chuyển sang chế độ theo dõi 4 bàn cờ cùng lúc!", "info");
-        }
-    }
-
-    cycleSpectatorPOVTarget(dir = 1) {
-        const participants = this.tft.spectatorBots || (this.tft.getAllParticipants ? this.tft.getAllParticipants() : []);
-        if (!participants || participants.length === 0) return;
-        let curIdx = participants.findIndex(p => p.id === this.spectatorPovTargetId);
-        if (curIdx === -1) curIdx = 0;
-        const newIdx = (curIdx + dir + participants.length) % participants.length;
-        this.spectatorPovTargetId = participants[newIdx].id;
-        this.renderSpectatorPOV();
-        this.sfx.move();
-        this.showToast(`👁️ Chuyển camera sang: ${participants[newIdx].name}`, "info");
-    }
-
-    getViewedParticipant() {
-        if (this.isSpectatorPOV) {
-            const participants = this.tft.spectatorBots || (this.tft.getAllParticipants ? this.tft.getAllParticipants() : []);
-            return participants.find(p => p.id === this.spectatorPovTargetId) || participants[0] || this.tft.player;
-        }
-        if (this.tft && this.tft.scoutingPlayerId && this.tft.scoutingPlayerId !== "player") {
-            return this.tft.getParticipantById(this.tft.scoutingPlayerId) || this.tft.player;
-        }
-        return this.tft ? this.tft.player : null;
-    }
-
-    renderSpectatorPOV() {
-        if (!this.isSpectatorPOV || !this.tft) return;
-        const viewed = this.getViewedParticipant();
-        if (!viewed) return;
-
-        // 1. Update POV control bar info
-        const avEl = document.getElementById("spec-pov-target-av");
-        const nameEl = document.getElementById("spec-pov-target-name");
-        const statsEl = document.getElementById("spec-pov-target-stats");
-        if (avEl) avEl.textContent = viewed.avatar || "👑";
-        if (nameEl) nameEl.textContent = `Đang Xem: ${viewed.name} ${viewed.isRealPlayer ? "(Người thật)" : ""}`;
-        if (statsEl) {
-            const streakStr = viewed.streak > 0 ? `🔥+${viewed.streak}` : (viewed.streak < 0 ? `❄️${viewed.streak}` : "⚖️0");
-            statsEl.textContent = `❤️ ${viewed.hp} HP • Lv.${viewed.level} • 🪙 ${viewed.gold} Vàng • Chuỗi ${streakStr}`;
-        }
-
-        // 2. Update Top Bar indicators
-        const hpEl = document.getElementById("player-hp");
-        if (hpEl) hpEl.textContent = `${viewed.hp} HP`;
-        const goldEl = document.getElementById("player-gold");
-        if (goldEl) goldEl.textContent = `${viewed.gold} 🪙`;
-        const lvlEl = document.getElementById("player-level");
-        if (lvlEl) lvlEl.textContent = `Cấp ${viewed.level}`;
-        const capEl = document.getElementById("player-unit-cap");
-        if (capEl) capEl.textContent = `Quân: ${(viewed.board || []).length}/${viewed.level + 1}`;
-        const stageBadge = document.getElementById("stage-round-badge");
-        if (stageBadge) stageBadge.textContent = `Vòng ${this.tft.stage}-${this.tft.roundInStage}`;
-
-        const hudLvl = document.getElementById("hud-level-name");
-        if (hudLvl) hudLvl.textContent = `CẤP ${viewed.level}`;
-        const hudGold = document.getElementById("hud-gold-amount");
-        if (hudGold) hudGold.textContent = viewed.gold;
-
-        // 3. Render Synergies of viewed participant
-        this.renderSynergies();
-
-        // 4. Render Items & Augments in Left Panel
-        this.renderRightPanel();
-
-        // 5. Render Bench
-        this.renderBench();
-
-        // 6. Render Board (Prep vs Combat)
-        this.renderBoardArea();
-
-        // 7. Render Leaderboard with POV highlights
-        this.renderSpectatorPOVLeaderboard();
-    }
-
-    renderSpectatorPOVBoard(boardEl, cfg) {
-        const viewed = this.getViewedParticipant();
-        if (!viewed) return;
-
-        const scoutBanner = document.getElementById("scouting-banner");
-        const mapInfoBar = document.getElementById("map-info-bar");
-
-        boardEl.style.gridTemplateColumns = `repeat(${cfg.cols}, 1fr)`;
-        boardEl.style.gridTemplateRows = `repeat(${cfg.rows}, 1fr)`;
-        boardEl.innerHTML = "";
-
-        const activeMatch = this.specMatches?.find(m => m.botA.id === viewed.id || m.botB.id === viewed.id);
-        const inActiveCombat = activeMatch && !activeMatch.engine.gameOver;
-
-        if (inActiveCombat) {
-            if (scoutBanner) {
-                scoutBanner.classList.remove("hidden");
-                const targetText = document.getElementById("scouting-target-name");
-                if (targetText) targetText.textContent = `🔴 [TRỰC TIẾP]: ${activeMatch.botA.name} VS ${activeMatch.botB.name} (Bàn #${activeMatch.matchIndex + 1})`;
-            }
-            if (mapInfoBar) {
-                mapInfoBar.innerHTML = `
-                    <span class="map-active-pill" style="background:${activeMatch.mapDef.themeColor}">🗺️ ${activeMatch.mapDef.name}</span>
-                    <span class="map-desc-text">${activeMatch.summaryText || "Đang giao tranh Cờ Chớp trực tiếp..."}</span>
-                `;
-            }
-            this.renderSpectatorEngineOnMainBoard(boardEl, cfg, activeMatch, viewed);
-        } else {
-            if (scoutBanner) {
-                scoutBanner.classList.remove("hidden");
-                const targetText = document.getElementById("scouting-target-name");
-                if (targetText) targetText.textContent = `👁️ [GIAI ĐOẠN XẾP CỜ]: Đang theo dõi bàn cờ & hàng chờ của ${viewed.name}`;
-            }
-            if (mapInfoBar) {
-                const mapDef = this.tft.currentMap || window.CHESS_TFT_DATA.MAPS[0];
-                mapInfoBar.innerHTML = `
-                    <span class="map-active-pill" style="background:${mapDef.themeColor}">🗺️ Bản Đồ: ${mapDef.name}</span>
-                    <span class="map-desc-text">Kỳ thủ đang sắp xếp đội hình và trang bị.</span>
-                `;
-            }
-            this.renderPrepBoardCells(boardEl, cfg, viewed, true);
-        }
-    }
-
-    renderSpectatorEngineOnMainBoard(boardEl, cfg, m, viewed) {
-        const eng = m.engine;
-
-        // Update blitz clocks on right panel
-        const pLabel = document.querySelector("#clock-box-player .clock-label");
-        const eLabel = document.querySelector("#clock-box-enemy .clock-label");
-        const pClock = document.getElementById("clock-player");
-        const eClock = document.getElementById("clock-enemy");
-        const pBox = document.getElementById("clock-box-player");
-        const eBox = document.getElementById("clock-box-enemy");
-
-        if (pLabel) pLabel.textContent = `${m.botA.name.slice(0, 10)} ${m.botA.id === viewed.id ? "👁️" : ""}`;
-        if (eLabel) eLabel.textContent = `${m.botB.name.slice(0, 10)} ${m.botB.id === viewed.id ? "👁️" : ""}`;
-        if (pClock) pClock.textContent = `${m.clockA.toFixed(1)}s`;
-        if (eClock) eClock.textContent = `${m.clockB.toFixed(1)}s`;
-        if (pBox) pBox.classList.toggle("clock-active", eng.turn === "player" && !eng.gameOver);
-        if (eBox) eBox.classList.toggle("clock-active", eng.turn === "enemy" && !eng.gameOver);
-
-        for (let r = 0; r < cfg.rows; r++) {
-            for (let c = 0; c < cfg.cols; c++) {
-                const cell = document.createElement("div");
-                const isLight = (r + c) % 2 === 0;
-                const terr = typeof eng.getTerrain === "function" ? eng.getTerrain(r, c) : (eng.terrain && eng.terrain[`${r},${c}`]);
-                cell.className = `board-cell ${isLight ? "cell-light" : "cell-dark"}`;
-
-                if (terr) {
-                    cell.classList.add(`terrain-${terr}`);
-                    const terrBadge = document.createElement("span");
-                    terrBadge.className = "terrain-badge";
-                    if (terr === "river") terrBadge.textContent = "🌊 Sông";
-                    else if (terr === "wall") terrBadge.textContent = "🧱 Tường";
-                    else if (terr === "lava") terrBadge.textContent = "🌋 Dung Nham";
-                    else if (terr === "rune") terrBadge.textContent = "✨ +Tầm";
-                    cell.appendChild(terrBadge);
-                }
-
-                if (eng.lastAction) {
-                    if ((eng.lastAction.fromR === r && eng.lastAction.fromC === c) ||
-                        (eng.lastAction.toR === r && eng.lastAction.toC === c)) {
-                        cell.classList.add("cell-last-move");
-                    }
-                }
-
-                const piece = eng.board[r][c];
-                if (piece) {
-                    const pieceEl = this.createPieceDOM(piece);
-                    cell.appendChild(pieceEl);
-                }
-                boardEl.appendChild(cell);
-            }
-        }
-    }
-
-    renderSpectatorPOVLeaderboard() {
-        const listEl = document.getElementById("leaderboard-list");
-        if (!listEl) return;
-        listEl.innerHTML = "";
-
-        const bots = [...(this.tft.spectatorBots || [])].sort((a, b) => b.hp - a.hp);
-        for (const bot of bots) {
-            const row = document.createElement("div");
-            const isTarget = bot.id === this.spectatorPovTargetId;
-            row.className = `leader-row ${isTarget ? "leader-scouted leader-self" : ""} ${bot.eliminated ? "leader-dead" : ""}`;
-
-            const hpPercent = Math.max(0, Math.min(100, bot.hp));
-            const nonKingCount = (bot.board || []).filter(u => u.id !== "king").length;
-
-            const augBadges = (bot.augments || []).map(augId => {
-                const def = (window.CHESS_TFT_DATA.AUGMENTS || []).find(a => a.id === augId);
-                if (!def) return "";
-                return `<span class="lb-aug-badge" title="[Lõi] ${def.name}: ${def.desc}">${def.icon}</span>`;
-            }).join("");
-
-            const equippedItems = [];
-            (bot.board || []).forEach(u => {
-                (u.items || []).forEach(itId => {
-                    const it = window.CHESS_TFT_DATA.ITEMS[itId];
-                    if (it) equippedItems.push(it);
-                });
-            });
-            const itemBadges = equippedItems.slice(0, 5).map(it =>
-                `<span class="lb-item-badge" title="[Trang bị] ${it.name}: ${it.desc}">${it.icon}</span>`
-            ).join("");
-
-            const badgesCluster = (augBadges || itemBadges)
-                ? `<div class="lb-badges-cluster">${augBadges} ${itemBadges}</div>`
-                : "";
-
-            const targetTag = isTarget ? `<span class="opponent-scout-badge" style="background:#0ea5e9;">👁️ Đang xem</span>` : "";
-
-            row.innerHTML = `
-                <div class="leader-top">
-                    <span class="leader-avatar">${bot.avatar}</span>
-                    <div class="leader-info">
-                        <div class="leader-name">${bot.name} ${targetTag}</div>
-                        <div class="leader-sub">Cấp ${bot.level} • ${nonKingCount} Quân ${bot.isRealPlayer ? "• Người thật" : ""}</div>
-                        ${badgesCluster}
-                    </div>
-                    <span class="leader-hp-num">${bot.hp} HP</span>
-                </div>
-                <div class="leader-hp-bar">
-                    <div class="leader-hp-fill" style="width:${hpPercent}%; background:${bot.hp > 50 ? "#22c55e" : (bot.hp > 25 ? "#f59e0b" : "#ef4444")}"></div>
-                </div>
-            `;
-
-            row.addEventListener("click", () => {
-                this.setSpectatorMode("pov", bot.id);
-            });
-
-            listEl.appendChild(row);
-        }
-    }
-
-    // ========================================================================
-    // TFT HOTKEY ACTIONS (D / F / E / W / X) & LOCK SHOP
-    // ========================================================================
-    handleHotkeyReroll() {
-        if (this.isSpectatorPOV) return;
-        const gameScreen = document.getElementById("screen-game");
-        if (!gameScreen || gameScreen.classList.contains("hidden")) return;
-
-        if (this.tft.phase !== "prep") {
-            this.showToast("Chỉ có thể đổi Shop trong giai đoạn Chuẩn Bị!", "warn");
-            return;
-        }
-
-        const hadFree = (this.tft.player.freeRerolls || 0) > 0;
-        if (this.tft.rollShop(false)) {
-            this.sfx.move();
-            if (hadFree) {
-                this.showToast(`🎁 Đã dùng 1 lượt Đổi Shop MIỄN PHÍ [D]! Còn lại: ${this.tft.player.freeRerolls || 0}`, "success");
-            }
-            this.renderAll();
-            this.syncMyStateToRoom();
-
-            const btn = document.getElementById("btn-reroll");
-            if (btn) {
-                btn.classList.add("btn-key-pressed");
-                setTimeout(() => btn.classList.remove("btn-key-pressed"), 150);
-            }
-        } else {
-            this.showToast("Không đủ 2 Vàng để đổi Shop! [D]", "warn");
-        }
-    }
-
-    handleHotkeyBuyXP() {
-        if (this.isSpectatorPOV) return;
-        const gameScreen = document.getElementById("screen-game");
-        if (!gameScreen || gameScreen.classList.contains("hidden")) return;
-
-        if (this.tft.phase !== "prep") {
-            this.showToast("Chỉ có thể mua XP trong giai đoạn Chuẩn Bị!", "warn");
-            return;
-        }
-
-        if (this.tft.buyXP()) {
-            this.sfx.starUp();
-            this.renderAll();
-            this.syncMyStateToRoom();
-
-            const btn = document.getElementById("btn-buy-xp");
-            if (btn) {
-                btn.classList.add("btn-key-pressed");
-                setTimeout(() => btn.classList.remove("btn-key-pressed"), 150);
-            }
-        } else {
-            this.showToast("Không đủ 4 Vàng hoặc đã đạt Cấp tối đa (Lv.8)! [F]", "warn");
-        }
-    }
-
-    handleHotkeySellPiece() {
-        if (this.isSpectatorPOV) return;
-        const gameScreen = document.getElementById("screen-game");
-        if (!gameScreen || gameScreen.classList.contains("hidden")) return;
-
-        // Target priority: Hovered Unit -> Selected Prep Unit
-        let targetUid = null;
-        if (this.hoveredUnit && this.hoveredUnit.uid) {
-            targetUid = this.hoveredUnit.uid;
-        } else if (this.selectedPrepUnitUid) {
-            targetUid = this.selectedPrepUnitUid;
-        }
-
-        if (!targetUid) {
-            this.showToast("💡 Trỏ chuột vào quân cờ (hoặc bấm chọn) rồi nhấn phím [E] để Bán Nhanh!", "info");
-            return;
-        }
-
-        const benchUnit = this.tft.player.bench.find(u => u && u.uid === targetUid);
-        const boardUnit = this.tft.player.board.find(u => u && u.uid === targetUid);
-        const targetUnit = benchUnit || boardUnit;
-
-        if (!targetUnit) {
-            this.showToast("Không tìm thấy quân cờ để bán!", "warn");
-            return;
-        }
-
-        if (targetUnit.id === "king") {
-            this.showToast("Không thể bán Quốc Vương (Vua)!", "warn");
-            return;
-        }
-
-        if (this.tft.phase !== "prep" && boardUnit) {
-            this.showToast("Không thể bán quân đang trên bàn cờ khi đang Giao Tranh!", "warn");
-            return;
-        }
-
-        const res = this.tft.sellUnit(targetUnit.uid);
-        if (res.ok) {
-            if (this.selectedPrepUnitUid === targetUnit.uid) {
-                this.selectedPrepUnitUid = null;
-            }
-            if (this.hoveredUnit && this.hoveredUnit.uid === targetUnit.uid) {
-                this.hoveredUnit = null;
-            }
-            this.sfx.move();
-            this.showToast(`💰 Đã bán nhanh [E] ${res.name} (+${res.refund} 🪙)`, "info");
-            this.renderAll();
-            this.syncMyStateToRoom();
-
-            const sellBtn = document.getElementById("btn-sell-selected");
-            if (sellBtn && !sellBtn.classList.contains("hidden")) {
-                sellBtn.classList.add("btn-key-pressed");
-                setTimeout(() => sellBtn.classList.remove("btn-key-pressed"), 150);
-            }
-        } else {
-            this.showToast(res.msg || "Không thể bán quân cờ!", "warn");
-        }
-    }
-
-    handleHotkeyDeployOrRecall() {
-        if (this.isSpectatorPOV) return;
-        const gameScreen = document.getElementById("screen-game");
-        if (!gameScreen || gameScreen.classList.contains("hidden")) return;
-
-        if (this.tft.phase !== "prep") {
-            this.showToast("Chỉ có thể điều động hoặc thu hồi quân cờ trong Giai Đoạn Chuẩn Bị!", "warn");
-            return;
-        }
-
-        let targetUid = null;
-        if (this.hoveredUnit && this.hoveredUnit.uid) {
-            targetUid = this.hoveredUnit.uid;
-        } else if (this.selectedPrepUnitUid) {
-            targetUid = this.selectedPrepUnitUid;
-        }
-
-        if (!targetUid) {
-            this.showToast("💡 Trỏ chuột vào quân cờ rồi bấm phím [W] để đưa lên sân hoặc thu hồi!", "info");
-            return;
-        }
-
-        const benchUnit = this.tft.player.bench.find(u => u && u.uid === targetUid);
-        const boardUnit = this.tft.player.board.find(u => u && u.uid === targetUid);
-
-        // CASE 1: UNIT IS ON BENCH -> DEPLOY TO BOARD
-        if (benchUnit) {
-            const cfg = this.tft.getStageConfig();
-            const minR = cfg.rows - cfg.deployRows;
-
-            let targetR = -1;
-            let targetC = -1;
-
-            // If player is hovering over a valid empty deploy cell, deploy there!
-            if (this.hoveredCell && this.hoveredCell.r >= minR && this.hoveredCell.r < cfg.rows) {
-                const occupied = this.tft.player.board.some(u => u.r === this.hoveredCell.r && u.c === this.hoveredCell.c);
-                if (!occupied) {
-                    targetR = this.hoveredCell.r;
-                    targetC = this.hoveredCell.c;
-                }
-            }
-
-            // Otherwise find the first available cell in deploy zone
-            if (targetR === -1) {
-                const centerC = Math.floor(cfg.cols / 2);
-                const colOrder = [centerC];
-                for (let d = 1; d < cfg.cols; d++) {
-                    if (centerC - d >= 0) colOrder.push(centerC - d);
-                    if (centerC + d < cfg.cols) colOrder.push(centerC + d);
-                }
-
-                for (let r = cfg.rows - 1; r >= minR; r--) {
-                    for (const c of colOrder) {
-                        const occupied = this.tft.player.board.some(u => u.r === r && u.c === c);
-                        if (!occupied) {
-                            targetR = r;
-                            targetC = c;
-                            break;
-                        }
-                    }
-                    if (targetR !== -1) break;
-                }
-            }
-
-            if (targetR === -1) {
-                this.showToast("Không còn ô trống nào trong khu vực sân nhà!", "warn");
-                return;
-            }
-
-            const res = this.tft.movePlayerUnitToBoard(benchUnit.uid, targetR, targetC);
-            if (res.ok) {
-                const def = window.CHESS_TFT_DATA.PIECES[benchUnit.id];
-                this.selectedPrepUnitUid = null;
-                this.hoveredUnit = null;
-                this.sfx.move();
-                if (this.isTutorialMode && this.tutorialStep === 2) {
-                    this.advanceTutorialStep(3);
-                }
-                this.showToast(`⚔️ Đã đưa [W] ${def.name} lên sân đấu!`, "info");
-                this.renderAll();
-                this.syncMyStateToRoom();
-            } else {
-                this.showToast(res.msg || "Không thể đặt quân lên sàn!", "warn");
-            }
-            return;
-        }
-
-        // CASE 2: UNIT IS ON BOARD -> RECALL TO BENCH
-        if (boardUnit) {
-            if (boardUnit.id === "king") {
-                this.showToast("Quốc Vương bắt buộc phải ở trên bàn cờ!", "warn");
-                return;
-            }
-
-            const res = this.tft.moveBoardUnitToBench(boardUnit.uid);
-            if (res.ok) {
-                const def = window.CHESS_TFT_DATA.PIECES[boardUnit.id];
-                this.selectedPrepUnitUid = null;
-                this.hoveredUnit = null;
-                this.sfx.move();
-                this.showToast(`📦 Đã thu hồi [W] ${def.name} về hàng chờ!`, "info");
-                this.renderAll();
-                this.syncMyStateToRoom();
-            } else {
-                this.showToast(res.msg || "Hàng chờ đã đầy!", "warn");
-            }
-            return;
-        }
-    }
-
-    toggleLockShop() {
-        if (this.isSpectatorPOV) return;
-        const gameScreen = document.getElementById("screen-game");
-        if (!gameScreen || gameScreen.classList.contains("hidden")) return;
-
-        this.tft.shopLocked = !this.tft.shopLocked;
-        this.sfx.move();
-
-        if (this.tft.shopLocked) {
-            this.showToast("🔒 Đã KHÓA Cửa Hàng [Space]! Các quân cờ sẽ được giữ nguyên cho vòng sau.", "info");
-        } else {
-            this.showToast("🔓 Đã MỞ KHÓA Cửa Hàng [Space]! Sẽ tự động làm mới ở vòng sau.", "info");
-        }
-
-        this.renderShop();
-
-        const lockBtn = document.getElementById("btn-lock-shop");
-        if (lockBtn) {
-            lockBtn.classList.add("btn-key-pressed");
-            setTimeout(() => lockBtn.classList.remove("btn-key-pressed"), 150);
-        }
-    }
 
     bindStaticEvents() {
         document.getElementById("btn-reroll").addEventListener("click", () => {
@@ -5758,6 +2365,7 @@ class ChessTFTApp {
     // ========================================================================
     // RENDERING PIPELINE
     // ========================================================================
+
     renderAll() {
         this.renderTopHeader();
         this.renderStageRoundTracker();
@@ -5888,6 +2496,25 @@ class ChessTFTApp {
     }
 
     renderTopHeader() {
+        if (this.isSkirmishMode) {
+            const mapDef = (window.CHESS_TFT_DATA.MAPS && window.CHESS_TFT_DATA.MAPS.find(m => m.id === (this.skirmishState?.mapId || 'map_arena_1v1'))) || (window.CHESS_TFT_DATA.MAPS && window.CHESS_TFT_DATA.MAPS[2]) || { name: 'Đấu Trường Cờ Chớp' };
+            const stageBadge = document.getElementById("stage-round-badge");
+            if (stageBadge) stageBadge.textContent = "⚡ 1v1 Blitz (30 Vàng)";
+            const boardBadge = document.getElementById("board-size-badge");
+            if (boardBadge) boardBadge.textContent = "📐 Bàn cờ: 6x7 Cờ Vua";
+            const phaseBanner = document.getElementById("phase-banner");
+            if (phaseBanner) {
+                if (this.isSkirmishSpectator) {
+                    phaseBanner.textContent = `🎙️ KHÁN GIẢ • ĐANG THEO DÕI 2 BOT AI THI ĐẤU TRÊN BẢN ĐỒ ${mapDef.name.toUpperCase()}`;
+                    phaseBanner.className = "phase-banner phase-combat";
+                } else {
+                    phaseBanner.textContent = `⚔️ ĐẤU TRÍ CỜ CHỚP 1V1 — BẢN ĐỒ ${mapDef.name.toUpperCase()}`;
+                    phaseBanner.className = "phase-banner phase-combat";
+                }
+            }
+            document.getElementById("btn-start-combat")?.classList.add("hidden");
+            return;
+        }
         const cfg = this.tft.getStageConfig();
         document.getElementById("stage-round-badge").textContent = `Vòng ${this.tft.stage}-${this.tft.roundInStage}`;
         document.getElementById("board-size-badge").textContent = `📐 Bàn cờ: ${cfg.label}`;
@@ -5965,13 +2592,31 @@ class ChessTFTApp {
         listEl.innerHTML = "";
 
         if (this.isSkirmishMode) {
-            const botDiff = this.skirmishState.botDifficulty;
-            const botName = botDiff === "apprentice" ? "Bot Martin (Tập Sự)" : (botDiff === "veteran" ? "Bot Hikaru (Chiến Binh)" : "Đại Kiện Tướng Magnus AI");
-            const botAvatar = botDiff === "apprentice" ? "🎓" : (botDiff === "veteran" ? "⚡" : "👑");
+            let botName = "Đại Kiện Tướng Magnus AI";
+            let botAvatar = "👑";
+
+            if (this.isOnlineSkirmish) {
+                const opp = (this.currentRoom?.players || []).find(p => p.id !== this.currentUser?.id);
+                botName = opp ? opp.name : (this.onlineSkirmishIsWhite ? "Đối Thủ (Quân Đen)" : "Đối Thủ (Quân Trắng)");
+                botAvatar = opp?.avatar || "⚔️";
+            } else {
+                const botDiff = this.skirmishState.botDifficulty;
+                botName = botDiff === "apprentice" ? "Bot Martin (Tập Sự)" : (botDiff === "veteran" ? "Bot Hikaru (Chiến Binh)" : "Đại Kiện Tướng Magnus AI");
+                botAvatar = botDiff === "apprentice" ? "🎓" : (botDiff === "veteran" ? "⚡" : "👑");
+            }
 
             const allPieces = this.chess ? this.chess.board.flat().filter(Boolean) : [];
             const playerPieces = this.chess ? allPieces.filter(p => p.side === "player") : this.skirmishState.units;
             const enemyPieces = this.chess ? allPieces.filter(p => p.side === "enemy") : [];
+
+            // Update live Head-to-Head HUD
+            const h2h = document.getElementById("banner-1v1-headtohead");
+            if (h2h && !h2h.classList.contains("hidden")) {
+                const p1Hp = document.getElementById("h2h-p1-hp");
+                const p2Hp = document.getElementById("h2h-p2-hp");
+                if (p1Hp) p1Hp.textContent = `${playerPieces.length} Quân`;
+                if (p2Hp) p2Hp.textContent = `${enemyPieces.length} Quân`;
+            }
 
             const fmtClock = (sec) => {
                 if (sec >= 60) {
@@ -6080,1147 +2725,6 @@ class ChessTFTApp {
         }
     }
 
-    renderSynergies() {
-        const container = document.getElementById("synergy-list");
-        container.innerHTML = "";
-
-        let viewedParticipant;
-        if (this.isSkirmishMode) {
-            const playerPieces = this.chess 
-                ? this.chess.board.flat().filter(p => p && p.side === "player")
-                : this.skirmishState.units;
-            viewedParticipant = { board: playerPieces };
-        } else {
-            viewedParticipant = this.getViewedParticipant ? this.getViewedParticipant() : (this.tft.phase === "prep"
-                ? this.tft.getParticipantById(this.tft.scoutingPlayerId)
-                : this.tft.player);
-        }
-
-        const synergies = this.tft.calculateSynergies(viewedParticipant);
-        const entries = Object.values(synergies).sort((a, b) => (b.activeTier > 0 ? 1 : 0) - (a.activeTier > 0 ? 1 : 0) || b.count - a.count);
-
-        if (entries.length === 0) {
-            container.innerHTML = `<div class="empty-hint">Chưa có Tộc/Hệ nào trên sân.</div>`;
-        } else {
-            for (const syn of entries) {
-                const isActive = syn.activeTier > 0;
-                const badge = document.createElement("div");
-                badge.className = `synergy-item ${isActive ? "synergy-active" : "synergy-inactive"}`;
-                const threshStr = syn.thresholds.join(" / ");
-                const activeBonus = isActive ? syn.effectText[syn.activeTier] : `Cần ${syn.thresholds[0]} quân để kích hoạt`;
-
-                badge.innerHTML = `
-                    <div class="synergy-head">
-                        <span class="synergy-icon" style="background:${isActive ? syn.color : "#334155"}">${syn.icon}</span>
-                        <div class="synergy-title-wrap">
-                            <span class="synergy-name">${syn.name}</span>
-                            <span class="synergy-count">${syn.count} (${threshStr})</span>
-                        </div>
-                    </div>
-                    <div class="synergy-desc">${activeBonus}</div>
-                `;
-
-                badge.addEventListener("mouseenter", (e) => this.showSynergyTooltip(syn.id, e, viewedParticipant));
-                badge.addEventListener("mousemove", (e) => this.moveSynergyTooltip(e));
-                badge.addEventListener("mouseleave", () => this.hideSynergyTooltip());
-
-                container.appendChild(badge);
-            }
-        }
-
-        // Also show compact pills for all other Synergies not yet on board so player can hover to inspect any Tộc/Hệ
-        const unplaced = Object.values(window.CHESS_TFT_DATA.SYNERGIES).filter(s => !synergies[s.id]);
-        if (unplaced.length > 0) {
-            const divTitle = document.createElement("div");
-            divTitle.className = "synergy-unplaced-divider";
-            divTitle.textContent = "Tộc/Hệ khác (Trỏ chuột xem chi tiết):";
-            container.appendChild(divTitle);
-
-            const miniWrap = document.createElement("div");
-            miniWrap.className = "synergy-mini-pills";
-            for (const sDef of unplaced) {
-                const pill = document.createElement("span");
-                pill.className = "synergy-mini-pill";
-                pill.innerHTML = `${sDef.icon} ${sDef.name}`;
-                pill.addEventListener("mouseenter", (e) => this.showSynergyTooltip(sDef.id, e, viewedParticipant));
-                pill.addEventListener("mousemove", (e) => this.moveSynergyTooltip(e));
-                pill.addEventListener("mouseleave", () => this.hideSynergyTooltip());
-                miniWrap.appendChild(pill);
-            }
-            container.appendChild(miniWrap);
-        }
-    }
-
-    showSynergyTooltip(traitId, evt, participant = null) {
-        const synDef = window.CHESS_TFT_DATA.SYNERGIES[traitId];
-        if (!synDef) return;
-
-        const targetPart = participant || (this.tft.phase === "prep"
-            ? this.tft.getParticipantById(this.tft.scoutingPlayerId)
-            : this.tft.player);
-
-        const activeSynergies = this.tft.calculateSynergies(targetPart);
-        const currentSyn = activeSynergies[traitId] || { count: 0, activeTier: 0 };
-
-        const boardIds = new Set((targetPart.board || []).map(u => u && u.id));
-        const benchIds = new Set((targetPart.bench || []).filter(Boolean).map(u => u.id));
-
-        // Build Tier Threshold Rows
-        const tiersHtml = synDef.thresholds.map(th => {
-            const isTierActive = currentSyn.activeTier === th;
-            const isReached = currentSyn.count >= th;
-            return `
-                <div class="syn-tier-row ${isTierActive ? "tier-active" : ""}">
-                    <span class="syn-tier-num">(${th})</span>
-                    <span>${synDef.effectText[th]} ${isTierActive ? "✓" : (isReached ? "" : "")}</span>
-                </div>
-            `;
-        }).join("");
-
-        // Find all pieces belonging to this trait
-        const matchingPieces = Object.values(window.CHESS_TFT_DATA.PIECES)
-            .filter(p => p.traits && p.traits.includes(traitId))
-            .sort((a, b) => a.cost - b.cost);
-
-        const unitsHtml = matchingPieces.map(p => {
-            const onBoard = boardIds.has(p.id);
-            const onBench = !onBoard && benchIds.has(p.id);
-            const stateClass = onBoard ? "unit-on-board" : (onBench ? "unit-on-bench" : "");
-            const costLabel = p.isKing ? "Mặc định (Vua)" : `${p.cost} Vàng 🪙`;
-            const statusTag = onBoard ? " • ✓ Trên sân" : (onBench ? " • Hàng chờ" : "");
-
-            return `
-                <div class="syn-unit-chip ${stateClass}">
-                    <span class="syn-unit-icon"><img src="assets/pieces/${p.id}.svg" class="syn-unit-svg" alt="${p.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" /><span class="syn-unit-fallback" style="display:none;">${p.icon}</span></span>
-                    <div class="syn-unit-meta">
-                        <span class="syn-unit-name">${p.name}</span>
-                        <span class="syn-unit-cost">${costLabel}${statusTag}</span>
-                    </div>
-                </div>
-            `;
-        }).join("");
-
-        const tipEl = document.getElementById("synergy-tooltip");
-        tipEl.innerHTML = `
-            <div class="syn-tip-header">
-                <div class="syn-tip-icon" style="background:${synDef.color}">${synDef.icon}</div>
-                <div>
-                    <div class="syn-tip-title">${synDef.name}</div>
-                    <div class="syn-tip-count">Đang kích hoạt: ${currentSyn.count} quân thuộc hệ này trên sân</div>
-                </div>
-            </div>
-            <div class="syn-tip-desc">${synDef.desc}</div>
-            <div class="syn-tip-tiers">${tiersHtml}</div>
-            <div class="syn-tip-units-title">Các Quân Cờ Thuộc Hệ ${synDef.name} (${matchingPieces.length}):</div>
-            <div class="syn-tip-units-grid">${unitsHtml}</div>
-        `;
-        tipEl.classList.remove("hidden");
-        this.moveSynergyTooltip(evt);
-
-        // Highlight matching units on Board, Bench & Shop
-        const matchIdSet = new Set(matchingPieces.map(p => p.id));
-        document.querySelectorAll("[data-piece-id]").forEach(el => {
-            if (matchIdSet.has(el.getAttribute("data-piece-id"))) {
-                el.classList.add("trait-hover-highlight");
-            }
-        });
-    }
-
-    moveSynergyTooltip(evt) {
-        const tipEl = document.getElementById("synergy-tooltip");
-        if (!tipEl || tipEl.classList.contains("hidden")) return;
-
-        const pad = 16;
-        let x = evt.clientX + pad;
-        let y = evt.clientY + pad;
-
-        const rect = tipEl.getBoundingClientRect();
-        if (x + rect.width > window.innerWidth - 12) {
-            x = Math.max(12, evt.clientX - rect.width - pad);
-        }
-        if (y + rect.height > window.innerHeight - 12) {
-            y = Math.max(12, window.innerHeight - rect.height - 12);
-        }
-
-        tipEl.style.left = `${x}px`;
-        tipEl.style.top = `${y}px`;
-    }
-
-    hideSynergyTooltip() {
-        const tipEl = document.getElementById("synergy-tooltip");
-        if (tipEl) tipEl.classList.add("hidden");
-        document.querySelectorAll(".trait-hover-highlight").forEach(el => {
-            el.classList.remove("trait-hover-highlight");
-        });
-    }
-
-    showItemTooltip(itemId, evt) {
-        const item = window.CHESS_TFT_DATA.ITEMS[itemId];
-        if (!item) return;
-
-        const tipEl = document.getElementById("item-tooltip");
-        if (!tipEl) return;
-
-        tipEl.innerHTML = `
-            <div class="item-tip-header">
-                <div class="item-tip-icon">${item.icon}</div>
-                <div>
-                    <div class="item-tip-name">${item.name}</div>
-                    <div class="item-tip-tag">Trang Bị Cờ Chớp TFT</div>
-                </div>
-            </div>
-            <div class="item-tip-desc">${item.desc}</div>
-            <div class="item-tip-instruction">💡 Click trang bị rồi click vào quân cờ để lắp đồ. Hoặc chọn quân rồi bấm "Gỡ Đồ" để thu hồi.</div>
-        `;
-        tipEl.classList.remove("hidden");
-        this.moveItemTooltip(evt);
-    }
-
-    moveItemTooltip(evt) {
-        const tipEl = document.getElementById("item-tooltip");
-        if (!tipEl || tipEl.classList.contains("hidden")) return;
-
-        const pad = 16;
-        let x = evt.clientX + pad;
-        let y = evt.clientY + pad;
-
-        const rect = tipEl.getBoundingClientRect();
-        if (x + rect.width > window.innerWidth - 12) {
-            x = Math.max(12, evt.clientX - rect.width - pad);
-        }
-        if (y + rect.height > window.innerHeight - 12) {
-            y = Math.max(12, window.innerHeight - rect.height - 12);
-        }
-
-        tipEl.style.left = `${x}px`;
-        tipEl.style.top = `${y}px`;
-    }
-
-    hideItemTooltip() {
-        const tipEl = document.getElementById("item-tooltip");
-        if (tipEl) tipEl.classList.add("hidden");
-    }
-
-    showPieceMovementTooltip(pieceId, evt) {
-        const def = window.CHESS_TFT_DATA.PIECES[pieceId];
-        if (!def) return;
-
-        const tipEl = document.getElementById("piece-movement-tooltip");
-        if (!tipEl) return;
-
-        const grid = this.getPieceMovementGrid(pieceId);
-        let cellsHtml = "";
-        let hasMove = false;
-        let hasAttack = false;
-        let hasJump = false;
-        let hasPawnAtk = false;
-        let hasCannon = false;
-
-        for (let r = 0; r < 5; r++) {
-            for (let c = 0; c < 5; c++) {
-                const cellType = grid[r][c];
-                const isLight = (r + c) % 2 === 0;
-                let cellClass = `pmt-cell ${isLight ? "cell-light" : "cell-dark"}`;
-                let cellContent = "";
-
-                if (cellType === "center") {
-                    cellClass += " cell-center";
-                    cellContent = "♟️";
-                } else if (cellType === "move") {
-                    cellClass += " cell-move";
-                    cellContent = "•";
-                    hasMove = true;
-                } else if (cellType === "attack") {
-                    cellClass += " cell-attack";
-                    cellContent = "🎯";
-                    hasAttack = true;
-                } else if (cellType === "jump") {
-                    cellClass += " cell-jump";
-                    cellContent = "⚡";
-                    hasJump = true;
-                } else if (cellType === "pawn-atk") {
-                    cellClass += " cell-pawn-atk";
-                    cellContent = "⚔️";
-                    hasPawnAtk = true;
-                } else if (cellType === "cannon") {
-                    cellClass += " cell-cannon";
-                    cellContent = "💣";
-                    hasCannon = true;
-                }
-
-                cellsHtml += `<div class="${cellClass}">${cellContent}</div>`;
-            }
-        }
-
-        tipEl.innerHTML = `
-            <div class="pmt-header">
-                <div class="pmt-icon"><img src="assets/pieces/${def.id}.svg" class="pmt-svg" alt="${def.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" /><span class="pmt-fallback" style="display:none;">${def.icon}</span></div>
-                <div>
-                    <div class="pmt-title">${def.name}</div>
-                    <div class="pmt-sub">🎯 Tầm: ${def.range[0]} ô • 🛡️ ${def.baseHp[0]} HP</div>
-                </div>
-            </div>
-            <div class="pmt-board-wrap">
-                <div class="pmt-mini-board">${cellsHtml}</div>
-            </div>
-            <div class="pmt-legend">
-                <div class="pmt-legend-item"><span style="color:#38bdf8;">♟️</span> Quân cờ</div>
-                ${hasMove ? '<div class="pmt-legend-item"><span style="color:#22c55e;">🟢</span> Đi</div>' : ''}
-                ${hasAttack ? '<div class="pmt-legend-item"><span style="color:#c084fc;">🎯</span> Tầm bắn</div>' : ''}
-                ${hasJump ? '<div class="pmt-legend-item"><span style="color:#fbbf24;">⚡</span> Nhảy</div>' : ''}
-                ${hasPawnAtk ? '<div class="pmt-legend-item"><span style="color:#ef4444;">⚔️</span> Ăn chéo</div>' : ''}
-                ${hasCannon ? '<div class="pmt-legend-item"><span style="color:#f97316;">💣</span> Pháo</div>' : ''}
-            </div>
-        `;
-
-        tipEl.classList.remove("hidden");
-        this.movePieceMovementTooltip(evt);
-    }
-
-    movePieceMovementTooltip(evt) {
-        if (!evt) return;
-        const tipEl = document.getElementById("piece-movement-tooltip");
-        if (!tipEl || tipEl.classList.contains("hidden")) return;
-
-        const pad = 14;
-        let x = evt.clientX + pad;
-        let y = evt.clientY + pad;
-
-        const rect = tipEl.getBoundingClientRect();
-        if (x + rect.width > window.innerWidth - 10) {
-            x = Math.max(10, evt.clientX - rect.width - pad);
-        }
-        if (y + rect.height > window.innerHeight - 10) {
-            y = Math.max(10, window.innerHeight - rect.height - 10);
-        }
-
-        tipEl.style.left = `${x}px`;
-        tipEl.style.top = `${y}px`;
-    }
-
-    hidePieceMovementTooltip() {
-        const tipEl = document.getElementById("piece-movement-tooltip");
-        if (tipEl) tipEl.classList.add("hidden");
-    }
-
-    // ========================================================================
-    // RENDER CHESS BOARD (PREP, BLIND-MAP SCOUTING & LIVE BLITZ COMBAT)
-    // ========================================================================
-    renderBoardArea() {
-        const cfg = this.tft.getStageConfig();
-        const boardEl = document.getElementById("chess-board");
-        const scoutBanner = document.getElementById("scouting-banner");
-        const mapInfoBar = document.getElementById("map-info-bar");
-
-        boardEl.style.gridTemplateColumns = `repeat(${cfg.cols}, 1fr)`;
-        boardEl.style.gridTemplateRows = `repeat(${cfg.rows}, 1fr)`;
-        boardEl.style.aspectRatio = `${cfg.cols} / ${cfg.rows}`;
-        boardEl.innerHTML = "";
-
-        if (this.isSkirmishMode && this.chess) {
-            const cols = this.chess.cols || 6;
-            const rows = this.chess.rows || 7;
-            boardEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-            boardEl.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
-            boardEl.style.aspectRatio = `${cols} / ${rows}`;
-            scoutBanner.classList.add("hidden");
-            const mapDef = window.CHESS_TFT_DATA.MAPS.find(m => m.id === this.skirmishState.mapId) || window.CHESS_TFT_DATA.MAPS[2];
-            mapInfoBar.innerHTML = `
-                <span class="map-active-pill" style="background:${mapDef.themeColor}">⚔️ Đấu Trí 1v1: ${mapDef.name}</span>
-                <span class="map-desc-text">${mapDef.desc}</span>
-            `;
-            this.renderCombatBoardCells(boardEl, { cols, rows });
-            return;
-        }
-
-        if (this.isSpectatorPOV) {
-            this.renderSpectatorPOVBoard(boardEl, cfg);
-            return;
-        }
-
-        const isScoutingOther = this.tft.scoutingPlayerId && this.tft.scoutingPlayerId !== "player";
-        if (isScoutingOther) {
-            const viewed = this.tft.getParticipantById(this.tft.scoutingPlayerId) || this.tft.player;
-            scoutBanner.classList.remove("hidden");
-            const targetNameEl = document.getElementById("scouting-target-name");
-            if (targetNameEl) {
-                targetNameEl.textContent = `🕵️ Đang Xem Bàn Cờ: ${viewed.name} (${viewed.avatar || "🦊"}) • Cấp ${viewed.level} • ${viewed.hp} HP`;
-            }
-
-            const btnProceed = document.getElementById("btn-scout-proceed");
-            if (btnProceed) {
-                btnProceed.classList.toggle("hidden", !this.isPostMatchSpectating);
-            }
-
-            mapInfoBar.innerHTML = `
-                <span class="map-hidden-pill">👁️ Khán Giả: <strong>${viewed.name}</strong> • Phím <strong>[1]</strong> / <strong>[2]</strong> hoặc click BXH để đổi nhà</span>
-            `;
-
-            this.renderPrepBoardCells(boardEl, cfg, viewed, true);
-            return;
-        }
-
-        if (this.tft.phase === "prep") {
-            scoutBanner.classList.add("hidden");
-            if (this.tft.stage === 1) {
-                const pveEncounters = window.CHESS_TFT_DATA.PVE_ENCOUNTERS || {};
-                const pveDef = pveEncounters[this.tft.roundInStage] || pveEncounters[1];
-                mapInfoBar.innerHTML = `
-                    <span class="map-active-pill" style="background:#7c3aed">👾 Vòng ${this.tft.stage}-${this.tft.roundInStage}: ${pveDef?.name || "Quái Khởi Đầu"}</span>
-                    <span class="map-desc-text">Đánh bại quái khởi đầu PVE để thu thập Mảnh Trang Bị & Vàng định hình đội hình!</span>
-                `;
-            } else {
-                const mapDef = this.tft.currentMap || window.CHESS_TFT_DATA.MAPS[0];
-                mapInfoBar.innerHTML = `
-                    <span class="map-active-pill" style="background:${mapDef.themeColor}">🗺️ Bản Đồ Vòng Tới: ${mapDef.name}</span>
-                    <span class="map-desc-text">${mapDef.desc}</span>
-                `;
-            }
-            this.renderPrepBoardCells(boardEl, cfg, this.tft.player, false);
-        } else if (this.tft.phase === "combat" && this.chess) {
-            scoutBanner.classList.add("hidden");
-            if (this.tft.stage === 1) {
-                const pveEncounters = window.CHESS_TFT_DATA.PVE_ENCOUNTERS || {};
-                const pveDef = pveEncounters[this.tft.roundInStage] || pveEncounters[1];
-                mapInfoBar.innerHTML = `
-                    <span class="map-active-pill" style="background:#7c3aed">👾 Giao Tranh PVE: ${pveDef?.name || "Tượng Quái Đá"}</span>
-                    <span class="map-desc-text">${pveDef?.desc || "Tiêu diệt quái rơi ra mảnh trang bị và vàng khởi đầu."}</span>
-                `;
-            } else {
-                mapInfoBar.innerHTML = `
-                    <span class="map-active-pill" style="background:${this.tft.currentMap.themeColor}">🗺️ ${this.tft.currentMap.name}</span>
-                    <span class="map-desc-text">${this.tft.currentMap.desc}</span>
-                `;
-            }
-            this.renderCombatBoardCells(boardEl, cfg);
-        }
-    }
-
-    renderPrepBoardCells(boardEl, cfg, viewedParticipant, isScoutingOther) {
-        const minDeployRow = cfg.rows - cfg.deployRows;
-        const homeTerrain = (!isScoutingOther && this.tft.currentTerrain) ? this.tft.currentTerrain : null;
-
-        for (let r = 0; r < cfg.rows; r++) {
-            for (let c = 0; c < cfg.cols; c++) {
-                const cell = document.createElement("div");
-                const isLight = (r + c) % 2 === 0;
-                const isDeployZone = r >= minDeployRow;
-                const terr = homeTerrain ? homeTerrain[`${r},${c}`] : null;
-
-                cell.className = `board-cell ${isLight ? "cell-light" : "cell-dark"} ${isDeployZone ? "cell-deploy-zone" : "cell-enemy-zone"}`;
-
-                if (terr) {
-                    cell.classList.add(`terrain-${terr}`);
-                    const terrBadge = document.createElement("span");
-                    terrBadge.className = "terrain-badge";
-                    if (terr === "river") terrBadge.textContent = "🌊 Sông";
-                    else if (terr === "wall") terrBadge.textContent = "🧱 Đá Cản";
-                    else if (terr === "lava") terrBadge.textContent = "🌋 Dung Nham";
-                    else if (terr === "rune") terrBadge.textContent = "✨ +Tầm";
-                    cell.appendChild(terrBadge);
-                }
-
-                // Coordinate label on edges
-                if (c === 0) {
-                    const rLbl = document.createElement("span");
-                    rLbl.className = "coord-label coord-row";
-                    rLbl.textContent = cfg.rows - r;
-                    cell.appendChild(rLbl);
-                }
-
-                // Check if unit is on this tile
-                const unit = viewedParticipant.board.find(u => u.r === r && u.c === c);
-                if (unit) {
-                    const def = window.CHESS_TFT_DATA.PIECES[unit.id];
-                    const starIdx = Math.min(2, (unit.stars || 1) - 1);
-                    let previewHp = def.baseHp[starIdx] + (unit.items?.includes("iron_armor") ? 2 : 0);
-
-                    const pieceEl = this.createPieceDOM({
-                        uid: unit.uid,
-                        id: unit.id,
-                        name: def.name,
-                        icon: def.icon,
-                        badge: def.badge,
-                        stars: unit.stars,
-                        side: isScoutingOther ? "enemy" : "player",
-                        hp: previewHp,
-                        maxHp: previewHp,
-                        items: unit.items || [],
-                        stunnedTurns: 0,
-                        burnTurns: 0
-                    });
-
-                    if (!isScoutingOther && this.selectedPrepUnitUid === unit.uid) {
-                        cell.classList.add("cell-selected");
-                    }
-                    cell.appendChild(pieceEl);
-                } else if (!isScoutingOther && isDeployZone && (!homeTerrain || homeTerrain[`${r},${c}`] !== "wall") && this.selectedPrepUnitUid) {
-                    cell.classList.add("cell-can-place");
-                }
-
-                if (!isScoutingOther) {
-                    cell.addEventListener("mouseenter", () => {
-                        this.hoveredCell = { r, c };
-                        if (unit) {
-                            this.hoveredUnit = { type: "board", unit, r, c, uid: unit.uid };
-                            cell.classList.add("cell-hover-target");
-                            this.highlightPieceMovementPreview(unit.id, r, c);
-                        } else {
-                            this.hoveredUnit = null;
-                            this.clearMovementPreview();
-                        }
-                    });
-                    cell.addEventListener("mouseleave", () => {
-                        cell.classList.remove("cell-hover-target");
-                        this.clearMovementPreview();
-                        if (this.hoveredUnit && this.hoveredUnit.uid === (unit && unit.uid)) {
-                            this.hoveredUnit = null;
-                        }
-                        if (this.hoveredCell && this.hoveredCell.r === r && this.hoveredCell.c === c) {
-                            this.hoveredCell = null;
-                        }
-                    });
-                }
-
-                cell.addEventListener("click", () => {
-                    if (isScoutingOther) {
-                        if (this.isSpectatorPOV) {
-                            this.showToast(`Bạn đang ở Chế Độ Khán Giả theo dõi ${viewedParticipant.name}!`, "info");
-                        } else {
-                            this.showToast("Bạn đang Soi Bài đối thủ! Bấm 'Về Sân Nhà' để xếp quân của mình.", "info");
-                        }
-                        return;
-                    }
-                    this.handlePrepBoardClick(r, c, unit);
-                });
-
-                boardEl.appendChild(cell);
-            }
-        }
-    }
-
-    handlePrepBoardClick(r, c, unitOnCell) {
-        // 0. If Remover is active, unequip items from the clicked unit
-        if (this.isRemoverActive && unitOnCell) {
-            const res = this.tft.unequipItems(unitOnCell.uid);
-            if (res.ok) {
-                this.isRemoverActive = false;
-                this.sfx.move();
-                this.showToast(`✂️ Đã tháo ${res.count} trang bị từ ${res.unitName} về kho đồ!`, "success");
-                this.renderAll();
-                this.syncMyStateToRoom();
-            } else {
-                this.showToast(res.msg, "warn");
-            }
-            return;
-        }
-
-        // 1. If an item is selected in inventory, equip it onto the clicked unit!
-        if (this.selectedItemIndex !== null && unitOnCell) {
-            const res = this.tft.equipItem(this.selectedItemIndex, unitOnCell.uid);
-            if (res.ok) {
-                this.selectedItemIndex = null;
-                this.sfx.starUp();
-                this.showToast(`Đã lắp ${res.itemName} cho ${res.unitName}!`, "info");
-                this.renderAll();
-            } else {
-                this.showToast(res.msg, "warn");
-            }
-            return;
-        }
-
-        // 2. If a unit is already selected, try moving/swapping it to (r, c)
-        if (this.selectedPrepUnitUid) {
-            if (unitOnCell && unitOnCell.uid === this.selectedPrepUnitUid) {
-                this.selectedPrepUnitUid = null;
-                this.renderAll();
-                return;
-            }
-            const res = this.tft.movePlayerUnitToBoard(this.selectedPrepUnitUid, r, c);
-            if (res.ok) {
-                this.selectedPrepUnitUid = null;
-                this.sfx.move();
-                if (this.isTutorialMode && this.tutorialStep === 2) {
-                    this.advanceTutorialStep(3);
-                }
-                this.renderAll();
-            } else {
-                this.showToast(res.msg, "warn");
-            }
-            return;
-        }
-
-        // 3. Otherwise select the unit on this cell
-        if (unitOnCell) {
-            this.selectedPrepUnitUid = unitOnCell.uid;
-            this.sfx.move();
-            this.renderAll();
-        }
-    }
-
-    renderCombatBoardCells(boardEl, cfg) {
-        const eng = this.chess;
-        const isPlayerInCheck = eng.isKingInCheck("player");
-        const playerKingDanger = eng.isKingLethallyThreatened("player");
-        const enemyKingDanger = eng.isKingLethallyThreatened("enemy");
-
-        const checkAlertEl = document.getElementById("king-check-alert");
-        if (checkAlertEl) {
-            if (isPlayerInCheck) {
-                checkAlertEl.classList.remove("hidden");
-                if (playerKingDanger) {
-                    checkAlertEl.innerHTML = "🚨 <strong>NGUY CẤP: CHIẾU SÁT THỦ!</strong> Vua của bạn có thể bị bắt ngay nước tới! Phải chạy Vua hoặc chặn cản!";
-                } else {
-                    checkAlertEl.innerHTML = "🚨 <strong>BẠN ĐANG BỊ CHIẾU TƯỚNG!</strong> Di chuyển Vua hoặc chặn đường tấn công kẻo bị bắt Vua!";
-                }
-            } else {
-                checkAlertEl.classList.add("hidden");
-            }
-        }
-
-        for (let r = 0; r < cfg.rows; r++) {
-            for (let c = 0; c < cfg.cols; c++) {
-                const cell = document.createElement("div");
-                const isLight = (r + c) % 2 === 0;
-                const terr = eng.getTerrain(r, c);
-                cell.className = `board-cell ${isLight ? "cell-light" : "cell-dark"}`;
-                cell.setAttribute("data-row", r);
-                cell.setAttribute("data-col", c);
-
-                if (terr) {
-                    cell.classList.add(`terrain-${terr}`);
-                    const terrBadge = document.createElement("span");
-                    terrBadge.className = "terrain-badge";
-                    if (terr === "river") terrBadge.textContent = "🌊 Sông";
-                    else if (terr === "wall") terrBadge.textContent = "🧱 Tường";
-                    else if (terr === "lava") terrBadge.textContent = "🌋 Dung Nham";
-                    else if (terr === "rune") terrBadge.textContent = "✨ +Tầm";
-                    cell.appendChild(terrBadge);
-                }
-
-                // Highlight last move
-                if (eng.lastAction) {
-                    if ((eng.lastAction.fromR === r && eng.lastAction.fromC === c) ||
-                        (eng.lastAction.toR === r && eng.lastAction.toC === c)) {
-                        cell.classList.add("cell-last-move");
-                    }
-                }
-
-                // Highlight selected piece
-                if (this.selectedCombatSquare && this.selectedCombatSquare.r === r && this.selectedCombatSquare.c === c) {
-                    cell.classList.add("cell-selected");
-                }
-
-                // Highlight valid action targets for selected piece:
-                // Chấm XANH LÁ (🟢) cho nước đi thuần túy vào ô trống
-                // Chấm VÀNG HỔ PHÁCH (🟡) cho ô trong phạm vi tấn công/bắn xa/làm choáng/thiêu đốt
-                const matchedAction = this.validCombatActions.find(a => a.toR === r && a.toC === c);
-                if (matchedAction) {
-                    if (matchedAction.type === "move") {
-                        cell.classList.add("cell-valid-move", "cell-dot-move");
-                    } else if (matchedAction.type === "ranged") {
-                        cell.classList.add("cell-valid-ranged", "cell-dot-attack");
-                    } else {
-                        cell.classList.add("cell-valid-melee", "cell-dot-attack");
-                    }
-                }
-
-                const piece = eng.board[r][c];
-                if (piece) {
-                    if (piece.id === "king" && piece.side === "player" && isPlayerInCheck) {
-                        cell.classList.add("cell-king-in-check");
-                    }
-                    const pieceEl = this.createPieceDOM(piece);
-                    cell.appendChild(pieceEl);
-                }
-
-                cell.addEventListener("mouseenter", (e) => {
-                    // Hovering over any combat piece (player or enemy) previews its attack/move range and movement tooltip
-                    if (piece) {
-                        cell.classList.add("cell-hover-target");
-                        // Only show in-combat hover preview & 5x5 floating tooltip if Beginner Mode is active!
-                        if (this.guideMode === "beginner") {
-                            if (!this.selectedCombatSquare) {
-                                this.highlightCombatPieceHover(r, c);
-                            }
-                            this.showPieceMovementTooltip(piece.id, e);
-                        }
-                    }
-                });
-
-                cell.addEventListener("mousemove", (e) => {
-                    if (piece && this.guideMode === "beginner") {
-                        this.movePieceMovementTooltip(e);
-                    }
-                });
-
-                cell.addEventListener("mouseleave", () => {
-                    cell.classList.remove("cell-hover-target");
-                    this.hidePieceMovementTooltip();
-                    if (!this.selectedCombatSquare) {
-                        this.clearMovementPreview();
-                    }
-                });
-
-                cell.addEventListener("click", () => {
-                    this.clearMovementPreview();
-                    this.handleCombatBoardClick(r, c, piece, matchedAction);
-                });
-
-                boardEl.appendChild(cell);
-            }
-        }
-    }
-
-    triggerCombatHitFx(hit) {
-        if (!hit) return;
-        const boardEl = document.getElementById("chess-board");
-        if (!boardEl) return;
-
-        const cell = boardEl.querySelector(`.board-cell[data-row='${hit.targetR}'][data-col='${hit.targetC}']`);
-        if (!cell) return;
-
-        // 1. Hiệu ứng trúng đòn chớp nhẹ viền đỏ (Hit Flash) trong 0.2s
-        const pieceEl = cell.querySelector(".chess-piece");
-        if (pieceEl) {
-            pieceEl.classList.remove("hit-flash");
-            void pieceEl.offsetWidth; // Reflow to restart animation
-            pieceEl.classList.add("hit-flash");
-            setTimeout(() => {
-                pieceEl.classList.remove("hit-flash");
-            }, 250);
-        } else {
-            cell.classList.remove("cell-hit-flash");
-            void cell.offsetWidth;
-            cell.classList.add("cell-hit-flash");
-            setTimeout(() => {
-                cell.classList.remove("cell-hit-flash");
-            }, 250);
-        }
-
-        // 2. Hiệu ứng số sát thương nảy lên (-25 DMG hoặc -50 CRIT!) với GSAP Cinematics
-        const dmgBadge = document.createElement("div");
-        dmgBadge.className = `floating-damage ${hit.isCrit ? "damage-crit" : "damage-normal"}`;
-        dmgBadge.textContent = hit.damageText || (hit.isCrit ? `-${hit.damage || 50} CRIT!` : `-${hit.damage || 25}`);
-        cell.appendChild(dmgBadge);
-
-        // Update real-time DPS meter
-        this.renderDpsMeter();
-
-        if (window.gsap) {
-            window.gsap.fromTo(dmgBadge, 
-                { y: 0, scale: 0.6, opacity: 0 },
-                { 
-                    y: -36, 
-                    scale: hit.isCrit ? 1.4 : 1.15, 
-                    opacity: 1, 
-                    duration: 0.35, 
-                    ease: "back.out(2)",
-                    onComplete: () => {
-                        window.gsap.to(dmgBadge, {
-                            y: -54,
-                            opacity: 0,
-                            duration: 0.45,
-                            ease: "power2.in",
-                            onComplete: () => {
-                                if (dmgBadge.parentNode) dmgBadge.parentNode.removeChild(dmgBadge);
-                            }
-                        });
-                    }
-                }
-            );
-        } else {
-            setTimeout(() => {
-                if (dmgBadge.parentNode) {
-                    dmgBadge.parentNode.removeChild(dmgBadge);
-                }
-            }, 900);
-        }
-    }
-
-    createPieceDOM(piece) {
-        const wrapper = document.createElement("div");
-        wrapper.className = `chess-piece piece-${piece.side} star-${piece.stars} ${piece.stunnedTurns > 0 ? "piece-stunned" : ""} ${piece.burnTurns > 0 ? "piece-burning" : ""}`;
-        wrapper.setAttribute("data-piece-id", piece.id);
-
-        const starsStr = "★".repeat(piece.stars || 1);
-
-        // Multi-HP shield pips bar
-        let hpHtml = "";
-        for (let i = 0; i < piece.maxHp; i++) {
-            const filled = i < piece.hp;
-            hpHtml += `<span class="hp-pip ${filled ? "hp-filled" : "hp-empty"}"></span>`;
-        }
-
-        // Status badges (Stun / Stun Immunity / Reload / Burn)
-        let statusHtml = "";
-        if (piece.stunnedTurns > 0) {
-            statusHtml += `<span class="status-pill status-stun" title="Đang bị Choáng (Khóa di chuyển)"><i data-lucide="zap" class="icon-amber"></i></span>`;
-        } else if ((piece.stunImmuneTurns || 0) > 0) {
-            statusHtml += `<span class="status-pill status-immune" title="Đang Kháng Choáng (Miễn nhiễm choáng liên tiếp)"><i data-lucide="shield" class="icon-cyan"></i></span>`;
-        }
-        if ((piece.reloadTurns || 0) > 0) {
-            statusHtml += `<span class="status-pill status-reload" title="Đang Nạp Đạn (Lượt này chỉ di chuyển/cận chiến, lượt sau mới bắn xa tiếp)"><i data-lucide="hourglass" class="icon-purple"></i></span>`;
-        }
-        if (piece.burnTurns > 0) {
-            statusHtml += `<span class="status-pill status-burn" title="Đang bị Thiêu Đốt (Nổ lan 8 ô sau ${piece.burnTurns} lượt)"><i data-lucide="flame" class="icon-red"></i>${piece.burnTurns}</span>`;
-        }
-
-        // Equipped items icons (TFT Mini Icons)
-        let itemsHtml = "";
-        if (piece.items && piece.items.length > 0) {
-            itemsHtml = `<div class="piece-items">` +
-                piece.items.map(id => {
-                    const it = window.CHESS_TFT_DATA.ITEMS[id];
-                    return it ? `<span class="piece-mini-item" data-item-id="${id}" title="${it.name}: ${it.desc}">${it.icon}</span>` : "";
-                }).join("") +
-                `</div>`;
-        }
-
-        wrapper.innerHTML = `
-            <div class="piece-top-row">
-                <span class="piece-stars">${starsStr}</span>
-                <div class="piece-statuses">${statusHtml}</div>
-            </div>
-            <div class="piece-main-icon">
-                <img src="assets/pieces/${piece.id}.svg" class="piece-svg-art" alt="${piece.name || ''}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
-                <span class="piece-fallback-icon" style="display:none;">${piece.icon}</span>
-            </div>
-            <div class="piece-hp-bar" title="Lớp Máu: ${piece.hp}/${piece.maxHp} (Phải bị ăn ${piece.hp} lần mới chết)">
-                ${hpHtml}
-            </div>
-            ${itemsHtml}
-        `;
-
-        wrapper.querySelectorAll("[data-item-id]").forEach(el => {
-            const itemId = el.getAttribute("data-item-id");
-            el.addEventListener("mouseenter", (e) => {
-                e.stopPropagation();
-                this.showItemTooltip(itemId, e);
-            });
-            el.addEventListener("mousemove", (e) => {
-                e.stopPropagation();
-                this.moveItemTooltip(e);
-            });
-            el.addEventListener("mouseleave", (e) => {
-                e.stopPropagation();
-                this.hideItemTooltip();
-            });
-        });
-
-        return wrapper;
-    }
-
-    // ========================================================================
-    // BENCH & SHOP RENDERING
-    // ========================================================================
-    renderBench() {
-        const benchEl = document.getElementById("bench-grid");
-        benchEl.innerHTML = "";
-
-        const viewed = this.getViewedParticipant ? this.getViewedParticipant() : (this.tft.phase === "prep"
-            ? this.tft.getParticipantById(this.tft.scoutingPlayerId)
-            : this.tft.player);
-        const isSelf = (!this.isSpectatorPOV) && (viewed === this.tft.player || viewed.id === "player");
-        const benchList = viewed?.bench || [];
-
-        for (let i = 0; i < 8; i++) {
-            const slotEl = document.createElement("div");
-            const unit = benchList[i];
-            slotEl.className = `bench-slot ${unit && this.selectedPrepUnitUid === unit.uid ? "bench-selected" : ""}`;
-
-            if (unit) {
-                const def = window.CHESS_TFT_DATA.PIECES[unit.id];
-                const starIdx = Math.min(2, (unit.stars || 1) - 1);
-                const maxHp = def.baseHp[starIdx] + (unit.items?.includes("iron_armor") ? 2 : 0);
-
-                slotEl.appendChild(this.createPieceDOM({
-                    uid: unit.uid,
-                    id: unit.id,
-                    name: def.name,
-                    icon: def.icon,
-                    badge: def.badge,
-                    stars: unit.stars,
-                    side: isSelf ? "player" : "enemy",
-                    hp: maxHp,
-                    maxHp: maxHp,
-                    items: unit.items || [],
-                    stunnedTurns: 0,
-                    burnTurns: 0
-                }));
-                const nameTag = document.createElement("div");
-                nameTag.className = "bench-unit-name";
-                nameTag.textContent = def.name;
-                slotEl.appendChild(nameTag);
-            } else {
-                slotEl.innerHTML = `<span class="bench-empty-label">Hàng chờ ${i + 1}</span>`;
-            }
-
-            slotEl.addEventListener("mouseenter", (e) => {
-                if (unit) {
-                    this.hoveredUnit = { type: "bench", unit, slotIndex: i, uid: unit.uid };
-                    slotEl.classList.add("bench-hover-target");
-                    this.clearMovementPreview();
-                    this.showPieceMovementTooltip(unit.id, e);
-                } else {
-                    this.hoveredBenchSlot = i;
-                    this.hoveredUnit = null;
-                    this.clearMovementPreview();
-                    this.hidePieceMovementTooltip();
-                }
-            });
-            slotEl.addEventListener("mousemove", (e) => {
-                if (unit) {
-                    this.movePieceMovementTooltip(e);
-                }
-            });
-            slotEl.addEventListener("mouseleave", () => {
-                slotEl.classList.remove("bench-hover-target");
-                this.clearMovementPreview();
-                this.hidePieceMovementTooltip();
-                if (this.hoveredUnit && this.hoveredUnit.uid === (unit && unit.uid)) {
-                    this.hoveredUnit = null;
-                }
-                if (this.hoveredBenchSlot === i) {
-                    this.hoveredBenchSlot = null;
-                }
-            });
-
-            slotEl.addEventListener("click", () => {
-                if (!isSelf) {
-                    if (this.isSpectatorPOV) {
-                        this.showToast(`Bạn đang ở Chế Độ Khán Giả theo dõi ${viewed?.name || "Kỳ thủ"}!`, "info");
-                    }
-                    return;
-                }
-
-                // Unequip item via Remover tool on bench unit
-                if (this.isRemoverActive && unit) {
-                    const res = this.tft.unequipItems(unit.uid);
-                    if (res.ok) {
-                        this.isRemoverActive = false;
-                        this.sfx.move();
-                        this.showToast(`✂️ Đã tháo ${res.count} trang bị từ ${res.unitName} về kho đồ!`, "success");
-                        this.renderAll();
-                        this.syncMyStateToRoom();
-                    } else {
-                        this.showToast(res.msg, "warn");
-                    }
-                    return;
-                }
-
-                // Equip item onto bench unit
-                if (this.selectedItemIndex !== null && unit) {
-                    const res = this.tft.equipItem(this.selectedItemIndex, unit.uid);
-                    if (res.ok) {
-                        this.selectedItemIndex = null;
-                        this.sfx.starUp();
-                        this.showToast(`Đã lắp ${res.itemName} cho ${res.unitName}!`, "info");
-                        this.renderAll();
-                    } else {
-                        this.showToast(res.msg, "warn");
-                    }
-                    return;
-                }
-
-                // Move board unit to empty bench slot
-                if (this.selectedPrepUnitUid && !unit) {
-                    const res = this.tft.moveBoardUnitToBench(this.selectedPrepUnitUid, i);
-                    if (res.ok) {
-                        this.selectedPrepUnitUid = null;
-                        this.sfx.move();
-                        this.renderAll();
-                        return;
-                    }
-                }
-
-                if (unit) {
-                    this.selectedPrepUnitUid = this.selectedPrepUnitUid === unit.uid ? null : unit.uid;
-                    this.sfx.move();
-                    this.renderAll();
-                }
-            });
-
-            benchEl.appendChild(slotEl);
-        }
-    }
-
-    renderShop() {
-        const shopEl = document.getElementById("shop-cards");
-        shopEl.innerHTML = "";
-
-        if (this.isSpectatorPOV) {
-            const viewed = this.getViewedParticipant();
-            shopEl.innerHTML = `<div style="display:flex; align-items:center; justify-content:center; width:100%; height:100%; color:#94a3b8; font-weight:700; font-size:0.95rem; letter-spacing:0.5px;">🔴 CHẾ ĐỘ KHÁN GIẢ: Đang theo dõi kỳ thủ ${viewed?.name || ""} (Cấp ${viewed?.level || 1} • ${viewed?.gold || 0} 🪙)</div>`;
-            return;
-        }
-
-        const isLocked = !!this.tft.shopLocked;
-        shopEl.classList.toggle("shop-locked", isLocked);
-
-        const lockBtn = document.getElementById("btn-lock-shop");
-        if (lockBtn) {
-            lockBtn.classList.toggle("is-locked", isLocked);
-            lockBtn.title = isLocked
-                ? "Cửa hàng đang KHÓA (Giữ nguyên thẻ bài cho vòng sau). Bấm hoặc nhấn [Space] để Mở Khóa."
-                : "Khóa Cửa Hàng: Giữ nguyên 5 quân cờ này sang vòng sau (Phím tắt: Space / X).";
-
-            const lockIcon = document.getElementById("btn-lock-icon");
-            if (lockIcon) {
-                lockIcon.innerHTML = isLocked ? `<i data-lucide="lock" class="icon-amber"></i>` : `<i data-lucide="unlock"></i>`;
-            }
-            const lockLabel = document.getElementById("btn-lock-label");
-            if (lockLabel) {
-                lockLabel.textContent = isLocked ? "Đã Khóa" : "Giữ bài";
-            }
-        }
-
-        const rerollBtn = document.getElementById("btn-reroll");
-        if (rerollBtn) {
-            const freeCount = this.tft.player.freeRerolls || 0;
-            if (freeCount > 0) {
-                rerollBtn.innerHTML = `
-                    <div class="hud-btn-main">
-                        <span class="reroll-btn-title"><i data-lucide="sparkles" class="icon-gold"></i> ĐỔI FREE</span>
-                        <span class="hud-keybind-badge">D</span>
-                    </div>
-                    <span class="reroll-btn-cost badge-free-reroll">FREE (${freeCount})</span>
-                `;
-                rerollBtn.classList.add("btn-free-reroll");
-                rerollBtn.title = `Bạn có ${freeCount} lượt đổi shop miễn phí nhờ chuỗi thua! (Phím tắt: D)`;
-            } else {
-                rerollBtn.innerHTML = `
-                    <div class="hud-btn-main">
-                        <span class="reroll-btn-title"><i data-lucide="refresh-cw" class="icon-cyan"></i> ĐỔI LẠI</span>
-                        <span class="hud-keybind-badge">D</span>
-                    </div>
-                    <span id="reroll-cost-label" class="reroll-btn-cost">2 <i data-lucide="coins" class="icon-amber"></i></span>
-                `;
-                rerollBtn.classList.remove("btn-free-reroll");
-                rerollBtn.title = "Đổi mới 5 quân cờ trong Cửa Hàng (Tốn 2 Vàng - Phím tắt: D)";
-            }
-        }
-
-        for (const slot of this.tft.shop) {
-            const card = document.createElement("div");
-            if (slot.sold) {
-                card.className = "shop-card shop-sold";
-                card.innerHTML = `<div class="sold-text">ĐÃ MUA</div>`;
-                shopEl.appendChild(card);
-                continue;
-            }
-
-            if (isLocked) {
-                const lockPill = document.createElement("span");
-                lockPill.className = "shop-card-locked-icon";
-                lockPill.innerHTML = `<i data-lucide="lock" class="icon-amber"></i>`;
-                lockPill.title = "Thẻ bài này đang được khóa cho vòng sau";
-                card.appendChild(lockPill);
-            }
-
-            const def = window.CHESS_TFT_DATA.PIECES[slot.id];
-            const copiesOwned = this.tft.countMatchingUnits(this.tft.player, slot.id, 1);
-            const canUpgradeHint = copiesOwned >= 2 ? `<i data-lucide="sparkles" class="icon-gold"></i> GHÉP 2 SAO!` : (copiesOwned === 1 ? "Đã có 1/3" : "");
-
-            const traitsHtml = def.traits.map(tId => {
-                const sDef = window.CHESS_TFT_DATA.SYNERGIES[tId];
-                return `<span class="shop-trait-pill" data-trait-id="${tId}">${sDef.icon} ${sDef.name}</span>`;
-            }).join("");
-
-            card.className = `shop-card cost-tier-${def.cost} ${copiesOwned >= 2 ? "shop-merge-glow" : ""}`;
-            card.setAttribute("data-piece-id", def.id);
-            card.title = `${def.name} (${def.cost} Vàng) — Bấm ℹ️ hoặc phím [H] để xem hướng dẫn nước đi`;
-            card.innerHTML = `
-                <div class="shop-card-top">
-                    <span class="shop-unit-name">${def.name}</span>
-                    <div class="shop-top-right">
-                        <span class="shop-unit-cost">${def.cost} <i data-lucide="coins" class="icon-amber"></i></span>
-                        <button class="shop-guide-btn" title="Xem hướng dẫn cách đi & mẹo chơi của ${def.name}" data-piece-id="${def.id}"><i data-lucide="help-circle"></i></button>
-                    </div>
-                </div>
-                <div class="shop-card-body">
-                    <div class="shop-unit-icon">
-                        <img src="assets/pieces/${def.id}.svg" class="shop-svg-art" alt="${def.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" />
-                        <span class="shop-fallback-icon" style="display:none;">${def.icon}</span>
-                    </div>
-                    <div class="shop-traits">${traitsHtml}</div>
-                </div>
-                <div class="shop-unit-stats">
-                    <span><i data-lucide="shield" class="icon-emerald"></i> ${def.baseHp[0]} HP</span>
-                    <span><i data-lucide="crosshair" class="icon-red"></i> Tầm: ${def.range[0]}</span>
-                </div>
-                ${canUpgradeHint ? `<div class="shop-merge-tag">${canUpgradeHint}</div>` : ""}
-            `;
-
-            // Guide button inside shop card
-            const guideBtn = card.querySelector(".shop-guide-btn");
-            if (guideBtn) {
-                guideBtn.addEventListener("click", (e) => {
-                    e.stopPropagation();
-                    this.openPieceGuide(def.id);
-                });
-            }
-
-            // Attach Synergy Tooltip when hovering trait pills inside Shop cards
-            card.querySelectorAll(".shop-trait-pill").forEach(pill => {
-                const tId = pill.getAttribute("data-trait-id");
-                pill.addEventListener("mouseenter", (e) => {
-                    this.hidePieceMovementTooltip();
-                    this.showSynergyTooltip(tId, e, this.tft.player);
-                });
-                pill.addEventListener("mousemove", (e) => this.moveSynergyTooltip(e));
-                pill.addEventListener("mouseleave", () => this.hideSynergyTooltip());
-            });
-
-            card.addEventListener("mouseenter", (e) => {
-                // Don't show piece tooltip if currently hovering synergy pill or guide button
-                if (e.target.closest(".shop-trait-pill") || e.target.closest(".shop-guide-btn")) return;
-                this.showPieceMovementTooltip(def.id, e);
-            });
-            card.addEventListener("mousemove", (e) => {
-                if (!document.getElementById("synergy-tooltip")?.classList.contains("hidden")) return;
-                this.movePieceMovementTooltip(e);
-            });
-            card.addEventListener("mouseleave", () => {
-                this.hidePieceMovementTooltip();
-            });
-
-            card.addEventListener("click", () => {
-                this.hideSynergyTooltip();
-                this.hidePieceMovementTooltip();
-                const res = this.tft.buyShopUnit(slot.slotIndex);
-                if (res.ok) {
-                    if (res.merged) {
-                        this.sfx.starUp();
-                        this.showToast(`🌟 NÂNG CẤP! ${res.merged.name} đã lên ${res.merged.stars} SAO (★)!`, "success");
-                    } else {
-                        this.sfx.move();
-                    }
-                    if (this.isTutorialMode && this.tutorialStep === 1) {
-                        this.advanceTutorialStep(2);
-                    }
-                    this.renderAll();
-                } else {
-                    this.showToast(res.msg, "warn");
-                }
-            });
-
-            shopEl.appendChild(card);
-        }
-
-        window.renderLucideIcons(shopEl);
-        if (window.gsap) {
-            window.gsap.from(shopEl.querySelectorAll(".shop-card:not(.shop-sold)"), {
-                y: -14,
-                scale: 0.94,
-                opacity: 0.25,
-                duration: 0.28,
-                stagger: 0.04,
-                ease: "power2.out",
-                clearProps: "transform,opacity"
-            });
-        }
-    }
 
     renderRightPanel() {
         // 1. Blitz Clocks - Chỉ hiển thị khi Giao Tranh (Combat Phase) để tiết kiệm không gian!
@@ -7245,9 +2749,11 @@ class ChessTFTApp {
         const pLabel = document.getElementById("label-clock-player");
         const eLabel = document.getElementById("label-clock-enemy");
         if (pLabel && eLabel) {
-            if (this.isSkirmishSpectator) {
+            const isSpec = this.isSkirmishSpectator || this.skirmishController?.isSkirmishSpectator;
+            if (isSpec) {
                 pLabel.textContent = "BOT TRẮNG";
-                eLabel.textContent = this.skirmishState.botDifficulty === "grandmaster" ? "BOT ĐEN (MAGNUS)" : "BOT ĐEN";
+                const diff = (this.skirmishController?.skirmishState || this.skirmishState)?.botDifficulty;
+                eLabel.textContent = diff === "grandmaster" ? "BOT ĐEN (MAGNUS)" : "BOT ĐEN";
             } else {
                 pLabel.textContent = "BẠN";
                 eLabel.textContent = "ĐỐI THỦ";
@@ -7345,100 +2851,7 @@ class ChessTFTApp {
         }
     }
 
-    renderSelectedUnitInspector() {
-        const box = document.getElementById("selected-unit-box");
-        const sellBtn = document.getElementById("btn-sell-selected");
-        const unequipBtn = document.getElementById("btn-unequip-selected");
-        const directSellBtn = document.getElementById("btn-sell-hud-direct");
-        const hudSellLabel = document.getElementById("hud-sell-label");
 
-        let unit = null;
-        if (this.tft.phase === "prep" && this.selectedPrepUnitUid) {
-            unit = this.tft.player.board.find(u => u.uid === this.selectedPrepUnitUid) ||
-                   this.tft.player.bench.find(u => u && u.uid === this.selectedPrepUnitUid);
-        } else if (this.tft.phase === "combat" && this.selectedCombatSquare && this.chess) {
-            unit = this.chess.board[this.selectedCombatSquare.r][this.selectedCombatSquare.c];
-        }
-
-        if (!unit) {
-            box.innerHTML = `<div class="empty-hint">Bấm vào 1 quân cờ để xem chi tiết bước đi, Lớp Máu hoặc Bán quân.</div>`;
-            sellBtn?.classList.add("hidden");
-            unequipBtn?.classList.add("hidden");
-            if (directSellBtn) {
-                directSellBtn.style.opacity = "0.5";
-                if (hudSellLabel) hudSellLabel.textContent = "💰 BÁN TƯỚNG (E)";
-            }
-            return;
-        }
-
-        const def = window.CHESS_TFT_DATA.PIECES[unit.id];
-        const starIdx = Math.min(2, (unit.stars || 1) - 1);
-        const hpDisplay = unit.hp !== undefined ? `${unit.hp}/${unit.maxHp}` : `${def.baseHp[starIdx]}`;
-
-        // Render equipped items tags inside inspector
-        let itemsHtml = "";
-        if (unit.items && unit.items.length > 0) {
-            itemsHtml = `<div class="insp-items-row" style="margin-top:4px; display:flex; gap:4px; align-items:center;">
-                <span style="font-size:0.7rem; color:#fbbf24; font-weight:700;">Đồ mang:</span>
-                ${unit.items.map(itId => {
-                    const it = window.CHESS_TFT_DATA.ITEMS[itId];
-                    return it ? `<span class="lb-item-badge" style="cursor:help;" data-item-id="${itId}" title="${it.name}: ${it.desc}">${it.icon} ${it.name}</span>` : "";
-                }).join("")}
-            </div>`;
-        }
-
-        box.innerHTML = `
-            <div class="insp-head">
-                <div class="insp-icon-wrap"><img src="assets/pieces/${def.id}.svg" class="insp-svg" alt="${def.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';" /><span class="insp-fallback" style="display:none;">${def.icon}</span></div>
-                <div>
-                    <div class="insp-title">${def.name} ${"★".repeat(unit.stars || 1)}</div>
-                    <div class="insp-meta">🛡️ Lớp Máu: <strong>${hpDisplay}</strong> • 🎯 Tầm: <strong>${def.range[starIdx]}</strong></div>
-                </div>
-            </div>
-            ${itemsHtml}
-            <div class="insp-desc">${def.desc}</div>
-        `;
-
-        // Wire mouseenter/mouseleave on items inside inspector
-        box.querySelectorAll("[data-item-id]").forEach(el => {
-            const itemId = el.getAttribute("data-item-id");
-            el.addEventListener("mouseenter", (e) => this.showItemTooltip(itemId, e));
-            el.addEventListener("mousemove", (e) => this.moveItemTooltip(e));
-            el.addEventListener("mouseleave", () => this.hideItemTooltip());
-        });
-
-        if (this.tft.phase === "prep" && !def.isKing) {
-            const refund = this.tft.getUnitSellValue(unit);
-            const feeNote = unit.stars > 1 ? ` <span style="font-size:0.7em; opacity:0.8;">(-${unit.stars === 2 ? 1 : 2}🪙 phí ghép)</span>` : "";
-            sellBtn.innerHTML = `💰 Bán (+${refund} 🪙)${feeNote}`;
-            sellBtn.classList.remove("hidden");
-            if (directSellBtn) {
-                directSellBtn.style.opacity = "1";
-                if (hudSellLabel) hudSellLabel.textContent = `💰 BÁN (+${refund}🪙)${unit.stars > 1 ? ` [-${unit.stars === 2 ? 1 : 2}🪙 phí]` : ""}`;
-            }
-
-            // Unequip button
-            if (unequipBtn) {
-                if (unit.items && unit.items.length > 0) {
-                    unequipBtn.classList.remove("hidden");
-                    unequipBtn.innerHTML = `📦 Gỡ Đồ (${unit.items.length})`;
-                } else {
-                    unequipBtn.classList.add("hidden");
-                }
-            }
-        } else {
-            sellBtn.classList.add("hidden");
-            unequipBtn?.classList.add("hidden");
-            if (directSellBtn) {
-                directSellBtn.style.opacity = "0.5";
-                if (hudSellLabel) hudSellLabel.textContent = "💰 BÁN TƯỚNG (E)";
-            }
-        }
-    }
-
-    // ========================================================================
-    // BLITZ CHESS COMBAT LOOP
-    // ========================================================================
     startBlitzCombat() {
         this.clearPrepCountdown();
         this.playCombatBgm();
@@ -7504,6 +2917,11 @@ class ChessTFTApp {
     }
 
     stopCombatTimers() {
+        if (this.skirmishController?.draftShowcaseTimer) {
+            clearInterval(this.skirmishController.draftShowcaseTimer);
+            clearTimeout(this.skirmishController.draftShowcaseTimer);
+            this.skirmishController.draftShowcaseTimer = null;
+        }
         if (this.clockInterval) {
             clearInterval(this.clockInterval);
             this.clockInterval = null;
@@ -7553,13 +2971,41 @@ class ChessTFTApp {
                 }
 
                 if (res.gameOver || this.chess.gameOver) {
+                    if (this.isOnlineSkirmish && this.socket && this.socket.connected && this.currentRoom) {
+                        this.socket.emit("skirmish:action", {
+                            roomCode: this.currentRoom.code,
+                            action: matchedAction,
+                            playerClock: this.playerClock,
+                            enemyClock: this.enemyClock
+                        });
+                        this.socket.emit("skirmish:endMatch", {
+                            roomCode: this.currentRoom.code,
+                            winnerId: this.currentUser?.id,
+                            reason: this.chess.result?.reason || "checkmate",
+                            reasonLabel: this.chess.result?.reasonLabel || "Chiếu hết đối thủ"
+                        });
+                    }
                     this.finishBlitzCombat();
                     return;
                 }
 
-                // Trigger AI Bot response if it's now enemy's turn
+                // Trigger AI Bot response or send online action if it's now enemy's turn
                 if (this.chess.turn === "enemy") {
-                    this.scheduleBotTurn();
+                    if (this.isOnlineSkirmish) {
+                        if (this.socket && this.socket.connected && this.currentRoom) {
+                            this.socket.emit("skirmish:action", {
+                                roomCode: this.currentRoom.code,
+                                action: matchedAction,
+                                playerClock: this.playerClock,
+                                enemyClock: this.enemyClock
+                            });
+                        }
+                        if (this.onlineSkirmishOpponentIsBot) {
+                            this.scheduleBotTurn();
+                        }
+                    } else {
+                        this.scheduleBotTurn();
+                    }
                 }
             }
             return;
@@ -7627,7 +3073,24 @@ class ChessTFTApp {
                     this.triggerCombatHitFx(res.combatHit);
                 }
 
+                if (this.isOnlineSkirmish && this.socket && this.socket.connected && this.currentRoom) {
+                    this.socket.emit("skirmish:action", {
+                        roomCode: this.currentRoom.code,
+                        action: botAct,
+                        playerClock: this.playerClock,
+                        enemyClock: this.enemyClock
+                    });
+                }
+
                 if (res.gameOver || this.chess.gameOver) {
+                    if (this.isOnlineSkirmish && this.socket && this.socket.connected && this.currentRoom) {
+                        this.socket.emit("skirmish:endMatch", {
+                            roomCode: this.currentRoom.code,
+                            winnerId: "bot",
+                            reason: this.chess.result?.reason || "checkmate",
+                            reasonLabel: this.chess.result?.reasonLabel || "Bot chiếu hết"
+                        });
+                    }
                     this.finishBlitzCombat();
                     return;
                 }
@@ -7659,6 +3122,16 @@ class ChessTFTApp {
         else this.sfx.defeat();
 
         if (this.isSkirmishMode) {
+            const pb = document.getElementById("phase-banner");
+            if (pb) {
+                const p1El = document.getElementById("h2h-p1-name");
+                const p2El = document.getElementById("h2h-p2-name");
+                const wName = (p1El?.textContent || "Bot Trắng").replace(/^🤖\s*/, '').trim().toUpperCase();
+                const bName = (p2El?.textContent || "Bot Đen").replace(/^🤖\s*/, '').trim().toUpperCase();
+                const winnerText = res.winner === "player" ? `${wName} CHIẾN THẮNG` : (res.winner === "enemy" ? `${bName} CHIẾN THẮNG` : "HÒA CỜ");
+                pb.textContent = `🏁 VÁN ĐẤU KẾT THÚC: ${winnerText} (${res.reasonLabel || "Chiếu hết"})`;
+                pb.className = "phase-banner phase-combat";
+            }
             this.renderAll();
             this.renderDpsMeter();
             setTimeout(() => {
@@ -7707,554 +3180,19 @@ class ChessTFTApp {
         }, 450);
     }
 
-    showRoundResultModal(res) {
-        const modal = document.getElementById("modal-round-result");
-        const titleEl = document.getElementById("round-result-title");
-        const reasonEl = document.getElementById("round-result-reason");
-        const logsEl = document.getElementById("round-match-logs");
-
-        if (this.isSkirmishMode) {
-            this.clearRoundResultCountdown();
-            if (this.isSkirmishSpectator) {
-                if (res.winner === "player") {
-                    titleEl.textContent = "👑 BOT TRẮNG CHIẾN THẮNG!";
-                    titleEl.className = "modal-title text-win";
-                } else if (res.winner === "enemy") {
-                    titleEl.textContent = "👑 BOT ĐEN CHIẾN THẮNG!";
-                    titleEl.className = "modal-title text-win";
-                } else {
-                    titleEl.textContent = "⚖️ HÒA CỜ CHIẾN THUẬT!";
-                    titleEl.className = "modal-title";
-                }
-                reasonEl.textContent = `${res.reasonLabel || "Ván đấu kết thúc"} • Bot Trắng: ${res.playerPiecesLeft} quân • Bot Đen: ${res.enemyPiecesLeft} quân`;
-            } else {
-                if (res.winner === "player") {
-                    titleEl.textContent = "🏆 CHIẾN THẮNG TUYỆT ĐỐI!";
-                    titleEl.className = "modal-title text-win";
-                } else if (res.winner === "enemy") {
-                    titleEl.textContent = "💀 THẤT BẠI TRONG ĐẤU TRÍ!";
-                    titleEl.className = "modal-title text-loss";
-                } else {
-                    titleEl.textContent = "⚖️ HÒA CỜ CHIẾN THUẬT!";
-                    titleEl.className = "modal-title";
-                }
-                reasonEl.textContent = `${res.reasonLabel || "Ván đấu kết thúc"} • Bạn còn: ${res.playerPiecesLeft} quân • Đối thủ còn: ${res.enemyPiecesLeft} quân`;
-            }
-
-            const timerEl = document.getElementById("round-result-timer");
-            if (timerEl) timerEl.textContent = this.isSkirmishSpectator ? "🎙️ Trận Đấu Giữa 2 Bot Đã Hoàn Tất" : "⚔️ Đấu Trí 1v1: Thách Đấu Kỳ Thủ AI";
-
-            logsEl.innerHTML = `
-                <div style="background: rgba(0,0,0,0.5); padding: 12px; border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.3); text-align: left;">
-                    <div style="font-size: 0.82rem; color: #fbbf24; font-weight: 700; margin-bottom: 6px;">📊 Thống kê trận đấu:</div>
-                    <div style="font-size: 0.75rem; color: #cbd5e1; line-height: 1.6;">
-                        • Tổng số lượt đi: <strong>${this.chess ? this.chess.turnCount : 0} nước</strong><br>
-                        • Đồng hồ còn lại: <strong>${this.isSkirmishSpectator ? "Bot Trắng" : "Bạn"} ${this.playerClock.toFixed(1)}s</strong> • <strong>${this.isSkirmishSpectator ? "Bot Đen" : "Đối thủ"} ${this.enemyClock.toFixed(1)}s</strong>
-                    </div>
-                </div>
-            `;
-
-            const btnNext = document.getElementById("btn-next-round");
-            const btnSpec = document.getElementById("btn-spectate-other-boards");
-            if (btnSpec) {
-                btnSpec.textContent = "🛠️ Đổi Đội Hình & Map";
-                btnSpec.onclick = () => {
-                    modal.classList.add("hidden");
-                    this.showScreen("lobby");
-                    this.openSkirmishBuilderModal();
-                };
-            }
-            if (btnNext) {
-                btnNext.textContent = this.isSkirmishSpectator ? "🔄 Xem Lại / Ván Mới" : "🔄 Tái Đấu Ngay";
-                btnNext.onclick = () => {
-                    modal.classList.add("hidden");
-                    this.startSkirmishBattle();
-                };
-            }
-
-            modal.classList.remove("hidden");
-            return;
-        }
-
-        if (res.winner === "player") {
-            titleEl.textContent = "🏆 CHIẾN THẮNG VÁN CỜ CHỚP!";
-            titleEl.className = "modal-title text-win";
-        } else if (res.winner === "enemy") {
-            titleEl.textContent = "💔 THẤT BẠI VÁN CỜ CHỚP!";
-            titleEl.className = "modal-title text-loss";
-        } else {
-            titleEl.textContent = "⚖️ HÒA CỜ CHỚP!";
-            titleEl.className = "modal-title";
-        }
-
-        reasonEl.textContent = `Kết quả: ${res.reasonLabel} • Quân sống sót: Bạn ${res.playerPiecesLeft} - Đối thủ ${res.enemyPiecesLeft}`;
-
-        logsEl.innerHTML = "";
-        for (const item of this.tft.roundMatchLogs) {
-            const d = document.createElement("div");
-            d.className = `round-log-item ${item.isPlayerMatch ? "round-log-highlight" : ""} ${item.isFortune ? "round-log-fortune" : ""} ${item.isComeback ? "round-log-comeback" : ""}`;
-            d.textContent = item.summary;
-            logsEl.appendChild(d);
-        }
-
-        // Last Stand Alert
-        if (this.tft.lastStandTriggeredThisRound) {
-            this.showToast(`🛡️ Ý CHÍ PHỤC THÙ ĐÃ KÍCH HOẠT! Nhận ngay +15🪙, Quốc Vương +1 Lớp Máu vĩnh viễn & +15s Đồng Hồ!`, "warn");
-            this.sfx.victory();
-        }
-
-        // Fortune Cashout Celebration Toast
-        if (this.tft.lastFortuneCashout) {
-            const cash = this.tft.lastFortuneCashout;
-            let details = `+${cash.gold}🪙`;
-            if (cash.items.length) details += `, Trang bị: [${cash.items.map(it => window.CHESS_TFT_DATA.ITEMS[it]?.name || it).join(", ")}]`;
-            if (cash.pieces.length) details += `, Tướng 5🪙: [${cash.pieces.map(pid => window.CHESS_TFT_DATA.PIECES[pid]?.name || pid).join(", ")}]`;
-            this.showToast(`🎰 NỔ HŨ THÀNH CÔNG (Chuỗi ${cash.streak} thua)! Mở rương nhận: ${details}`, "success");
-            this.sfx.victory();
-        }
-
-        // PVE Creep Drops Toast
-        if (this.tft.lastPveDrops) {
-            const drops = this.tft.lastPveDrops;
-            let dropDesc = `+${drops.gold}🪙 Vàng`;
-            if (drops.itemNames && drops.itemNames.length > 0) {
-                dropDesc += ` & Mảnh trang bị [${drops.itemNames.join(" + ")}]`;
-            }
-            this.showToast(`🎁 CHIẾN LỢI PHẨM QUÁI PVE: ${dropDesc}!`, "success");
-            this.sfx.starUp();
-        }
-
-        modal.classList.remove("hidden");
-
-        const btnNext = document.getElementById("btn-next-round");
-        const timerEl = document.getElementById("round-result-timer");
-
-        if (this.isWaitingForRoundSync && !this.allBoardsFinishedCurrentRound) {
-            if (btnNext) btnNext.textContent = "👁️ Soi Bài Đối Thủ (Đang Chờ Vòng Mới)";
-            if (timerEl) timerEl.textContent = `⏳ Đang chờ người chơi khác hoàn tất vòng ${this.tft.stage}-${this.tft.roundInStage}...`;
-            this.clearRoundResultCountdown();
-            // Tự động đóng modal sau 4.5s để người chơi ra bàn cờ quan sát trận của đối thủ
-            this.roundResultTimer = setTimeout(() => {
-                if (!modal.classList.contains("hidden")) {
-                    btnNext?.click();
-                }
-            }, 4500);
-        } else {
-            if (btnNext) btnNext.textContent = "➡️ Tiếp Tục Vòng Mới";
-            this.startRoundResultCountdown();
-        }
-    }
-
-    proceedAfterRoundModal() {
-        this.clearRoundResultCountdown();
-        this.isPostMatchSpectating = false;
-        this.isFinishedCombat = false;
-        this.tft.scoutingPlayerId = "player";
-        const nextInfo = this.tft.advanceToNextRound();
-
-        if (nextInfo.phase === "gameover") {
-            this.showGameOverModal();
-            return;
-        }
-
-        if (nextInfo.boardScaled) {
-            const cfg = this.tft.getStageConfig();
-            this.showToast(`📐 Sang Stage ${this.tft.stage}: Bàn cờ mở rộng thành ${cfg.cols}x${cfg.rows}!`, "success");
-        }
-
-        if (nextInfo.freeRerollGiven) {
-            this.showToast(`🎁 HỖ TRỢ CHUỖI THUA: Bạn nhận được +1 lượt Đổi Shop MIỄN PHÍ!`, "success");
-        }
-
-        if (nextInfo.comebackPackage) {
-            this.showToast(`🔥 TIẾP TẾ LỘI NGƯỢC DÒNG (Chuỗi Thua ≥ 4): Nhận ngay +${nextInfo.comebackPackage.gold}🪙 và ${nextInfo.comebackPackage.itemIcon} ${nextInfo.comebackPackage.itemName}!`, "success");
-        }
-
-        if (nextInfo.shopLockedPreserved) {
-            this.showToast("🔒 Cửa hàng đã được giữ nguyên từ vòng trước (Đã tự động mở khóa)!", "info");
-        }
-
-        // STAGE ARMORY SELECTION (ĐỀ XUẤT 1: KHO TIẾP TẾ CHIẾN TRƯỜNG KHI CHUYỂN GIAI ĐOẠN)
-        if (nextInfo.phase === "armory") {
-            this.openStageArmoryModal(nextInfo.armoryChoices, nextInfo.newStage);
-        } else if (nextInfo.phase === "augment") {
-            this.openAugmentModal();
-        } else if (nextInfo.phase === "carousel") {
-            this.openCarouselModal();
-        } else {
-            this.startPrepCountdown();
-        }
-
-        this.renderAll();
-        this.syncMyStateToRoom();
-    }
-
-    openStageArmoryModal(choices, newStage) {
-        this.sfx.playBgm("armory");
-        const modal = document.getElementById("modal-armory");
-        const titleEl = document.getElementById("armory-title");
-        const subEl = document.getElementById("armory-sub");
-        const container = document.getElementById("armory-choices");
-
-        if (titleEl) titleEl.textContent = `🎁 KHO TIẾP TẾ CHIẾN TRƯỜNG — GIAI ĐOẠN ${newStage}`;
-        if (subEl) subEl.textContent = `Chúc mừng bạn đã vượt qua Giai Đoạn ${newStage - 1}! Chọn 1 trong 3 Gói Nâng Cấp để tăng tốc sức mạnh cho đội hình:`;
-
-        if (!container) return;
-        container.innerHTML = "";
-
-        const armoryChoices = choices || [];
-        armoryChoices.forEach((choice, idx) => {
-            const card = document.createElement("div");
-            card.className = "choice-card-armory";
-            card.innerHTML = `
-                <div class="armory-card-tag">${choice.tag}</div>
-                <div class="armory-card-icon">${choice.icon}</div>
-                <div class="armory-card-title">${choice.title}</div>
-                <div class="armory-card-desc">${choice.desc}</div>
-                <button class="armory-card-btn">${choice.btnText || "Nhận Gói Này"}</button>
-            `;
-            card.addEventListener("click", () => {
-                this.clearArmoryCountdown();
-                this.tft.claimArmoryChoice(idx);
-                this.sfx.starUp();
-                modal.classList.add("hidden");
-                this.showToast(`🎁 Đã nhận thành công: ${choice.title}!`, "success");
-
-                // Kiểm tra xem vòng 1 của stage mới có chọn Lõi hay không
-                const stageFmt = (window.CHESS_TFT_DATA.STAGE_ROUNDS_FORMAT && window.CHESS_TFT_DATA.STAGE_ROUNDS_FORMAT[this.tft.stage]) || [];
-                const rDef = stageFmt.find(r => r.round === this.tft.roundInStage);
-                if (rDef && rDef.type === "augment" && this.tft.player.augments.length < 3) {
-                    this.openAugmentModal();
-                } else {
-                    this.startPrepCountdown();
-                }
-                this.renderAll();
-                this.syncMyStateToRoom();
-            });
-            container.appendChild(card);
-        });
-
-        modal.classList.remove("hidden");
-        this.startArmoryCountdown();
-    }
-
-    startArmoryCountdown() {
-        this.clearArmoryCountdown();
-        this.armorySecondsLeft = 15;
-        const timerEl = document.getElementById("armory-timer");
-        if (timerEl) timerEl.textContent = `⏳ Tự động nhận sau: ${this.armorySecondsLeft}s`;
-
-        this.armoryTimer = setInterval(() => {
-            this.armorySecondsLeft--;
-            const el = document.getElementById("armory-timer");
-            if (el) el.textContent = `⏳ Tự động nhận sau: ${this.armorySecondsLeft}s`;
-
-            if (this.armorySecondsLeft <= 0) {
-                this.clearArmoryCountdown();
-                const firstChoice = document.querySelector("#armory-choices .choice-card-armory");
-                if (firstChoice && !document.getElementById("modal-armory")?.classList.contains("hidden")) {
-                    firstChoice.click();
-                }
-            }
-        }, 1000);
-    }
-
-    clearArmoryCountdown() {
-        if (this.armoryTimer) {
-            clearInterval(this.armoryTimer);
-            this.armoryTimer = null;
-        }
-    }
-
-    openAugmentModal() {
-        this.sfx.playBgm("prep");
-        const modal = document.getElementById("modal-augment");
-        const container = document.getElementById("augment-choices");
-        container.innerHTML = "";
-
-        const unowned = window.CHESS_TFT_DATA.AUGMENTS.filter(a => !this.tft.player.augments.includes(a.id));
-        const shuffled = [...unowned].sort(() => Math.random() - 0.5).slice(0, 3);
-
-        for (const aug of shuffled) {
-            const card = document.createElement("div");
-            card.className = "choice-card";
-            card.innerHTML = `
-                <div class="choice-icon">${aug.icon}</div>
-                <div class="choice-title">${aug.name}</div>
-                <div class="choice-desc">${aug.desc}</div>
-                <button class="btn-primary">Chọn Lõi Này</button>
-            `;
-            card.addEventListener("click", () => {
-                this.clearAugmentCountdown();
-                this.tft.chooseAugment(aug.id);
-                this.sfx.starUp();
-                modal.classList.add("hidden");
-                this.showToast(`Đã kích hoạt Lõi: ${aug.name}!`, "success");
-                this.startPrepCountdown();
-                this.renderAll();
-            });
-            container.appendChild(card);
-        }
-
-        modal.classList.remove("hidden");
-        this.startAugmentCountdown();
-    }
-
-    openCarouselModal() {
-        this.sfx.playBgm("carousel");
-        const modal = document.getElementById("modal-carousel");
-        const container = document.getElementById("carousel-choices");
-        container.innerHTML = "";
-
-        const choices = this.tft.generateCarouselChoices();
-        for (const ch of choices) {
-            const pDef = window.CHESS_TFT_DATA.PIECES[ch.pieceId];
-            const iDef = window.CHESS_TFT_DATA.ITEMS[ch.itemId];
-
-            const card = document.createElement("div");
-            card.className = "choice-card carousel-card";
-            card.innerHTML = `
-                <div class="choice-icon"><img src="assets/pieces/${pDef.id}.svg" class="carousel-choice-svg" alt="${pDef.name}" /><span class="carousel-plus">+</span><span class="carousel-item-icon">${iDef.icon}</span></div>
-                <div class="choice-title">${pDef.name} (${pDef.cost}🪙)</div>
-                <div class="choice-sub">Kèm trang bị: <strong>${iDef.name}</strong></div>
-                <div class="choice-desc">${iDef.desc}</div>
-                <button class="btn-primary">Lấy Quân & Đồ</button>
-            `;
-            card.addEventListener("click", () => {
-                this.clearCarouselCountdown();
-                this.tft.pickCarouselChoice(ch);
-                this.sfx.starUp();
-                modal.classList.add("hidden");
-                this.showToast(`Đi Chợ thành công: Nhận ${pDef.name} cầm ${iDef.name}!`, "success");
-                this.startPrepCountdown();
-                this.renderAll();
-            });
-            container.appendChild(card);
-        }
-
-        modal.classList.remove("hidden");
-        this.startCarouselCountdown();
-    }
-
-    async showGameOverModal() {
-        this.clearAllCountdowns();
-        const modal = document.getElementById("modal-gameover");
-        const title = document.getElementById("gameover-title");
-        const desc = document.getElementById("gameover-desc");
-
-        const aliveAll = this.tft.getAllParticipants().sort((a, b) => b.hp - a.hp);
-        const rank = aliveAll.findIndex(p => p.id === "player") + 1;
-
-        if (!this.tft.player.eliminated && rank === 1) {
-            title.textContent = "👑 TOP 1 ĐẤU TRƯỜNG CỜ CHỚP!";
-            desc.textContent = `Xin chúc mừng! Bạn đã đánh bại toàn bộ 7 Đối Thủ và thống trị bàn cờ với ${this.tft.player.hp} Máu còn lại!`;
-            this.sfx.victory();
-        } else {
-            title.textContent = `🏁 KẾT THÚC Ở HẠNG #${rank} / 8`;
-            desc.textContent = `Bạn đã dừng bước tại Vòng ${this.tft.stage}-${this.tft.roundInStage}. Kết quả trận đấu đã được lưu vào Database!`;
-            this.sfx.defeat();
-        }
-
-        modal.classList.remove("hidden");
-
-        // Record match result & update user ELO in db/users.json & db/matches.json
-        if (this.currentUser && this.currentUser.id && !this.currentUser.id.startsWith("local_")) {
-            try {
-                const res = await fetch("api.php?action=match_finish", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        userId: this.currentUser.id,
-                        rank,
-                        stageReached: `${this.tft.stage}-${this.tft.roundInStage}`,
-                        roomCode: this.currentRoom ? this.currentRoom.code : "SOLO",
-                        finalComp: this.tft.player.board.map(u => ({ id: u.id, stars: u.stars, items: u.items }))
-                    })
-                });
-                const data = await res.json();
-                if (data.ok && data.user) {
-                    this.currentUser = data.user;
-                    localStorage.setItem("chesstft_user", JSON.stringify(data.user));
-                    this.renderLobbyHeader();
-                }
-            } catch (e) {
-                // Offline fallback
-            }
-        }
-    }
-
-    // ========================================================================
-    // AUTO COUNTDOWN TIMERS (ANTI-STALLING / CHỐNG CÂU GIỜ)
-    // ========================================================================
-    startPrepCountdown() {
-        this.clearPrepCountdown();
-        this.isPostMatchSpectating = false;
-        this.isFinishedCombat = false;
-        if (this.tft) this.tft.scoutingPlayerId = "player";
-        this.playPrepBgm();
-
-        // Ở chế độ Sandbox (Phòng Tập), thời gian chuẩn bị là vô hạn để thoải mái test!
-        if (this.isSandboxMode) {
-            const badge = document.getElementById("prep-timer-badge");
-            if (badge) {
-                badge.classList.remove("hidden");
-                badge.textContent = `♾️ VÔ HẠN`;
-                badge.style.background = "linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)";
-                badge.style.color = "#04060c";
-                badge.style.fontWeight = "800";
-            }
-            return;
-        }
-
-        this.prepSecondsLeft = 40; // 40s (tăng thêm 10s theo yêu cầu) chuẩn bị TFT
-        const badge = document.getElementById("prep-timer-badge");
-        if (badge) {
-            badge.classList.remove("hidden");
-            badge.textContent = `⏳ ${this.prepSecondsLeft}s`;
-            badge.style.background = "";
-            badge.style.color = "";
-        }
-
-        this.prepTimer = setInterval(() => {
-            this.prepSecondsLeft--;
-            const b = document.getElementById("prep-timer-badge");
-            if (b) {
-                b.textContent = `⏳ ${this.prepSecondsLeft}s`;
-                if (this.prepSecondsLeft <= 5) {
-                    b.style.background = "#ef4444";
-                    b.style.color = "#ffffff";
-                }
-            }
-
-            if (this.prepSecondsLeft === 3) {
-                this.preloadUpcomingCombatTrack();
-            }
-
-            if (this.prepSecondsLeft <= 0) {
-                this.clearPrepCountdown();
-                if (this.tft && this.tft.phase === "prep") {
-                    this.showToast("⏰ Hết thời gian chuẩn bị! Tự động bắt đầu giao tranh!", "warn");
-                    this.syncMyStateToRoom();
-                    this.startBlitzCombat();
-                }
-            }
-        }, 1000);
-    }
-
-    clearPrepCountdown() {
-        if (this.prepTimer) {
-            clearInterval(this.prepTimer);
-            this.prepTimer = null;
-        }
-        const badge = document.getElementById("prep-timer-badge");
-        if (badge) badge.classList.add("hidden");
-    }
-
-    startAugmentCountdown() {
-        this.clearAugmentCountdown();
-        this.augmentSecondsLeft = 15; // 15s chọn Lõi chuẩn TFT
-        const timerEl = document.getElementById("augment-timer");
-        if (timerEl) timerEl.textContent = `⏳ Tự động chọn sau: ${this.augmentSecondsLeft}s`;
-
-        this.augmentTimer = setInterval(() => {
-            this.augmentSecondsLeft--;
-            const el = document.getElementById("augment-timer");
-            if (el) el.textContent = `⏳ Tự động chọn sau: ${this.augmentSecondsLeft}s`;
-
-            if (this.augmentSecondsLeft <= 0) {
-                this.clearAugmentCountdown();
-                const container = document.getElementById("augment-choices");
-                const firstCard = container?.querySelector(".choice-card");
-                if (firstCard) {
-                    this.showToast("⏰ Hết giờ chọn Lõi! Đã tự động chọn Lõi ngẫu nhiên.", "warn");
-                    firstCard.click();
-                } else {
-                    document.getElementById("modal-augment")?.classList.add("hidden");
-                    this.proceedAfterRoundModal();
-                }
-            }
-        }, 1000);
-    }
-
-    clearAugmentCountdown() {
-        if (this.augmentTimer) {
-            clearInterval(this.augmentTimer);
-            this.augmentTimer = null;
-        }
-    }
-
-    startCarouselCountdown() {
-        this.clearCarouselCountdown();
-        this.carouselSecondsLeft = 12; // 12s Đi Chợ chuẩn TFT
-        const timerEl = document.getElementById("carousel-timer");
-        if (timerEl) timerEl.textContent = `⏳ Tự động nhặt sau: ${this.carouselSecondsLeft}s`;
-
-        this.carouselTimer = setInterval(() => {
-            this.carouselSecondsLeft--;
-            const el = document.getElementById("carousel-timer");
-            if (el) el.textContent = `⏳ Tự động nhặt sau: ${this.carouselSecondsLeft}s`;
-
-            if (this.carouselSecondsLeft <= 0) {
-                this.clearCarouselCountdown();
-                const container = document.getElementById("carousel-choices");
-                const firstCard = container?.querySelector(".choice-card");
-                if (firstCard) {
-                    this.showToast("⏰ Hết giờ Đi Chợ! Đã tự động nhặt quân cờ & trang bị.", "warn");
-                    firstCard.click();
-                } else {
-                    document.getElementById("modal-carousel")?.classList.add("hidden");
-                    this.proceedAfterRoundModal();
-                }
-            }
-        }, 1000);
-    }
-
-    clearCarouselCountdown() {
-        if (this.carouselTimer) {
-            clearInterval(this.carouselTimer);
-            this.carouselTimer = null;
-        }
-    }
-
-    startRoundResultCountdown() {
-        this.clearRoundResultCountdown();
-        this.roundResultSecondsLeft = 3; // 3s hiển thị kết quả
-        const timerEl = document.getElementById("round-result-timer");
-        if (timerEl) timerEl.textContent = `⏳ Tự động tiếp tục sau: ${this.roundResultSecondsLeft}s`;
-
-        this.roundResultTimer = setInterval(() => {
-            this.roundResultSecondsLeft--;
-            const el = document.getElementById("round-result-timer");
-            if (el) el.textContent = `⏳ Tự động tiếp tục sau: ${this.roundResultSecondsLeft}s`;
-
-            if (this.roundResultSecondsLeft <= 0) {
-                this.clearRoundResultCountdown();
-                const btnNext = document.getElementById("btn-next-round");
-                if (btnNext && !document.getElementById("modal-round-result").classList.contains("hidden")) {
-                    btnNext.click();
-                }
-            }
-        }, 1000);
-    }
-
-    clearRoundResultCountdown() {
-        if (this.roundResultTimer) {
-            clearInterval(this.roundResultTimer);
-            this.roundResultTimer = null;
-        }
-    }
-
-    clearAllCountdowns() {
-        this.clearPrepCountdown();
-        this.clearAugmentCountdown();
-        this.clearCarouselCountdown();
-        this.clearArmoryCountdown();
-        this.clearRoundResultCountdown();
+}
+
+// Initializer
+function initApp() {
+    if (!window.app) {
+        window.app = new ChessTFTApp();
+        if (window.renderLucideIcons) window.renderLucideIcons();
+        if (window.initGameTooltips) window.initGameTooltips();
     }
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-    window.app = new ChessTFTApp();
-    window.renderLucideIcons();
-    window.initGameTooltips();
-});
+if (document.readyState === "loading") {
+    window.addEventListener("DOMContentLoaded", initApp);
+} else {
+    initApp();
+}

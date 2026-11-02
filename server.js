@@ -8,6 +8,7 @@ const express = require("express");
 const http = require("http");
 const path = require("path");
 const fs = require("fs");
+const crypto = require("crypto");
 const { Server } = require("socket.io");
 
 const app = express();
@@ -55,12 +56,20 @@ app.all("/api.php", (req, res, next) => {
         req.url = "/api/matches/finish";
         req.method = "POST";
         return next();
-    } else if (action === "room_list") {
+    } else if (action === "room_list" || action === "rooms") {
         req.url = "/api/rooms/list";
         req.method = "GET";
         return next();
     } else if (action === "room_create") {
         req.url = "/api/rooms/create";
+        req.method = "POST";
+        return next();
+    } else if (action === "room_add_bot") {
+        req.url = "/api/rooms/add_bot";
+        req.method = "POST";
+        return next();
+    } else if (action === "room_remove_bot") {
+        req.url = "/api/rooms/remove_bot";
         req.method = "POST";
         return next();
     } else {
@@ -105,6 +114,55 @@ function sanitizeUser(u) {
     delete copy.password;
     return copy;
 }
+function hashUserPassword(password) {
+    const salt = crypto.randomBytes(16).toString("hex");
+    const hash = crypto.scryptSync(password, salt, 64).toString("hex");
+    return `scrypt:${salt}:${hash}`;
+}
+
+function verifyUserPassword(password, stored) {
+    if (!stored) return false;
+    if (typeof stored === "string" && stored.startsWith("scrypt:")) {
+        const parts = stored.split(":");
+        if (parts.length === 3) {
+            const salt = parts[1];
+            const hash = parts[2];
+            try {
+                const testHash = crypto.scryptSync(password, salt, 64).toString("hex");
+                return crypto.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(testHash, "hex"));
+            } catch (e) {
+                return false;
+            }
+        }
+    }
+    // Auto-fallback migration for legacy plaintext password (e.g. "123")
+    return String(stored) === String(password);
+}
+
+function getAuthUser(req) {
+    const authHeader = req.headers["authorization"] || "";
+    let token = "";
+    if (authHeader.startsWith("Bearer ")) {
+        token = authHeader.slice(7).trim();
+    } else if (req.query && req.query.token) {
+        token = req.query.token;
+    } else if (req.body && req.body.token) {
+        token = req.body.token;
+    }
+    if (!token) return null;
+    const users = readJSON(FILES.users, []);
+    return users.find(u => u.token && u.token === token) || null;
+}
+
+function requireAdminPermission(req, res, next) {
+    const user = getAuthUser(req);
+    if (!user || user.role !== "admin") {
+        return res.status(403).json({ ok: false, msg: "Từ chối truy cập: Yêu cầu quyền Quản trị viên (Admin) với Token hợp lệ!" });
+    }
+    req.authUser = user;
+    next();
+}
+
 
 function ensureUserInDatabase(user) {
     if (!user || (!user.username && !user.id)) return;
@@ -162,11 +220,13 @@ app.post("/api/auth/register", (req, res) => {
 
     const rules = readJSON(FILES.rules, {});
     const econ = rules.economy || {};
+    const token = crypto.randomBytes(32).toString("hex");
 
     const newUser = {
-        id: `user_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        id: `user_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`,
         username: cleanUser,
-        password: String(password),
+        password: hashUserPassword(String(password)),
+        token: token,
         displayName: (displayName && String(displayName).trim()) || cleanUser,
         avatar: avatar || "🧙‍♂️",
         role: users.length === 0 || cleanUser === "admin" ? "admin" : "player",
@@ -192,9 +252,11 @@ app.post("/api/auth/register", (req, res) => {
     writeJSON(FILES.users, users);
 
     const entities = readJSON(FILES.entities, {});
+    const safeReg = sanitizeUser(newUser);
+    safeReg.token = token;
     res.json({
         ok: true,
-        user: sanitizeUser(newUser),
+        user: safeReg,
         rules,
         entities
     });
@@ -208,20 +270,35 @@ app.post("/api/auth/login", (req, res) => {
 
     const cleanUser = String(username).trim().toLowerCase();
     const users = readJSON(FILES.users, []);
-    const found = users.find(u => u.username.toLowerCase() === cleanUser && u.password === String(password));
+    const idx = users.findIndex(u => u.username.toLowerCase() === cleanUser);
 
-    if (!found) {
+    if (idx === -1 || !verifyUserPassword(String(password), users[idx].password)) {
         return res.status(401).json({ ok: false, msg: "Sai tên đăng nhập hoặc mật khẩu!" });
     }
+
+    const found = users[idx];
     if (found.customModifiers && found.customModifiers.isBanned) {
         return res.status(403).json({ ok: false, msg: "Tài khoản này đang bị tạm khóa bởi Admin!" });
     }
 
+    // Auto-migrate legacy plaintext password to secure scrypt
+    if (!found.password.startsWith("scrypt:")) {
+        found.password = hashUserPassword(String(password));
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+    found.token = token;
+    users[idx] = found;
+    writeJSON(FILES.users, users);
+
     const rules = readJSON(FILES.rules, {});
     const entities = readJSON(FILES.entities, {});
+    const safeUser = sanitizeUser(found);
+    safeUser.token = token;
+
     res.json({
         ok: true,
-        user: sanitizeUser(found),
+        user: safeUser,
         rules,
         entities
     });
@@ -235,7 +312,17 @@ app.get("/api/user/:id", (req, res) => {
 });
 
 app.post("/api/matches/finish", (req, res) => {
+    const authUser = getAuthUser(req);
     const { userId, rank, totalPlayers, roomCode, winnerName } = req.body || {};
+
+    if (authUser && authUser.id !== userId) {
+        return res.status(403).json({ ok: false, msg: "Từ chối: Không thể ghi nhận kết quả trận đấu cho tài khoản khác!" });
+    }
+
+    if (!userId || String(userId).startsWith("local_") || String(userId).startsWith("guest_")) {
+        return res.json({ ok: true, user: null });
+    }
+
     const users = readJSON(FILES.users, []);
     const u = users.find(x => x.id === userId);
     if (u) {
@@ -270,8 +357,10 @@ app.post("/api/matches/finish", (req, res) => {
 // 2. ADMIN DATABASE MANAGEMENT API (EDIT ACCOUNTS, RULES & PIECES LIVE)
 // ============================================================================
 
+app.use("/api/admin", requireAdminPermission);
+
 app.get("/api/admin/db", (req, res) => {
-    const users = readJSON(FILES.users, []).map(u => ({ ...u }));
+    const users = readJSON(FILES.users, []).map(sanitizeUser);
     const rules = readJSON(FILES.rules, {});
     const entities = readJSON(FILES.entities, {});
     const matches = readJSON(FILES.matches, []);
@@ -288,7 +377,7 @@ app.post("/api/admin/user", (req, res) => {
     if (updates.displayName !== undefined) u.displayName = updates.displayName;
     if (updates.role !== undefined) u.role = updates.role;
     if (updates.password && String(updates.password).trim() !== "") {
-        u.password = String(updates.password).trim();
+        u.password = hashUserPassword(String(updates.password).trim());
     }
     if (updates.elo !== undefined) {
         if (!u.stats) u.stats = {};
@@ -325,7 +414,7 @@ app.post("/api/admin/user/create", (req, res) => {
     const newUser = {
         id: `user_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
         username: cleanUser,
-        password: String(password).trim(),
+        password: hashUserPassword(String(password).trim()),
         displayName: (displayName && String(displayName).trim()) || cleanUser,
         avatar: avatar || "👤",
         role: role === "admin" ? "admin" : "player",
@@ -437,7 +526,7 @@ function generateRoomCode() {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     let code = "";
     for (let i = 0; i < 6; i++) {
-        code += chars[Math.floor(Math.random() * chars.length)];
+        code += chars[crypto.randomInt(0, chars.length)];
     }
     return code;
 }
@@ -445,12 +534,13 @@ function generateRoomCode() {
 function getPublicRoomsList() {
     const list = [];
     for (const r of rooms.values()) {
-        if (r.status === "waiting") {
+        if (r.status === "waiting" || r.status === "skirmish_prep") {
             list.push({
                 code: r.code,
                 hostName: r.hostName,
+                mode: r.mode || "tft_8p",
                 playerCount: r.players.length,
-                maxPlayers: 8,
+                maxPlayers: r.maxPlayers || (r.mode === "tft_1v1" || r.mode === "skirmish_1v1" ? 2 : 8),
                 timeMode: r.timeMode,
                 fillBots: r.fillBots,
                 isSpectatorHost: !!r.isSpectatorHost,
@@ -470,20 +560,23 @@ app.get("/api/rooms/list", (req, res) => {
 });
 
 app.post("/api/rooms/create", (req, res) => {
-    const { user, timeMode = "standard", fillBots = true, isSpectator = false } = req.body || {};
+    const { user, mode = "tft_8p", timeMode = "standard", fillBots = true, isSpectator = false } = req.body || {};
     let code = generateRoomCode();
     while (rooms.has(code)) code = generateRoomCode();
 
     const dbUsers = readJSON(FILES.users, []);
     const freshUser = dbUsers.find(u => u.id === user?.id) || user || { id: `anon_${Date.now()}`, username: "Guest" };
 
+    const is1v1 = (mode === "tft_1v1" || mode === "skirmish_1v1");
     const room = {
         code,
+        mode, // "tft_8p" | "tft_1v1" | "skirmish_1v1"
+        maxPlayers: is1v1 ? 2 : 8,
         hostId: freshUser.id,
         hostSocketId: null,
         hostName: freshUser.displayName || freshUser.username,
         timeMode,
-        fillBots: !!fillBots,
+        fillBots: is1v1 ? false : !!fillBots,
         isSpectatorHost: !!isSpectator,
         status: "waiting",
         spectators: isSpectator ? [
@@ -513,6 +606,57 @@ app.post("/api/rooms/create", (req, res) => {
     rooms.set(code, room);
     broadcastRoomsList();
     res.json({ ok: true, room });
+});
+
+app.post("/api/rooms/add_bot", (req, res) => {
+    const { code, botProfile } = req.body || {};
+    const cleanCode = String(code || "").trim().toUpperCase();
+    const room = rooms.get(cleanCode);
+    if (!room) return res.status(404).json({ ok: false, msg: "Phòng không tồn tại!" });
+    const maxAllowed = room.maxPlayers || (room.mode === "tft_1v1" || room.mode === "skirmish_1v1" ? 2 : 8);
+    if (room.players.length >= maxAllowed) {
+        return res.status(400).json({ ok: false, msg: `Phòng đã đủ tối đa ${maxAllowed} người!` });
+    }
+    const botProfiles = [
+        { name: "Đại Kiện Tướng Magnus AI", avatar: "🤖", elo: 1800, style: "Tấn Công Tổng Lực" },
+        { name: "Bá Tước Bóng Đêm AI", avatar: "🦇", elo: 1750, style: "Sát Thủ Cờ Chớp" },
+        { name: "Phù Thủy Băng Giá AI", avatar: "🧙‍♀️", elo: 1650, style: "Phép Thuật Khống Chế" },
+        { name: "Hiệp Sĩ Hoàng Gia AI", avatar: "🛡️", elo: 1600, style: "Hộ Vệ Bất Tử" },
+        { name: "Kỳ Thủ Martin AI", avatar: "♟️", elo: 1200, style: "Cân Bằng Cơ Bản" }
+    ];
+    const botCount = room.players.filter(p => p.isBot).length;
+    const bp = botProfile || botProfiles[botCount % botProfiles.length];
+    const bot = {
+        id: `bot_${Date.now()}_${botCount}`,
+        socketId: null,
+        name: bp.name,
+        avatar: bp.avatar || "🤖",
+        elo: bp.elo || 1500,
+        style: bp.style || "AI Cờ Chớp",
+        customModifiers: {},
+        isHost: false,
+        isBot: true
+    };
+    room.players.push(bot);
+    io.to(cleanCode).emit("room:updated", room);
+    broadcastRoomsList();
+    res.json({ ok: true, room, bot });
+});
+
+app.post("/api/rooms/remove_bot", (req, res) => {
+    const { code, botId } = req.body || {};
+    const cleanCode = String(code || "").trim().toUpperCase();
+    const room = rooms.get(cleanCode);
+    if (!room) return res.status(404).json({ ok: false, msg: "Phòng không tồn tại!" });
+    const idx = room.players.findIndex(p => p.id === botId && p.isBot);
+    if (idx !== -1) {
+        const removed = room.players.splice(idx, 1)[0];
+        io.to(cleanCode).emit("room:updated", room);
+        broadcastRoomsList();
+        res.json({ ok: true, room, removed });
+    } else {
+        res.status(400).json({ ok: false, msg: "Không tìm thấy Bot cần xóa!" });
+    }
 });
 
 // Matchmaking Queue for Auto-Matching Ranked Players
@@ -573,6 +717,88 @@ function tryFormMatchmakingRoom() {
     broadcastRoomsList();
 }
 
+function generateBot30GoldArmy(botProfile, seed = 0) {
+    const archetypes = [
+        {
+            id: "cavalry_rush",
+            compName: "Kỵ Binh Đột Kích Thần Tốc (29 Vàng)",
+            favTrait: "cavalry",
+            units: [
+                { id: "king", r: 6, c: 1, stars: 1, isKing: true, cost: 0 },
+                { id: "chancellor", r: 5, c: 2, stars: 1, isKing: false, cost: 5 },
+                { id: "knight", r: 4, c: 0, stars: 2, isKing: false, cost: 6 },
+                { id: "frost_knight", r: 4, c: 5, stars: 2, isKing: false, cost: 6 },
+                { id: "mercenary", r: 5, c: 4, stars: 2, isKing: false, cost: 3 },
+                { id: "shield_pawn", r: 4, c: 2, stars: 2, isKing: false, cost: 3 },
+                { id: "knight", r: 5, c: 1, stars: 2, isKing: false, cost: 6 }
+            ]
+        },
+        {
+            id: "fortune_shadow",
+            compName: "Đạo Tặc Xạ Thủ Đột Kích (29 Vàng)",
+            favTrait: "assassin",
+            units: [
+                { id: "king", r: 6, c: 2, stars: 1, isKing: true, cost: 0 },
+                { id: "corsair", r: 4, c: 1, stars: 2, isKing: false, cost: 6 },
+                { id: "archer", r: 5, c: 5, stars: 2, isKing: false, cost: 6 },
+                { id: "gambler", r: 4, c: 4, stars: 2, isKing: false, cost: 6 },
+                { id: "mercenary", r: 5, c: 0, stars: 2, isKing: false, cost: 3 },
+                { id: "shield_pawn", r: 4, c: 2, stars: 2, isKing: false, cost: 3 },
+                { id: "shield_pawn", r: 4, c: 0, stars: 2, isKing: false, cost: 3 }
+            ]
+        },
+        {
+            id: "frost_vanguard",
+            compName: "Pháo Đài Băng Tuyết Siêu Chống Chịu (29 Vàng)",
+            favTrait: "vanguard",
+            units: [
+                { id: "king", r: 6, c: 2, stars: 1, isKing: true, cost: 0 },
+                { id: "frost_rook", r: 5, c: 0, stars: 2, isKing: false, cost: 8 },
+                { id: "frost_knight", r: 4, c: 4, stars: 2, isKing: false, cost: 6 },
+                { id: "juggernaut", r: 4, c: 2, stars: 2, isKing: false, cost: 6 },
+                { id: "shield_pawn", r: 4, c: 1, stars: 2, isKing: false, cost: 3 },
+                { id: "shield_pawn", r: 4, c: 3, stars: 2, isKing: false, cost: 3 },
+                { id: "mercenary", r: 5, c: 3, stars: 2, isKing: false, cost: 3 }
+            ]
+        },
+        {
+            id: "pyro_mage_burn",
+            compName: "Hỏa Pháp Thiêu Đốt Nổ Lan (29 Vàng)",
+            favTrait: "sorcerer",
+            units: [
+                { id: "king", r: 6, c: 2, stars: 1, isKing: true, cost: 0 },
+                { id: "pyro_bishop", r: 5, c: 5, stars: 2, isKing: false, cost: 8 },
+                { id: "fire_mage", r: 5, c: 1, stars: 2, isKing: false, cost: 6 },
+                { id: "juggernaut", r: 4, c: 2, stars: 2, isKing: false, cost: 6 },
+                { id: "shield_pawn", r: 4, c: 0, stars: 2, isKing: false, cost: 3 },
+                { id: "shield_pawn", r: 4, c: 4, stars: 2, isKing: false, cost: 3 },
+                { id: "mercenary", r: 4, c: 3, stars: 2, isKing: false, cost: 3 }
+            ]
+        },
+        {
+            id: "sniper_siege",
+            compName: "Xạ Thủ Pháo Đài Bắn Tỉa (29 Vàng)",
+            favTrait: "sniper",
+            units: [
+                { id: "king", r: 6, c: 2, stars: 1, isKing: true, cost: 0 },
+                { id: "cannon", r: 5, c: 0, stars: 2, isKing: false, cost: 8 },
+                { id: "archer", r: 5, c: 5, stars: 2, isKing: false, cost: 6 },
+                { id: "juggernaut", r: 4, c: 2, stars: 2, isKing: false, cost: 6 },
+                { id: "shield_pawn", r: 4, c: 1, stars: 2, isKing: false, cost: 3 },
+                { id: "shield_pawn", r: 4, c: 3, stars: 2, isKing: false, cost: 3 },
+                { id: "mercenary", r: 4, c: 4, stars: 2, isKing: false, cost: 3 }
+            ]
+        }
+    ];
+
+    const trait = botProfile?.favTrait;
+    let match = archetypes.find(a => a.favTrait === trait);
+    if (!match) {
+        match = archetypes[seed % archetypes.length];
+    }
+    return match;
+}
+
 io.on("connection", (socket) => {
     socket.emit("rooms:list", getPublicRoomsList());
 
@@ -609,7 +835,7 @@ io.on("connection", (socket) => {
     });
 
     // Create a new Room (Can be created as player or as spectator/caster)
-    socket.on("room:create", ({ user, timeMode = "standard", fillBots = true, isSpectator = false }, cb) => {
+    socket.on("room:create", ({ user, mode = "tft_8p", timeMode = "standard", fillBots = true, isSpectator = false }, cb) => {
         let code = generateRoomCode();
         while (rooms.has(code)) code = generateRoomCode();
 
@@ -625,15 +851,19 @@ io.on("connection", (socket) => {
         };
         ensureUserInDatabase(freshUser);
 
+        const is1v1 = (mode === "tft_1v1" || mode === "skirmish_1v1");
         const room = {
             code,
+            mode, // "tft_8p" | "tft_1v1" | "skirmish_1v1"
+            maxPlayers: is1v1 ? 2 : 8,
             hostId: freshUser.id,
             hostSocketId: socket.id,
             hostName: freshUser.displayName || freshUser.username,
             timeMode, // "standard" (45/60/75s) | "relaxed" (75/90/120s) | "blitz" (25/35/45s)
-            fillBots: !!fillBots,
+            fillBots: is1v1 ? false : !!fillBots,
             isSpectatorHost: !!isSpectator,
-            status: "waiting", // "waiting" | "playing"
+            status: "waiting", // "waiting" | "playing" | "skirmish_prep"
+            skirmishArmies: {},
             spectators: isSpectator ? [
                 {
                     id: freshUser.id,
@@ -679,6 +909,8 @@ io.on("connection", (socket) => {
             return cb && cb({ ok: false, msg: "Phòng này đã bắt đầu trận đấu!" });
         }
 
+        const maxAllowed = room.maxPlayers || (room.mode === "tft_1v1" || room.mode === "skirmish_1v1" ? 2 : 8);
+
         const dbUsers = readJSON(FILES.users, []);
         const foundUser = user ? (dbUsers.find(u => u.id === user.id) || user) : null;
         const freshUser = foundUser || {
@@ -716,8 +948,14 @@ io.on("connection", (socket) => {
             return;
         }
 
-        if (room.players.length >= 8) {
-            return cb && cb({ ok: false, msg: "Phòng đã đủ 8 người chơi!" });
+        if (room.players.length >= maxAllowed) {
+            const botIdx = room.players.slice().reverse().findIndex(p => p.isBot);
+            if (botIdx !== -1) {
+                const realIdx = room.players.length - 1 - botIdx;
+                room.players.splice(realIdx, 1);
+            } else {
+                return cb && cb({ ok: false, msg: `Phòng đã đủ ${maxAllowed} người chơi thật!` });
+            }
         }
 
         const existing = room.players.find(p => p.id === freshUser.id);
@@ -747,11 +985,16 @@ io.on("connection", (socket) => {
     });
 
     // Update Room Settings (Host only)
-    socket.on("room:updateSettings", ({ code, timeMode, fillBots }) => {
+    socket.on("room:updateSettings", ({ code, timeMode, fillBots, mode }) => {
         const room = rooms.get(code);
         if (!room || room.hostSocketId !== socket.id) return;
+        if (mode) {
+            room.mode = mode;
+            room.maxPlayers = (mode === "tft_1v1" || mode === "skirmish_1v1") ? 2 : 8;
+            if (room.maxPlayers === 2) room.fillBots = false;
+        }
         if (timeMode) room.timeMode = timeMode;
-        if (fillBots !== undefined) room.fillBots = !!fillBots;
+        if (fillBots !== undefined && room.maxPlayers !== 2) room.fillBots = !!fillBots;
         io.to(code).emit("room:updated", room);
         broadcastRoomsList();
     });
@@ -802,8 +1045,15 @@ io.on("connection", (socket) => {
             broadcastRoomsList();
             if (cb) cb({ ok: true, role: "spectator", room });
         } else if (targetRole === "player") {
-            if (room.players.length >= 8) {
-                return cb && cb({ ok: false, msg: "Ghế thi đấu đã đủ 8 người!" });
+            const maxAllowed = room.maxPlayers || (room.mode === "tft_1v1" || room.mode === "skirmish_1v1" ? 2 : 8);
+            if (room.players.length >= maxAllowed) {
+                const botIdx = room.players.slice().reverse().findIndex(p => p.isBot);
+                if (botIdx !== -1) {
+                    const realIdx = room.players.length - 1 - botIdx;
+                    room.players.splice(realIdx, 1);
+                } else {
+                    return cb && cb({ ok: false, msg: `Ghế thi đấu đã đủ ${maxAllowed} người!` });
+                }
             }
             const sIdx = room.spectators.findIndex(s => s.id === userId || s.socketId === socket.id);
             let wasHost = (room.hostSocketId === socket.id || room.hostId === userId);
@@ -848,6 +1098,129 @@ io.on("connection", (socket) => {
         handleSocketLeaveRoom(socket);
     });
 
+    // Add Bot to Room
+    socket.on("room:addBot", ({ code, botProfile }, cb) => {
+        const cleanCode = String(code || "").trim().toUpperCase();
+        const room = rooms.get(cleanCode);
+        if (!room) return cb && cb({ ok: false, msg: "Phòng không tồn tại!" });
+        if (room.hostSocketId !== socket.id && room.hostId !== socket.data.userId) {
+            return cb && cb({ ok: false, msg: "Chỉ Chủ Phòng mới có quyền thêm Bot!" });
+        }
+        const maxAllowed = room.maxPlayers || (room.mode === "tft_1v1" || room.mode === "skirmish_1v1" ? 2 : 8);
+        if (room.players.length >= maxAllowed) {
+            return cb && cb({ ok: false, msg: `Phòng đã đủ tối đa ${maxAllowed} kỳ thủ!` });
+        }
+
+        const botProfiles = [
+            { name: "Đại Kiện Tướng Magnus AI", avatar: "🤖", elo: 1800, style: "Tấn Công Tổng Lực", favTrait: "cavalry" },
+            { name: "Bá Tước Bóng Đêm AI", avatar: "🦇", elo: 1750, style: "Sát Thủ Cờ Chớp", favTrait: "assassin" },
+            { name: "Phù Thủy Băng Giá AI", avatar: "🧙‍♀️", elo: 1650, style: "Phép Thuật Khống Chế", favTrait: "sorcerer" },
+            { name: "Hiệp Sĩ Hoàng Gia AI", avatar: "🛡️", elo: 1600, style: "Hộ Vệ Bất Tử", favTrait: "guardian" },
+            { name: "Xạ Thủ Tinh Anh AI", avatar: "🏹", elo: 1550, style: "Tầm Xa Xuyên Giáp", favTrait: "sniper" },
+            { name: "Đạo Tặc Thần Bài AI", avatar: "🎰", elo: 1500, style: "Nổ Hũ Kinh Tế", favTrait: "fortune" },
+            { name: "Kỳ Thủ Martin AI", avatar: "♟️", elo: 1200, style: "Cân Bằng Cơ Bản", favTrait: "royal" }
+        ];
+
+        const botCount = room.players.filter(p => p.isBot).length;
+        const bp = botProfile || botProfiles[botCount % botProfiles.length];
+
+        const bot = {
+            id: `bot_${Date.now()}_${botCount}`,
+            socketId: null,
+            name: bp.name,
+            avatar: bp.avatar || "🤖",
+            elo: bp.elo || 1500,
+            style: bp.style || "AI Cờ Chớp",
+            favTrait: bp.favTrait || "cavalry",
+            customModifiers: {},
+            isHost: false,
+            isBot: true
+        };
+
+        room.players.push(bot);
+        io.to(cleanCode).emit("room:updated", room);
+        broadcastRoomsList();
+        if (cb) cb({ ok: true, room, bot });
+    });
+
+    // Remove Bot from Room
+    socket.on("room:removeBot", ({ code, botId }, cb) => {
+        const cleanCode = String(code || "").trim().toUpperCase();
+        const room = rooms.get(cleanCode);
+        if (!room) return cb && cb({ ok: false, msg: "Phòng không tồn tại!" });
+        if (room.hostSocketId !== socket.id && room.hostId !== socket.data.userId) {
+            return cb && cb({ ok: false, msg: "Chỉ Chủ Phòng mới có quyền xóa Bot!" });
+        }
+
+        const idx = room.players.findIndex(p => p.id === botId && p.isBot);
+        if (idx !== -1) {
+            const removed = room.players.splice(idx, 1)[0];
+            io.to(cleanCode).emit("room:updated", room);
+            broadcastRoomsList();
+            if (cb) cb({ ok: true, room, removed });
+        } else {
+            if (cb) cb({ ok: false, msg: "Không tìm thấy Bot cần xóa!" });
+        }
+    });
+
+    // Fill All Empty Seats with Bots
+    socket.on("room:fillAllBots", ({ code }, cb) => {
+        const cleanCode = String(code || "").trim().toUpperCase();
+        const room = rooms.get(cleanCode);
+        if (!room) return cb && cb({ ok: false, msg: "Phòng không tồn tại!" });
+        if (room.hostSocketId !== socket.id && room.hostId !== socket.data.userId) {
+            return cb && cb({ ok: false, msg: "Chỉ Chủ Phòng mới có quyền lấp đầy Bot!" });
+        }
+
+        const maxAllowed = room.maxPlayers || (room.mode === "tft_1v1" || room.mode === "skirmish_1v1" ? 2 : 8);
+        const botProfiles = [
+            { name: "Đại Kiện Tướng Magnus AI", avatar: "🤖", elo: 1800, style: "Tấn Công Tổng Lực", favTrait: "cavalry" },
+            { name: "Bá Tước Bóng Đêm AI", avatar: "🦇", elo: 1750, style: "Sát Thủ Cờ Chớp", favTrait: "assassin" },
+            { name: "Phù Thủy Băng Giá AI", avatar: "🧙‍♀️", elo: 1650, style: "Phép Thuật Khống Chế", favTrait: "sorcerer" },
+            { name: "Hiệp Sĩ Hoàng Gia AI", avatar: "🛡️", elo: 1600, style: "Hộ Vệ Bất Tử", favTrait: "guardian" },
+            { name: "Xạ Thủ Tinh Anh AI", avatar: "🏹", elo: 1550, style: "Tầm Xa Xuyên Giáp", favTrait: "sniper" },
+            { name: "Đạo Tặc Thần Bài AI", avatar: "🎰", elo: 1500, style: "Nổ Hũ Kinh Tế", favTrait: "fortune" },
+            { name: "Kỳ Thủ Martin AI", avatar: "♟️", elo: 1200, style: "Cân Bằng Cơ Bản", favTrait: "royal" }
+        ];
+
+        let bIdx = room.players.filter(p => p.isBot).length;
+        while (room.players.length < maxAllowed) {
+            const bp = botProfiles[bIdx % botProfiles.length];
+            room.players.push({
+                id: `bot_fill_${Date.now()}_${bIdx}`,
+                socketId: null,
+                name: bp.name,
+                avatar: bp.avatar,
+                elo: bp.elo,
+                style: bp.style,
+                favTrait: bp.favTrait,
+                customModifiers: {},
+                isHost: false,
+                isBot: true
+            });
+            bIdx++;
+        }
+
+        io.to(cleanCode).emit("room:updated", room);
+        broadcastRoomsList();
+        if (cb) cb({ ok: true, room });
+    });
+
+    // Clear All Bots from Room
+    socket.on("room:clearAllBots", ({ code }, cb) => {
+        const cleanCode = String(code || "").trim().toUpperCase();
+        const room = rooms.get(cleanCode);
+        if (!room) return cb && cb({ ok: false, msg: "Phòng không tồn tại!" });
+        if (room.hostSocketId !== socket.id && room.hostId !== socket.data.userId) {
+            return cb && cb({ ok: false, msg: "Chỉ Chủ Phòng mới có quyền xóa Bot!" });
+        }
+
+        room.players = room.players.filter(p => !p.isBot);
+        io.to(cleanCode).emit("room:updated", room);
+        broadcastRoomsList();
+        if (cb) cb({ ok: true, room });
+    });
+
     // Start Match in Room
     socket.on("room:start", ({ code }, cb) => {
         const room = rooms.get(code);
@@ -856,9 +1229,119 @@ io.on("connection", (socket) => {
             return cb && cb({ ok: false, msg: "Chỉ Chủ Phòng mới có quyền bắt đầu!" });
         }
 
-        room.status = "playing";
         const rules = readJSON(FILES.rules, {});
         const entities = readJSON(FILES.entities, {});
+
+        // 1. SPECIFIC HANDLING FOR 1V1 SKIRMISH PVP MODE
+        if (room.mode === "skirmish_1v1") {
+            const botProfiles = [
+                { name: "Đại Kiện Tướng Magnus AI", avatar: "🤖", elo: 1800, style: "Tấn Công Tổng Lực", favTrait: "cavalry" },
+                { name: "Bá Tước Bóng Đêm AI", avatar: "🦇", elo: 1750, style: "Sát Thủ Cờ Chớp", favTrait: "assassin" }
+            ];
+            while (room.players.length < 2) {
+                const bp = botProfiles[room.players.length % botProfiles.length];
+                room.players.push({
+                    id: `bot_skirmish_${Date.now()}_${room.players.length}`,
+                    socketId: null,
+                    name: bp.name,
+                    avatar: bp.avatar,
+                    elo: bp.elo,
+                    style: bp.style,
+                    favTrait: bp.favTrait,
+                    customModifiers: {},
+                    isHost: false,
+                    isBot: true
+                });
+            }
+
+            const p0 = room.players[0];
+            const p1 = room.players[1];
+
+            // If ALL players in 1v1 room are bots (spectator watching 2 bots):
+            if (p0.isBot && p1.isBot) {
+                room.status = "playing";
+                const army1Meta = generateBot30GoldArmy(p0, 0);
+                const army2Meta = generateBot30GoldArmy(p1, 1);
+                const botArmy1 = army1Meta.units;
+                const botArmy2 = army2Meta.units;
+
+                room.skirmishArmies = {
+                    [p0.id]: { army: botArmy1, mapId: "stone_fortress", compName: army1Meta.compName },
+                    [p1.id]: { army: botArmy2, mapId: "stone_fortress", compName: army2Meta.compName }
+                };
+
+                io.to(code).emit("skirmish:battleStart", {
+                    room,
+                    whitePlayerId: p0.id,
+                    blackPlayerId: p1.id,
+                    whiteName: `${p0.name} • ${army1Meta.compName}`,
+                    blackName: `${p1.name} • ${army2Meta.compName}`,
+                    mapId: "stone_fortress",
+                    armies: {
+                        [p0.id]: botArmy1,
+                        [p1.id]: botArmy2
+                    }
+                });
+                broadcastRoomsList();
+                if (cb) cb({ ok: true, mode: "skirmish_1v1", isSpectatorOnly: true });
+                return;
+            }
+
+            // Otherwise, human players exist who need to setup their armies
+            room.status = "skirmish_prep";
+            room.skirmishArmies = {};
+            io.to(code).emit("skirmish:setupArmy", { room });
+            broadcastRoomsList();
+            if (cb) cb({ ok: true, mode: "skirmish_1v1" });
+            return;
+        }
+
+        // 2. SPECIFIC HANDLING FOR 1V1 TFT SOLO DUEL MODE (NO 6 FILLER BOTS)
+        if (room.mode === "tft_1v1") {
+            room.status = "playing";
+            room.fillBots = false;
+
+            const botProfiles = [
+                { name: "Đại Kiện Tướng AI Magnus", avatar: "🤖", elo: 1800, style: "Tấn Công Tổng Lực", favTrait: "cavalry" },
+                { name: "Bá Tước Bóng Đêm AI", avatar: "🦇", elo: 1750, style: "Sát Thủ Cờ Chớp", favTrait: "assassin" }
+            ];
+            while (room.players.length < 2) {
+                const bp = botProfiles[room.players.length % botProfiles.length];
+                room.players.push({
+                    id: `bot_1v1_${Date.now()}_${room.players.length}`,
+                    socketId: null,
+                    name: bp.name,
+                    avatar: bp.avatar,
+                    elo: bp.elo,
+                    style: bp.style,
+                    favTrait: bp.favTrait,
+                    customModifiers: {},
+                    isHost: false,
+                    isBot: true
+                });
+            }
+
+            // Refresh each human player's customModifiers from DB
+            const dbUsers = readJSON(FILES.users, []);
+            room.players.forEach(p => {
+                if (!p.isBot) {
+                    const dbU = dbUsers.find(u => u.id === p.id);
+                    if (dbU) p.customModifiers = dbU.customModifiers || {};
+                }
+            });
+
+            io.to(code).emit("room:matchStarted", {
+                room,
+                rules,
+                entities
+            });
+            broadcastRoomsList();
+            if (cb) cb({ ok: true, mode: "tft_1v1" });
+            return;
+        }
+
+        // 3. STANDARD 8-PLAYER TFT BATTLE ROYALE
+        room.status = "playing";
 
         // Auto-fill bots to complete 8 players if fillBots is enabled
         if (room.fillBots !== false && room.players.length < 8) {
@@ -908,6 +1391,100 @@ io.on("connection", (socket) => {
         });
         broadcastRoomsList();
         if (cb) cb({ ok: true });
+    });
+
+    // 4. SKIRMISH 1V1 PVP SOCKET EVENTS
+    socket.on("skirmish:draftSync", ({ code, roomCode, army, goldRemaining }) => {
+        const roomKey = code || roomCode;
+        if (!roomKey) return;
+        const uid = socket.data.userId;
+        socket.to(roomKey).emit("skirmish:specDraftUpdate", {
+            playerId: uid,
+            army,
+            goldRemaining
+        });
+    });
+
+    socket.on("skirmish:submitArmy", ({ code, roomCode, army, mapId }, cb) => {
+        const roomKey = code || roomCode;
+        const room = rooms.get(roomKey);
+        if (!room) return cb && cb({ ok: false, msg: "Phòng không tồn tại!" });
+        if (!room.skirmishArmies) room.skirmishArmies = {};
+        const uid = socket.data.userId;
+        room.skirmishArmies[uid] = { army, mapId };
+
+        // Auto-generate army for any bot in room
+        const botPlayers = room.players.filter(p => p.isBot);
+        if (botPlayers.length > 0) {
+            botPlayers.forEach((bp, bIdx) => {
+                if (!room.skirmishArmies[bp.id]) {
+                    const botMeta = generateBot30GoldArmy(bp, bIdx + 1);
+                    room.skirmishArmies[bp.id] = { army: botMeta.units, mapId: mapId || "stone_fortress", compName: botMeta.compName };
+                }
+            });
+        }
+
+        const readyCount = Object.keys(room.skirmishArmies).length;
+        const total = room.players.length;
+
+        io.to(roomKey).emit("skirmish:armySubmitted", {
+            playerId: uid,
+            readyCount,
+            total
+        });
+
+        // When all players have submitted (or bot is ready)
+        if (readyCount >= total) {
+            const p0 = room.players[0];
+            const p1 = room.players[1] || {
+                id: "bot_magnus",
+                name: "Đại Kiện Tướng Magnus AI",
+                isBot: true,
+                avatar: "🤖"
+            };
+
+            const selectedMap = (room.skirmishArmies[p0.id] && room.skirmishArmies[p0.id].mapId) || mapId || "stone_fortress";
+
+            if (!room.skirmishArmies[p1.id]) {
+                const botMeta = generateBot30GoldArmy(p1, 2);
+                room.skirmishArmies[p1.id] = { army: botMeta.units, mapId: selectedMap, compName: botMeta.compName };
+            }
+
+            room.status = "playing";
+            io.to(roomKey).emit("skirmish:battleStart", {
+                room,
+                whitePlayerId: p0.id,
+                blackPlayerId: p1.id,
+                whiteName: p0.name,
+                blackName: p1.name,
+                mapId: selectedMap,
+                armies: {
+                    [p0.id]: room.skirmishArmies[p0.id].army,
+                    [p1.id]: room.skirmishArmies[p1.id].army
+                }
+            });
+            broadcastRoomsList();
+        }
+        if (cb) cb({ ok: true });
+    });
+
+    socket.on("skirmish:action", ({ code, roomCode, action, playerClock, enemyClock }) => {
+        const roomKey = code || roomCode;
+        socket.to(roomKey).emit("skirmish:opponentAction", { 
+            action, 
+            playerClock, 
+            enemyClock,
+            senderId: socket.data.userId || socket.id
+        });
+    });
+
+    socket.on("skirmish:endMatch", ({ code, roomCode, winnerId, reason, reasonLabel }) => {
+        const roomKey = code || roomCode;
+        const room = rooms.get(roomKey);
+        if (!room) return;
+        room.status = "finished";
+        io.to(roomKey).emit("skirmish:matchOver", { winnerId, reason, reasonLabel });
+        broadcastRoomsList();
     });
 
     // Live Board & HP Sync for Multiplayer Scouting & Leaderboard
